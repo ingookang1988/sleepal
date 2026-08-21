@@ -1,0 +1,378 @@
+<title>슬립팰 제작 도면</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{
+  --ground:#EDF0F3; --surface:#FFFFFF; --surface-2:#E0E5EA;
+  --line:#CBD3DA; --line-soft:#DFE5EA;
+  --ink:#0F171D; --ink-2:#41505C; --ink-3:#72808C;
+  --blue:#0E6396; --blue-soft:#DDEBF5;
+  --cut:#B04A22; --cut-soft:#F9E8E1;
+  --ok:#1B6749; --ok-soft:#DDEEE6;
+  --shadow:0 1px 2px rgba(15,23,29,.05), 0 12px 32px -22px rgba(15,23,29,.34);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#080F15; --surface:#101922; --surface-2:#18232E;
+    --line:#28353F; --line-soft:#1E2A34;
+    --ink:#E8EFF4; --ink-2:#A5B4BF; --ink-3:#788793;
+    --blue:#6DC0EC; --blue-soft:#0D2231;
+    --cut:#EE9877; --cut-soft:#2C1913;
+    --ok:#5FC49B; --ok-soft:#112A20;
+    --shadow:0 1px 2px rgba(0,0,0,.6), 0 14px 36px -24px rgba(0,0,0,1);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080F15; --surface:#101922; --surface-2:#18232E;
+  --line:#28353F; --line-soft:#1E2A34;
+  --ink:#E8EFF4; --ink-2:#A5B4BF; --ink-3:#788793;
+  --blue:#6DC0EC; --blue-soft:#0D2231;
+  --cut:#EE9877; --cut-soft:#2C1913;
+  --ok:#5FC49B; --ok-soft:#112A20;
+  --shadow:0 1px 2px rgba(0,0,0,.6), 0 14px 36px -24px rgba(0,0,0,1);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:16px;line-height:1.8;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:0 25px 100px}
+p{margin:0 0 14px;max-width:72ch}
+strong{font-weight:700;color:var(--ink)}
+
+header{padding:58px 0 30px;border-bottom:2px solid var(--ink)}
+.kick{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);margin:0 0 16px}
+h1{font-family:"Gothic A1",sans-serif;font-weight:800;font-size:clamp(32px,5.6vw,50px);line-height:1.2;letter-spacing:-.03em;margin:0 0 18px}
+.stand{font-size:17px;color:var(--ink-2);margin:0;max-width:60ch}
+.by{margin-top:22px;display:flex;flex-wrap:wrap;gap:5px 18px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3)}
+
+section{margin-top:52px}
+.sec{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;letter-spacing:.19em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+h2{font-family:"Gothic A1",sans-serif;font-weight:800;font-size:clamp(22px,3.2vw,29px);line-height:1.35;letter-spacing:-.02em;margin:15px 0 14px;text-wrap:balance}
+h3{font-size:17px;font-weight:700;margin:28px 0 8px}
+
+ul,ol{margin:0 0 14px;padding-left:20px;max-width:72ch;display:flex;flex-direction:column;gap:7px}
+li{color:var(--ink-2)} li strong{color:var(--ink)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;padding:18px 22px;margin:18px 0;box-shadow:var(--shadow)}
+.card .l{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.17em;text-transform:uppercase;color:var(--blue);display:block;margin-bottom:6px}
+.card p:last-child{margin-bottom:0}
+.card.c{border-left-color:var(--cut)} .card.c .l{color:var(--cut)}
+.card.o{border-left-color:var(--ok)} .card.o .l{color:var(--ok)}
+
+figure{margin:24px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 18px 14px;box-shadow:var(--shadow)}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);text-align:center;margin-top:12px;line-height:1.6}
+
+.panel{fill:var(--surface-2);stroke:var(--ink-3);stroke-width:1.6}
+.panelf{fill:var(--blue-soft);stroke:var(--blue);stroke-width:1.8}
+.cutfill{fill:var(--cut-soft);stroke:var(--cut);stroke-width:1.8}
+.lbl{fill:var(--ink);font-family:"Gothic A1",sans-serif;font-size:13.5px;font-weight:700}
+.dim{fill:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:11px}
+.note{fill:var(--cut);font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600}
+.glow{fill:var(--blue);opacity:.15}
+.eyeb{fill:var(--blue-soft);stroke:var(--blue);stroke-width:1.5}
+.eyew{fill:var(--ink)}
+.eyel{stroke:var(--ink);stroke-width:4;fill:none;stroke-linecap:round}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:18px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:13.5px;line-height:1.6}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td{color:var(--ink-2)} td:first-child{color:var(--ink);font-weight:700}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:12.5px;white-space:nowrap}
+
+.steps{counter-reset:s;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);overflow:hidden;margin:18px 0}
+.step{display:grid;grid-template-columns:40px 1fr;gap:13px;padding:14px 19px;border-bottom:1px solid var(--line-soft)}
+.step:last-child{border-bottom:none}
+.step::before{counter-increment:s;content:counter(s);font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--blue);padding-top:2px}
+.step b{display:block;font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.step span{font-size:14.5px;color:var(--ink-2);line-height:1.7}
+
+code{font-family:"IBM Plex Mono",monospace;font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--ink)}
+a{color:var(--blue);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--blue) 32%,transparent)}
+a:hover{border-bottom-color:var(--blue)}
+a:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:2px}
+footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3);line-height:1.8}
+footer p{max-width:none}
+
+@media (max-width:620px){.wrap{padding:0 16px 78px}header{padding:38px 0 24px}body{font-size:15.5px}.step{grid-template-columns:30px 1fr;gap:10px;padding:13px 15px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="kick">Build Sheet · rev.2 가로형 · 소요 40분</p>
+  <h1>슬립팰 제작 도면</h1>
+  <p class="stand">폰이 가로로 누워 얼굴이 되고, 몸통이 그 뒤에서 빛난다. 골판지 여섯 조각과 테이프.</p>
+  <div class="by">
+    <span>크기 · 200 × 130 × 65 mm</span>
+    <span>재료 · 골판지 · 트레이싱지 · 테이프</span>
+    <span>수량 · 2개 (예비 포함)</span>
+  </div>
+</header>
+
+<section>
+  <p class="sec">§0 &nbsp;Warning</p>
+  <h2>현장에서는 만들 수 없습니다</h2>
+  <div class="card c">
+    <span class="l">반입 금지</span>
+    <p style="margin-bottom:0">참가 안내문에 <strong>접착제 · 도료 · 절단 공구 반입 불가</strong>가 명시되어 있습니다. 행사장에서는 자를 수도 붙일 수도 없습니다. 반면 <strong>사전 제작한 케이스는 권장 지참품</strong>입니다. <strong>오늘 밤 안에 완성해서 가져가세요.</strong> 보드가 2대이니 껍데기도 2개 만드시고요 — 두 번째는 첫 번째를 본떠서 15분이면 됩니다.</p>
+  </div>
+</section>
+
+<!-- 개념 -->
+<section>
+  <p class="sec">§1 &nbsp;Concept</p>
+  <h2>가로형인 이유</h2>
+  <p>얼굴은 세로로 길지 않습니다. 세로 화면에 눈 두 개를 그리면 얼굴이 아니라 세로 간판이 됩니다. 데스크 컴패니언이 전부 가로인 데는 이유가 있습니다.</p>
+
+  <figure>
+    <svg viewBox="0 0 640 300" role="img" aria-label="가로형 정면도와 측면도. 빛나는 몸통 앞에 폰이 가로로 기대어 서고 주위로 후광이 번진다">
+      <g>
+        <text class="lbl" x="24" y="26">정면</text>
+        <ellipse class="glow" cx="176" cy="150" rx="182" ry="122"/>
+        <path class="panelf" d="M62,66 L74,54 L278,54 L290,66 L290,246 L62,246 Z"/>
+        <rect x="96" y="88" width="160" height="76" rx="6" fill="var(--ink)" opacity="0.88"/>
+        <circle cx="146" cy="126" r="22" fill="var(--surface)"/>
+        <circle cx="206" cy="126" r="22" fill="var(--surface)"/>
+        <circle cx="152" cy="119" r="7" fill="var(--ink)"/>
+        <circle cx="212" cy="119" r="7" fill="var(--ink)"/>
+        <rect class="panel" x="88" y="164" width="176" height="22" rx="3"/>
+        <text class="dim" x="176" y="180" text-anchor="middle">받침턱</text>
+        <rect class="panel" x="84" y="246" width="40" height="14"/>
+        <rect class="panel" x="228" y="246" width="40" height="14"/>
+        <text class="note" x="300" y="98">후광 = 호흡</text>
+        <text class="note" x="300" y="256">다리 10mm</text>
+        <text class="dim" x="176" y="44" text-anchor="middle">모서리 모따기 15mm</text>
+
+        <text class="lbl" x="400" y="26">측면</text>
+        <path class="panelf" d="M420,66 L432,54 L500,54 L500,246 L420,246 Z"/>
+        <path d="M414,240 L426,86" stroke="var(--ink)" stroke-width="14" stroke-linecap="round" opacity="0.88"/>
+        <path class="panel" d="M406,246 L426,246 L426,232 L406,232 Z"/>
+        <rect class="panel" x="424" y="246" width="30" height="14"/>
+        <rect class="panel" x="466" y="246" width="30" height="14"/>
+        <rect x="452" y="196" width="42" height="14" rx="2" fill="var(--ink-3)"/>
+        <text class="dim" x="512" y="204">보드 (LED 위로)</text>
+        <text class="dim" x="512" y="140">폰 5° 기울임</text>
+        <text class="note" x="512" y="70">통기</text>
+        <circle cx="466" cy="64" r="5" fill="none" stroke="var(--cut)" stroke-width="1.6"/>
+        <path stroke="var(--cut)" stroke-width="1.4" stroke-dasharray="4 4" fill="none" d="M470,196 L470,120"/>
+        <text class="note" x="384" y="150">45mm</text>
+        <path stroke="var(--ink-3)" stroke-width="1" fill="none" d="M420,120 L500,120"/>
+      </g>
+    </svg>
+    <figcaption>눈은 화면이, 호흡은 후광이 담당한다. 잠들면 <b>둘 다 검어진다</b>.</figcaption>
+  </figure>
+
+  <div class="card o">
+    <span class="l">가로로 눕혀서 얻는 것</span>
+    <ul style="margin-bottom:0">
+      <li><strong>눈이 두 배가 됩니다.</strong> 세로 배치에선 지름 30mm가 한계인데 가로면 45mm까지 갑니다. 10m 뒤 심사위원석에서 보이느냐가 여기서 갈립니다</li>
+      <li><strong>무게추가 필요 없습니다.</strong> 무게중심이 낮아 안 넘어집니다</li>
+      <li><strong>프로젝터 미러링이 꽉 찹니다.</strong> 세로 폰을 미러링하면 양옆이 검게 남습니다</li>
+      <li><strong>수면등으로서도 낫습니다.</strong> 가로로 넓은 광원이 방을 부드럽게 채웁니다</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 재단 -->
+<section>
+  <p class="sec">§2 &nbsp;Cutting List</p>
+  <h2>여섯 조각으로 자릅니다</h2>
+  <p>전개도 한 장으로 만들지 마세요. <strong>면을 따로 잘라 테이프로 조립</strong>하는 편이 골판지에선 훨씬 정확하고, 실수해도 그 면만 다시 만들면 됩니다. 치수는 mm.</p>
+
+  <figure>
+    <svg viewBox="0 0 620 400" role="img" aria-label="앞면 뒷면 측면 두 장 바닥 윗면 받침턱 다리로 이루어진 재단 목록">
+      <g>
+        <!-- 앞면 -->
+        <path class="panelf" d="M24,46 L37,33 L167,33 L180,46 L180,150 L24,150 Z"/>
+        <path class="cutfill" d="M38,60 L45,53 L159,53 L166,60 L166,136 L38,136 Z"/>
+        <text class="lbl" x="102" y="26" text-anchor="middle">앞면 ×1</text>
+        <text class="note" x="102" y="92" text-anchor="middle">창 잘라내기</text>
+        <text class="note" x="102" y="108" text-anchor="middle">164 × 94</text>
+        <text class="dim" x="102" y="167" text-anchor="middle">200 × 130</text>
+
+        <!-- 뒷면 -->
+        <rect class="panel" x="212" y="33" width="156" height="117"/>
+        <text class="lbl" x="290" y="26" text-anchor="middle">뒷면 ×1</text>
+        <text class="dim" x="290" y="97" text-anchor="middle">200 × 130</text>
+        <text class="dim" x="290" y="167" text-anchor="middle">모따기 없음</text>
+
+        <!-- 측면 -->
+        <rect class="panel" x="400" y="33" width="51" height="117"/>
+        <rect class="panel" x="463" y="33" width="51" height="117"/>
+        <text class="lbl" x="457" y="26" text-anchor="middle">측면 ×2</text>
+        <text class="dim" x="457" y="167" text-anchor="middle">65 × 130</text>
+        <circle cx="425" cy="52" r="5" fill="none" stroke="var(--cut)" stroke-width="1.6"/>
+        <circle cx="488" cy="52" r="5" fill="none" stroke="var(--cut)" stroke-width="1.6"/>
+        <text class="note" x="530" y="56">통기 ⌀12</text>
+
+        <!-- 바닥 -->
+        <rect class="panel" x="24" y="216" width="156" height="51"/>
+        <text class="lbl" x="102" y="209" text-anchor="middle">바닥 ×1</text>
+        <text class="dim" x="102" y="246" text-anchor="middle">200 × 65</text>
+        <rect class="cutfill" x="150" y="240" width="18" height="18" rx="2"/>
+        <text class="note" x="102" y="284" text-anchor="middle">케이블 구멍 · 한쪽만 붙일 것</text>
+
+        <!-- 윗면 -->
+        <rect class="panel" x="212" y="216" width="156" height="51"/>
+        <text class="lbl" x="290" y="209" text-anchor="middle">윗면 ×1</text>
+        <text class="dim" x="290" y="246" text-anchor="middle">200 × 65</text>
+        <circle cx="256" cy="255" r="5" fill="none" stroke="var(--cut)" stroke-width="1.6"/>
+        <circle cx="290" cy="255" r="5" fill="none" stroke="var(--cut)" stroke-width="1.6"/>
+        <circle cx="324" cy="255" r="5" fill="none" stroke="var(--cut)" stroke-width="1.6"/>
+        <text class="note" x="290" y="284" text-anchor="middle">통기구 3개</text>
+
+        <!-- 받침턱 -->
+        <rect class="panel" x="400" y="216" width="156" height="35"/>
+        <path stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="6 4" fill="none" d="M400,232 L556,232"/>
+        <text class="lbl" x="478" y="209" text-anchor="middle">받침턱 ×1</text>
+        <text class="dim" x="478" y="228" text-anchor="middle">200 × 45</text>
+        <text class="note" x="478" y="284" text-anchor="middle">20mm 지점 접어 L자</text>
+
+        <!-- 다리 -->
+        <rect class="panel" x="24" y="326" width="47" height="12"/>
+        <rect class="panel" x="87" y="326" width="47" height="12"/>
+        <text class="lbl" x="79" y="319" text-anchor="middle">다리 ×2</text>
+        <text class="dim" x="79" y="356" text-anchor="middle">60 × 15 · 3겹으로 겹쳐 붙임</text>
+
+        <!-- 확산지 -->
+        <rect x="212" y="316" width="156" height="32" fill="none" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="7 5"/>
+        <text class="lbl" x="290" y="309" text-anchor="middle">확산지 ×1</text>
+        <text class="dim" x="290" y="336" text-anchor="middle">174 × 104</text>
+        <text class="note" x="290" y="366" text-anchor="middle">트레이싱지 · 창보다 사방 5mm 크게</text>
+      </g>
+    </svg>
+    <figcaption>골판지 결(골 방향)이 <b>가로</b>로 가게 놓으면 넓은 면이 덜 휜다.</figcaption>
+  </figure>
+
+  <div class="card">
+    <span class="l">치수 근거</span>
+    <p style="margin-bottom:0">폰을 눕히면 약 <strong>163 × 78mm</strong>. 몸통 200mm → 좌우로 <strong>18mm씩</strong>, 몸통 130mm에 받침턱이 바닥 25mm 지점 → 폰 위로 <strong>27mm</strong> 후광이 남습니다. 깊이 65mm는 <strong>LED와 확산지 사이 거리</strong>를 벌기 위한 값입니다. 케이스를 끼우신다면 가로세로 각 5mm씩 키우세요.</p>
+  </div>
+
+  <div class="card c">
+    <span class="l">앞면 모서리는 꼭 잘라내세요</span>
+    <p style="margin-bottom:0">앞면 <strong>위쪽 두 모서리를 45°로 15mm</strong> 잘라내는 것만으로 "상자"가 "생물"에 훨씬 가까워집니다. 5분 걸리는데 인상이 완전히 달라집니다. 뒷면은 그냥 사각형으로 두셔도 됩니다.</p>
+  </div>
+</section>
+
+<!-- 조립 -->
+<section>
+  <p class="sec">§3 &nbsp;Assembly</p>
+  <h2>조립 순서</h2>
+  <div class="steps">
+    <div class="step"><div><b>여섯 조각 재단</b><span>골판지 결이 가로로 가게 놓고 자릅니다. 앞면 모따기와 창, 통기구, 케이블 구멍까지 이 단계에서 다 뚫으세요.</span></div></div>
+    <div class="step"><div><b>확산지 붙이기</b><span>트레이싱지를 창보다 사방 5mm 크게 잘라 <strong>앞면 안쪽에서</strong> 테이프로. 이어서 흰 A4를 뒷면·측면 안쪽에 덧대면 빛이 눈에 띄게 균일해집니다.</span></div></div>
+    <div class="step"><div><b>상자 세우기</b><span>바닥 위에 측면 둘을 세우고 뒷면을 붙인 뒤 앞면을 덮습니다. 안쪽에서 테이프를 붙이면 겉면이 깔끔합니다. <strong>바닥은 한쪽만 붙여 여닫을 수 있게</strong> — 보드를 넣고 빼야 합니다.</span></div></div>
+    <div class="step"><div><b>윗면 덮기</b><span>통기구가 뚫린 면입니다. 이것도 완전히 봉하지 말고 뒤쪽 한 변만 붙여 뚜껑처럼 여닫히게 하세요.</span></div></div>
+    <div class="step"><div><b>받침턱과 다리</b><span>L자로 접은 받침턱을 앞면 하단에 부착 — 20mm 면이 앞면에, 25mm가 턱입니다. 다리 조각은 3겹으로 겹쳐 붙여 10mm 높이를 만들고 바닥 좌우에 답니다. <strong>띄우면 빛이 아래로 새어나와 떠 있는 느낌이 납니다.</strong></span></div></div>
+    <div class="step"><div><b>실물 확인</b><span>폰을 올려 각도를 봅니다. 그다음 보드를 넣고 LED를 켜서 <strong>점이 아니라 면으로 보이는지</strong> 확인하세요. 점으로 보이면 보드를 더 뒤로 밀거나 눕히면 됩니다.</span></div></div>
+  </div>
+
+  <div class="card c">
+    <span class="l">LED 배치가 결과를 가릅니다</span>
+    <p style="margin-bottom:0">보드를 확산지 바로 뒤에 붙이면 <strong>LED 4개가 점으로 비칩니다.</strong> 그 순간 수면등이 아니라 손전등이 됩니다. <strong>확산지에서 40mm 이상 떨어뜨리고</strong>, 보드를 바닥에 눕혀 LED가 <strong>위를 향하게</strong> 두세요. 천장면(윗면 안쪽)에 반사된 빛이 내려오면서 가장 부드러워집니다.</p>
+  </div>
+</section>
+
+<!-- 얼굴 -->
+<section>
+  <p class="sec">§4 &nbsp;Face</p>
+  <h2>눈 — 다섯 가지 상태</h2>
+  <p>가로 화면 163mm 폭에 <strong>지름 45mm 눈 두 개, 간격 35mm.</strong> 좌우로 19mm씩 여백이 남습니다. 눈 영역에 <strong>문자는 절대 넣지 않습니다</strong>(정의서 §9-3).</p>
+
+  <figure>
+    <svg viewBox="0 0 580 130" role="img" aria-label="각성 졸림 잠듦 밤 아침 다섯 상태의 눈 모양">
+      <g>
+        <rect class="eyeb" x="4" y="10" width="104" height="80" rx="10"/>
+        <circle class="eyew" cx="38" cy="50" r="15"/><circle class="eyew" cx="74" cy="50" r="15"/>
+        <circle cx="43" cy="45" r="5" fill="var(--surface)"/><circle cx="79" cy="45" r="5" fill="var(--surface)"/>
+        <text class="dim" x="56" y="112" text-anchor="middle">각성</text>
+
+        <rect class="eyeb" x="122" y="10" width="104" height="80" rx="10"/>
+        <circle class="eyew" cx="156" cy="50" r="15"/><circle class="eyew" cx="192" cy="50" r="15"/>
+        <rect x="136" y="28" width="76" height="21" fill="var(--blue-soft)"/>
+        <path class="eyel" d="M141,50 L171,50 M177,50 L207,50"/>
+        <text class="dim" x="174" y="112" text-anchor="middle">졸림</text>
+
+        <rect class="eyeb" x="240" y="10" width="104" height="80" rx="10"/>
+        <path class="eyel" d="M259,48 Q274,62 289,48"/>
+        <path class="eyel" d="M295,48 Q310,62 325,48"/>
+        <text class="dim" x="292" y="112" text-anchor="middle">잠듦</text>
+
+        <rect x="358" y="10" width="104" height="80" rx="10" fill="var(--ink)" stroke="var(--line)" stroke-width="1.5"/>
+        <text class="dim" x="410" y="112" text-anchor="middle">밤 · 완전 소등</text>
+
+        <rect class="eyeb" x="476" y="10" width="104" height="80" rx="10"/>
+        <circle class="eyew" cx="510" cy="52" r="14"/><circle class="eyew" cx="546" cy="52" r="14"/>
+        <circle cx="515" cy="47" r="5" fill="var(--surface)"/><circle cx="551" cy="47" r="5" fill="var(--surface)"/>
+        <path class="eyel" d="M498,28 Q510,20 522,28"/>
+        <path class="eyel" d="M534,28 Q546,20 558,28"/>
+        <text class="dim" x="528" y="112" text-anchor="middle">아침</text>
+      </g>
+    </svg>
+    <figcaption>눈꺼풀이 내려오는 것만으로 <b>졸림</b>이 읽힌다. 멀리서 보이는 유일한 신호다.</figcaption>
+  </figure>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>상태</th><th>눈</th><th>화면 배경</th><th>후광 (LED)</th><th>소리</th></tr></thead>
+    <tbody>
+      <tr><td>각성</td><td>크게 뜸 · 가끔 깜빡</td><td>어두운 남색</td><td>빠르고 불규칙</td><td>—</td></tr>
+      <tr><td>졸림</td><td>눈꺼풀 반쯤 · 느린 깜빡</td><td>진한 호박색</td><td>느려짐 · 깊어짐</td><td><strong>하품</strong></td></tr>
+      <tr><td>잠듦</td><td>감김 (⌣)</td><td>거의 검정</td><td>서서히 소등</td><td>숨소리 시작</td></tr>
+      <tr><td>밤</td><td>없음</td><td><strong>완전 검정</strong></td><td>소등 · System OFF</td><td>숨소리 · 뒤척임</td></tr>
+      <tr><td>아침</td><td>뜨기 · 기지개</td><td>밝아짐</td><td>천천히 점등</td><td>기지개 소리</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>화면 레이아웃 — 가로 전체화면</h3>
+  <ul>
+    <li><strong>눈이 화면 전체를 씁니다.</strong> 케어 패널 문장을 상시 표시하지 마세요 — 눈이 작아집니다</li>
+    <li><strong>문장은 상태가 바뀔 때만</strong> 하단에 3초쯤 떠올랐다 사라집니다. 다마고치도 평소엔 캐릭터만 보이고 필요할 때 메시지가 뜹니다</li>
+    <li>배경은 <strong>남색 → 호박색 → 검정</strong>으로 전이. transition 2~3초</li>
+    <li>전체화면 + <strong>화면 회전 잠금(가로)</strong> + Wake Lock. 주소창까지 숨기세요</li>
+  </ul>
+
+  <div class="card">
+    <span class="l">구현 메모</span>
+    <p style="margin-bottom:0">눈은 <strong>SVG 두 개와 CSS transition</strong>이면 끝납니다. 눈꺼풀은 눈 위에 배경색 사각형을 덮고 <code>translateY</code>로 내리고, 감긴 눈은 <code>stroke-linecap:round</code> 곡선 하나. 깜빡임은 눈꺼풀을 0.12초 내렸다 올리기. <strong>애니메이션 라이브러리 쓰지 마세요.</strong> 5시간짜리 작업이 아닙니다.</p>
+  </div>
+</section>
+
+<!-- 준비물 -->
+<section>
+  <p class="sec">§5 &nbsp;Shopping</p>
+  <h2>지금 필요한 것</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>물건</th><th>대체 가능</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>골판지</td><td>택배 상자</td><td>200×130 면이 나오는 크기. 2개 만들 분량</td></tr>
+      <tr><td><strong>트레이싱지</strong></td><td>기름종이 · 유산지 · 화선지</td><td><strong>이게 없으면 수면등이 아니라 손전등이 됩니다.</strong> 편의점 유산지도 됩니다</td></tr>
+      <tr><td>커터 · 자</td><td>가위</td><td>창과 모따기를 잘라야 하니 커터가 낫습니다</td></tr>
+      <tr><td>테이프</td><td>마스킹 · 투명</td><td>안쪽에서 붙이면 겉이 깔끔합니다</td></tr>
+      <tr><td>흰 A4</td><td>—</td><td>내부 반사용. 빛이 눈에 띄게 균일해집니다</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="mono" style="color:var(--ink-3);font-size:12.5px">※ 가로형은 무게중심이 낮아 <strong>무게추가 필요 없습니다.</strong> 세로형 계획에 있던 동전·건전지는 빼세요.</p>
+
+  <div class="card o">
+    <span class="l">부품 우선순위</span>
+    <p style="margin-bottom:0">눈을 폰이 그리므로 <strong>OLED는 받을 이유가 없습니다.</strong> 내일 확보할 것은 <strong>BH1750 밝기 센서 하나</strong>, 여유가 있으면 진동모터입니다. 선착순 경쟁이 훨씬 쉬워졌습니다.</p>
+  </div>
+</section>
+
+<footer>
+  <p>치수는 갤럭시 S26 Ultra 기준 추정치(약 163 × 78mm)로 계산했습니다. <strong>자르기 전에 실제 폰을 골판지에 대보고</strong> 받침턱 위치를 확정하세요 — 케이스 두께가 변수입니다. 깊이 65mm는 LED와 확산지 사이 거리를 확보하기 위한 값이며, 이보다 얕으면 점광원이 비칩니다.</p>
+  <p style="margin-bottom:0">폰 발열은 도크 구조라 밀폐 인형보다 낮지만 <strong>통기구는 생략하지 마세요.</strong> 밤새 오디오를 재생하는 조건은 아직 실측 전입니다.</p>
+</footer>
+
+</div>

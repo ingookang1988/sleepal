@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0D14">
+<title>TOYTHON Bridge</title>
+<style>
+  :root{
+    --bg:#0A0D14; --panel:#131926; --line:#232C3E;
+    --ink:#EAEEF7; --dim:#7F8BA3;
+    --live:#39D98A; --idle:#4A5468; --hot:#FF7A45; --cool:#5B8CFF;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"IBM Plex Sans KR",-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+    -webkit-user-select:none;user-select:none;
+  }
+  header{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--line);
+  }
+  .dot{width:11px;height:11px;border-radius:99px;background:var(--idle);flex:none;transition:.2s}
+  .dot.on{background:var(--live);box-shadow:0 0 14px var(--live)}
+  h1{font-size:15px;font-weight:700;margin:0;letter-spacing:.02em;flex:1}
+  #dev{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  button{
+    font:inherit;font-weight:600;font-size:14px;
+    padding:9px 16px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  }
+  button.primary{background:var(--cool);border-color:var(--cool);color:#06090F}
+  button:disabled{opacity:.4;cursor:default}
+  button:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+
+  main{flex:1;display:flex;flex-direction:column;gap:12px;padding:14px;min-height:0}
+
+  /* 무대에서 보이는 큰 상태판 */
+  .stage{
+    flex:1;min-height:0;border-radius:14px;border:1px solid var(--line);
+    background:var(--panel);display:grid;place-items:center;
+    position:relative;overflow:hidden;transition:background .12s;
+  }
+  .stage.flash{background:var(--hot)}
+  .big{
+    font-size:clamp(48px,17vw,140px);font-weight:700;line-height:1;
+    letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  }
+  .caption{
+    position:absolute;top:14px;left:16px;
+    font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  }
+  .ring{
+    position:absolute;inset:auto;width:min(62vw,300px);aspect-ratio:1;border-radius:99px;
+    border:2px solid var(--cool);opacity:.18;transform:scale(0.2);transition:transform .1s linear;
+  }
+
+  .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .cell{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+  }
+  .cell .k{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .cell .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:3px}
+
+  .btns{display:flex;gap:10px}
+  .btns button{flex:1}
+
+  #log{
+    height:112px;overflow-y:auto;background:#060910;border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;
+    color:var(--dim);white-space:pre-wrap;word-break:break-all;
+  }
+  #log b{color:var(--live);font-weight:400}
+  #log i{color:var(--cool);font-style:normal}
+  #log s{color:var(--hot);text-decoration:none}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>TOYTHON Bridge</h1>
+  <span id="dev">미연결</span>
+  <button class="primary" id="connect">연결</button>
+</header>
+
+<main>
+  <div class="stage" id="stage">
+    <span class="caption" id="cap">Phone Tilt</span>
+    <div class="ring" id="ring"></div>
+    <div class="big" id="big">–</div>
+  </div>
+
+  <div class="row">
+    <div class="cell"><div class="k">Tilt</div><div class="v" id="vTilt">0°</div></div>
+    <div class="cell"><div class="k">Shake</div><div class="v" id="vShake">0</div></div>
+    <div class="cell"><div class="k">Button</div><div class="v" id="vBtn">–</div></div>
+  </div>
+
+  <div class="btns">
+    <button id="bMotion">폰 센서 켜기</button>
+    <button id="bOn">LED 최대</button>
+    <button id="bOff">LED 끄기</button>
+  </div>
+
+  <div id="log"></div>
+</main>
+
+<script>
+// ── Nordic UART Service (Adafruit Bluefruit BLEUart) ────────────
+const NUS  = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX   = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // 폰 → 보드 (write)
+const TX   = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // 보드 → 폰 (notify)
+
+const $ = (id) => document.getElementById(id);
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+let device = null, rxChar = null, wakeLock = null;
+let tilt = 0, shakes = 0, lastSend = 0, rxLineBuf = '';
+
+// ── log ────────────────────────────────────────────────────────
+function log(msg, kind) {
+  const t = new Date().toTimeString().slice(0, 8);
+  const tag = kind === 'in' ? 'b' : kind === 'out' ? 'i' : kind === 'err' ? 's' : 'span';
+  $('log').insertAdjacentHTML('beforeend', `${t}  <${tag}>${msg}</${tag}>\n`);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+// ── connect ────────────────────────────────────────────────────
+async function connect() {
+  if (!navigator.bluetooth) {
+    log('이 브라우저는 Web Bluetooth를 지원하지 않습니다. Android Chrome으로 여세요.', 'err');
+    return;
+  }
+  try {
+    log('보드를 찾는 중…');
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: 'TOYTHON' }],
+      optionalServices: [NUS]
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(NUS);
+    rxChar        = await service.getCharacteristic(RX);
+    const txChar  = await service.getCharacteristic(TX);
+
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', onNotify);
+
+    $('dot').classList.add('on');
+    $('dev').textContent = device.name || 'connected';
+    $('connect').textContent = '연결 해제';
+    log('연결됨: ' + (device.name || '?'), 'in');
+
+    requestWakeLock();
+  } catch (e) {
+    log('연결 실패: ' + e.message, 'err');
+  }
+}
+
+function onDisconnect() {
+  $('dot').classList.remove('on');
+  $('dev').textContent = '미연결';
+  $('connect').textContent = '연결';
+  rxChar = null;
+  log('연결이 끊어졌습니다.', 'err');
+}
+
+$('connect').addEventListener('click', () => {
+  if (device && device.gatt.connected) { device.gatt.disconnect(); }
+  else { connect(); }
+});
+
+// ── 보드 → 폰 ──────────────────────────────────────────────────
+function onNotify(ev) {
+  rxLineBuf += dec.decode(ev.target.value);
+  let i;
+  while ((i = rxLineBuf.search(/[\r\n]/)) >= 0) {
+    const line = rxLineBuf.slice(0, i).trim();
+    rxLineBuf = rxLineBuf.slice(i + 1);
+    if (line) handleLine(line);
+  }
+}
+
+function handleLine(line) {
+  log('← ' + line, 'in');
+  const m = line.match(/^BTN:([AB]):(DOWN|UP)$/);
+  if (m) {
+    $('vBtn').textContent = m[1] + ' ' + (m[2] === 'DOWN' ? '↓' : '↑');
+    if (m[2] === 'DOWN') flash();
+    // ▼▼ 여기에 아이디어 로직을 붙이세요 (소리 재생 / 카메라 촬영 / API 호출 등)
+  }
+}
+
+function flash() {
+  const s = $('stage');
+  s.classList.add('flash');
+  navigator.vibrate && navigator.vibrate(35);
+  setTimeout(() => s.classList.remove('flash'), 110);
+}
+
+// ── 폰 → 보드 ──────────────────────────────────────────────────
+async function send(str) {
+  if (!rxChar) return;
+  try {
+    await rxChar.writeValue(enc.encode(str + '\n'));
+    log('→ ' + str, 'out');
+  } catch (e) {
+    log('전송 실패: ' + e.message, 'err');
+  }
+}
+
+$('bOn').addEventListener('click',  () => send('LED:255'));
+$('bOff').addEventListener('click', () => send('LED:0'));
+
+// ── 폰 센서 (IMU) ──────────────────────────────────────────────
+$('bMotion').addEventListener('click', async () => {
+  // iOS 대응용. 안드로이드에서는 그냥 통과합니다.
+  if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+    try { await DeviceMotionEvent.requestPermission(); } catch (e) {}
+  }
+  window.addEventListener('deviceorientation', onOrient);
+  window.addEventListener('devicemotion', onMotion);
+  $('bMotion').disabled = true;
+  $('bMotion').textContent = '센서 ON';
+  log('폰 센서 활성화');
+});
+
+function onOrient(e) {
+  if (e.gamma == null) return;
+  tilt = Math.round(e.gamma);                        // 좌우 기울기 -90 ~ 90
+  $('vTilt').textContent = tilt + '°';
+  $('big').textContent   = tilt + '°';
+  $('ring').style.transform = 'scale(' + (0.2 + Math.min(Math.abs(tilt), 90) / 90 * 0.8) + ')';
+
+  const now = Date.now();
+  if (now - lastSend > 100) {                        // 10Hz 로 제한
+    lastSend = now;
+    send('TILT:' + tilt);
+  }
+}
+
+let lastShake = 0;
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity;
+  if (!a) return;
+  const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  const now = Date.now();
+  if (mag > 26 && now - lastShake > 700) {
+    lastShake = now;
+    shakes++;
+    $('vShake').textContent = shakes;
+    send('SHAKE');
+    flash();
+  }
+}
+
+// ── 화면 꺼짐 방지 (필수: 탭이 죽으면 BLE도 끊깁니다) ──────────
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    log('화면 꺼짐 방지 ON');
+  } catch (e) {
+    log('WakeLock 실패: ' + e.message, 'err');
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && device && device.gatt.connected) requestWakeLock();
+});
+
+log('준비됨. [연결]을 누르세요.');
+if (!navigator.bluetooth) log('⚠ Web Bluetooth 미지원 브라우저입니다.', 'err');
+</script>
+</body>
+</html>

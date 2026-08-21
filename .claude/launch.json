@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "face",
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": ["scripts/serve.js", "5173"],
+      "port": 5173,
+      "url": "http://localhost:5173"
+    }
+  ]
+}

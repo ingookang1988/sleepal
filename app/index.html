@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>SleepPal</title>
+<style>
+  /* ── 좌표계는 mm ─────────────────────────────────────────────
+     SVG viewBox = 화면 실치수(mm)이고 SVG가 화면 전체를 채우므로
+     1 유닛 = 1mm 이 된다. 보정할 숫자는 화면 가로 mm 하나뿐이고,
+     세로는 CSS 픽셀 종횡비에서 유도한다([PLAN-01b] v0.2). */
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{
+    background:#0A0D14;
+    transition:background-color 2.5s ease;
+    font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    color:#EAEEF7;-webkit-user-select:none;user-select:none;touch-action:none;
+  }
+  .screen{position:fixed;inset:0;display:none}
+  .screen.on{display:block}
+
+  /* ── 얼굴 ───────────────────────────────────────────────── */
+  #faceScreen svg{width:100%;height:100%;display:block}
+  .eye{transition:fill 2.5s ease,opacity .5s ease .9s}
+  .shut{transition:stroke 2.5s ease,opacity .5s ease .9s}
+
+  /* ── 밝기 대체 — 웹은 시스템 밝기를 못 만진다 ───────────── */
+  #dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;
+       transition:opacity 2.5s ease}
+
+  /* ── 입장·보정·디버그 — 얼굴과 물리적으로 분리된 화면 (R3) ── */
+  #entryScreen,#calScreen,#dbgScreen{display:none;flex-direction:column;
+       gap:22px;padding:24px;text-align:center}
+  #entryScreen.on,#calScreen.on,#dbgScreen.on{display:flex;align-items:center;justify-content:center}
+  h2{font-size:17px;font-weight:600;margin:0;letter-spacing:.01em}
+  p{font-size:13px;line-height:1.7;color:#7F8BA3;margin:0;max-width:32em}
+  button{font:inherit;font-size:14px;font-weight:600;padding:13px 26px;border-radius:10px;
+       border:1px solid #232C3E;background:#131926;color:#EAEEF7;cursor:pointer}
+  button.primary{background:#5B8CFF;border-color:#5B8CFF;color:#06090F}
+  .rowbtn{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  #ruler{background:#EAEEF7;height:10px;border-radius:2px}
+  .dot{width:9px;height:9px;border-radius:99px;background:#4A5468;
+       display:inline-block;margin-right:8px;vertical-align:middle;transition:.2s}
+  .dot.on{background:#39D98A;box-shadow:0 0 12px #39D98A}
+  .dot.err{background:#FF7A45}
+  #entryNote{font-size:12px;color:#5D6478}
+  #live{display:flex;flex-direction:column;gap:8px;align-items:center}
+  #live .big{font-family:ui-monospace,monospace;font-size:34px;font-weight:700;
+       font-variant-numeric:tabular-nums;line-height:1;display:flex;
+       align-items:baseline;gap:8px}
+  #live .unit{font-size:13px;font-weight:400;color:#7F8BA3}
+  #live .age{font-size:12px;font-weight:400;color:#7F8BA3;margin-left:10px}
+  #live .age.stale{color:#FF7A45;font-weight:700}
+  #spark{background:#060910;border:1px solid #232C3E;border-radius:6px;display:block}
+  .bars{display:grid;grid-template-columns:170px auto 170px auto;gap:6px 8px;align-items:center}
+  .bar{height:9px;background:#131926;border:1px solid #232C3E;border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:#5B8CFF;transition:width .08s linear}
+  .simrow{align-items:center}
+  .lbl{font-family:ui-monospace,monospace;font-size:11px;color:#7F8BA3;min-width:44px}
+  #dbgGlare{width:200px;accent-color:#5B8CFF}
+  #dbg{font-family:ui-monospace,monospace;font-size:12px;line-height:1.8;
+       color:#7F8BA3;white-space:pre;text-align:left}
+</style>
+</head>
+<body>
+
+<!-- ── 대기 — 얼굴을 빌려주기 전 ─────────────────────────────
+     전체화면·회전잠금·Wake Lock 은 전부 사용자 제스처가 있어야
+     걸린다. 그래서 이 탭 하나가 반드시 있어야 하고, [WO-01b-3]
+     오디오 잠금 해제도 같은 탭 하나로 겸한다. -->
+<section id="entryScreen" class="screen on">
+  <h2>팰이 눈을 뜰 준비가 되었습니다</h2>
+  <p>먼저 팰과 연결한 뒤 시작하세요.<br>시작하면 가로로 고정되고 화면이 꺼지지 않습니다.</p>
+  <div class="rowbtn">
+    <button id="bConnect"><span class="dot" id="dot"></span>팰과 연결</button>
+    <button class="primary" id="bStart">시작</button>
+  </div>
+  <p id="entryNote">연결하지 않아도 얼굴은 동작합니다 — 후광만 없습니다.</p>
+  <div class="rowbtn">
+    <button id="bCal">화면 보정</button>
+    <button id="bDev">dev</button>
+  </div>
+</section>
+
+<!-- ── 얼굴 — 이 안에 문자가 하나도 없어야 한다 (R3) ───────── -->
+<section id="faceScreen" class="screen">
+  <svg id="face" viewBox="0 0 158 73" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+    <defs>
+      <!-- 눈꺼풀 = 마스크. 배경색 사각형이 아니다([ADR-104]) -->
+      <!-- 눈꺼풀 아랫변은 직선이 아니라 곡선이다. 직선이면 뜬 눈이 사발처럼
+           잘려 기계로 보인다 — 졸림이 이 제품에서 가장 중요한 상태다. -->
+      <mask id="mL" maskUnits="userSpaceOnUse" x="-40" y="-40" width="240" height="160">
+        <rect x="-40" y="-40" width="240" height="160" fill="#fff"/>
+        <path id="lidL" d="M 9 -66 H 69 V -68 Q 39 -62 9 -68 Z" fill="#000"/>
+      </mask>
+      <mask id="mR" maskUnits="userSpaceOnUse" x="-40" y="-40" width="240" height="160">
+        <rect x="-40" y="-40" width="240" height="160" fill="#fff"/>
+        <path id="lidR" d="M 89 -66 H 149 V -68 Q 119 -62 89 -68 Z" fill="#000"/>
+      </mask>
+    </defs>
+
+    <!-- 뜬 눈 — <circle> 이 아니라 <rect rx>. 찡그림을 원으로는 못 만든다 -->
+    <g id="tiltL" transform="rotate(0 39 36.5)">
+      <g mask="url(#mL)">
+        <rect id="eyeL" class="eye" x="16.5" y="14" width="45" height="45" rx="22.5" fill="#EAEEF7"/>
+      </g>
+    </g>
+    <g id="tiltR" transform="rotate(0 119 36.5)">
+      <g mask="url(#mR)">
+        <rect id="eyeR" class="eye" x="96.5" y="14" width="45" height="45" rx="22.5" fill="#EAEEF7"/>
+      </g>
+    </g>
+
+    <!-- 감긴 눈 — 곡선 하나 -->
+    <g id="shutG">
+      <path id="shutL" class="shut" d="M 16.5 36.5 Q 39 47 61.5 36.5"
+            fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round" opacity="0"/>
+      <path id="shutR" class="shut" d="M 96.5 36.5 Q 119 47 141.5 36.5"
+            fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round" opacity="0"/>
+    </g>
+  </svg>
+</section>
+
+<!-- ── 화면 보정 — 재단 원형의 눈금바 100mm 패턴 그대로 ────── -->
+<section id="calScreen" class="screen">
+  <h2>이 막대가 자로 100mm가 되게 맞추세요</h2>
+  <div id="ruler"></div>
+  <p>화면 가로 <b id="calVal">158</b> mm</p>
+  <div class="rowbtn">
+    <button id="calMinus">-1</button><button id="calMinus5">-0.2</button>
+    <button id="calPlus5">+0.2</button><button id="calPlus">+1</button>
+  </div>
+  <div class="rowbtn"><button class="primary" id="calDone">완료</button></div>
+</section>
+
+<!-- ── 디버그 — 얼굴을 덮지 않고 대체한다 (R3) ─────────────── -->
+<section id="dbgScreen" class="screen">
+  <!-- 조도가 살아 있는지 한눈에 보이게 — 숫자만으로는 "빛이 일정한 것"과
+       "안 읽고 있는 것"이 구분되지 않는다. age 와 n 이 그걸 가른다. -->
+  <div id="live">
+    <div class="big"><span id="luxBig">—</span><span class="unit">lux</span>
+      <span class="age" id="ageBig">age —</span></div>
+    <canvas id="spark" width="300" height="52"></canvas>
+    <div class="bars">
+      <div class="bar"><i id="barRaw"></i></div><span class="lbl">glare raw</span>
+      <div class="bar"><i id="barNow"></i></div><span class="lbl">now</span>
+    </div>
+  </div>
+  <div id="dbg"></div>
+  <!-- 폰이 몸통 안에 있을 때의 유일한 조작 경로. [CON-01] RX 메시지만 쓴다. -->
+  <div class="rowbtn">
+    <button id="dbgConnect">재연결</button>
+    <button id="dbgLedOn">LED 최대</button>
+    <button id="dbgLedOff">LED 끄기</button>
+    <button id="dbgWake">WAKE</button>
+  </div>
+  <!-- 보드 없이 표정을 보기 위한 조도 대역. 전부 feedLux() 로만 들어가므로
+       [CON-01] 규칙 2 는 그대로다 — 상태 전이는 유발하지 않는다. -->
+  <div class="rowbtn simrow">
+    <span class="lbl">glare</span>
+    <input type="range" id="dbgGlare" min="0" max="100" value="0">
+    <span class="lbl" id="dbgGlareV">0.00</span>
+  </div>
+  <div class="rowbtn">
+    <button id="dbgLightOn">불 켜기</button>
+    <button id="dbgLightOff">불 끄기</button>
+    <button id="dbgCam">카메라 조도계</button>
+  </div>
+  <div class="rowbtn"><button class="primary" id="dbgClose">닫기</button></div>
+  <!-- R7 — 카메라는 조도계로만 읽는다. 프레임은 32x24 평균 휘도 하나로
+       줄여 즉시 버린다. 저장·전송하지 않고, 인체·자세를 보지 않는다. -->
+  <video id="camV" playsinline muted style="display:none"></video>
+  <canvas id="camC" width="32" height="24" style="display:none"></canvas>
+</section>
+
+<div id="dim"></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════
+//  SleepPal — 얼굴 [WO-01b-1]
+//  규범 [ARCH-01] · 계약 [CON-01] v0.2 · 도면 [DOM-01] §2
+//  R1 — 팰은 말하지 않는다. 음성 출력 경로가 이 파일에 없다.
+//  R3 — 눈 영역에 문자가 없다. 디버그는 얼굴을 *대체*한다.
+// ═══════════════════════════════════════════════════════════════
+
+const $ = (id) => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+
+const smooth = (cur, tgt, tau, dt) => tgt + (cur - tgt) * Math.exp(-dt / tau);
+const rand = (a, b) => a + Math.random() * (b - a);
+const now = () => performance.now() / 1000;
+
+// ── 상태 팔레트 ────────────────────────────────────────────────
+// 색은 전부 잠정치다. 이 화면은 최종적으로 *트레이싱지 뒤에서*
+// 보인다. 확산지가 색을 따뜻하게 밀고 휘도를 깎으므로 진짜 튜닝은
+// [WO-01d-3] 조립 이후 확산지를 통해 봐야 한다.
+const STATES = {
+  AWAKE:   { bg:'#0A0D14', eye:'#EAEEF7', lid:0.00, dim:0.00, shut:false,
+             blink:[3.0, 6.0], env:[0.06, 0.00, 0.06] },
+  DROWSY:  { bg:'#33200A', eye:'#F3E2C2', lid:0.55, dim:0.15, shut:false,
+             blink:[2.5, 4.0], env:[0.50, 0.25, 0.40] },
+  ASLEEP:  { bg:'#05070A', eye:'#6E7686', lid:1.00, dim:0.35, shut:true,
+             blink:null, env:null },
+  NIGHT:   { bg:'#000000', eye:'#000000', lid:1.00, dim:0.60, shut:false,
+             blink:null, env:null },
+  MORNING: { bg:'#3B4664', eye:'#FFF6E6', lid:0.00, dim:0.00, shut:false,
+             blink:[4.0, 7.0], env:[0.30, 0.10, 0.55] },
+};
+const ORDER = ['AWAKE', 'DROWSY', 'ASLEEP', 'NIGHT', 'MORNING'];
+
+// ── 얼굴 기하 (mm) — [DOM-01] §2 / [PLAN-01b] v0.2 ─────────────
+const EYE = { w:45, h:45, cy:36.5, cx:[39, 119] };
+const LID_H = 80;                            // 눈꺼풀 도형 높이(넉넉히)
+const VB = { dx:0, dy:0, hmm:73 };           // viewBox 오프셋 — 루프가 읽는다
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// ═══ 표정 레이어 [WO-01b-4] ═══════════════════════════════════
+//  상태(이산·보드 소유) 위에 표정(연속·환경 구동)을 *합성*한다.
+//  [CON-01] 규칙 2 — 표정은 상태 전이를 절대 유발하지 않는다.
+//  ⛔ [ARCH-01] R4 — 밤에는 계산 자체를 돌리지 않는다.
+
+// [CON-01] 호흡 주기. 보드의 후광과 같은 숫자를 써야 몸과 얼굴이 한 몸이 된다.
+const BREATH = { AWAKE:4.0, DROWSY:5.5, ASLEEP:6.5, NIGHT:0, MORNING:4.5 };
+// 상태별 눈부심 응답 비율
+const GATE   = { AWAKE:1, DROWSY:1, ASLEEP:0, NIGHT:0, MORNING:0.5 };
+
+const GL = {
+  raw:0,        // lux 에서 계산된 즉시값
+  now:0,        // 화면에 반영되는 평활값
+  flinch:-1,    // 움찔 경과(초). -1 = 없음
+  relief:-1,    // 안도 경과(초)
+  settle:0,     // 안도 뒤 가라앉음 0~1
+};
+// 비대칭 시상수 — 이 두 숫자가 이 레이어의 핵심이다.
+// 대칭이면 슬라이더로 보이고, 비대칭이어야 *반응*으로 보인다.
+const TAU_UP = 0.15, TAU_DOWN = 2.5;
+
+// ── 한 프레임의 진실 ───────────────────────────────────────────
+const F = {
+  state: 'AWAKE',
+  lid: [0, 0],            // 상태가 정한 눈꺼풀 목표 (0 열림 ~ 1 감김)
+  lidNow: [0, 0],         // 화면에 실제로 그려지는 값
+  blinkAt: 0,             // 다음 깜빡임 시각(초)
+  blinkT: -1,             // 진행 중인 깜빡임 경과(초). -1 = 없음
+  blinkEnv: null,         // 이번 한 번만 쓸 봉투(움찔·안도가 넣는다)
+  stateAt: 0,             // 상태 진입 시각 = [CON-01] 호흡 위상 0
+};
+const ASYM = 1.04;        // 두 눈꺼풀 높이가 정확히 같으면 기계다
+
+let screenWmm = parseFloat(localStorage.getItem('sp.screenWmm')) || 158;
+
+// ── 화면 전환 ──────────────────────────────────────────────────
+function show(which) {
+  for (const s of ['entryScreen', 'faceScreen', 'calScreen', 'dbgScreen'])
+    $(s).classList.toggle('on', s === which);
+}
+
+// ── viewBox 를 실측 화면 mm 로 맞춘다 ─────────────────────────
+function applyViewBox() {
+  // 세로는 재지 않는다 — CSS 픽셀 종횡비에서 유도된다.
+  // ⚠ 레이아웃 전에 불리면 innerWidth 가 0 이라 NaN 이 나온다. 그러면 SVG 속성이
+  //   통째로 무효가 되어 얼굴이 사라진다 — 도면 비율(158:73)로 폴백한다.
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const ratio = (vw > 0 && vh > 0) ? vh / vw : 73 / 158;
+  const hmm = screenWmm * ratio;
+  $('face').setAttribute('viewBox', '0 0 ' + screenWmm.toFixed(2) + ' ' + hmm.toFixed(2));
+  // 눈은 화면 중앙 기준으로 놓는다(도면은 158x73 기준).
+  // 눈의 transform 은 매 프레임 루프가 쓴다(표류·기울기와 합성해야 하므로).
+  // 여기서는 오프셋만 넘겨준다.
+  VB.dx = (screenWmm - 158) / 2;
+  VB.dy = (hmm - 73) / 2;
+  VB.hmm = hmm;
+  window.__vb = VB;
+}
+
+// ── 상태 적용 ──────────────────────────────────────────────────
+function setEyeState(name) {
+  if (!STATES[name] || name === F.state) return;
+  const s = STATES[name];
+  F.state = name;
+  // 좌우 비대칭 — 반쯤 감긴 상태에서만 한쪽을 4% 더 내린다
+  F.lid = (s.lid > 0 && s.lid < 1) ? [s.lid, Math.min(s.lid * ASYM, 1)] : [s.lid, s.lid];
+  F.blinkT = -1;
+  F.blinkEnv = null;
+  F.stateAt = now();                    // [CON-01] 호흡 위상 0
+  F.blinkAt = s.blink ? now() + rand(s.blink[0], s.blink[1]) : Infinity;
+
+  document.body.style.backgroundColor = s.bg;
+  $('dim').style.opacity = s.dim;
+  for (const id of ['eyeL', 'eyeR']) {
+    $(id).style.fill = s.eye;
+    $(id).style.opacity = (s.shut || name === 'NIGHT') ? 0 : 1;
+  }
+  for (const id of ['shutL', 'shutR']) {
+    $(id).style.stroke = s.eye;
+    $(id).style.opacity = s.shut ? 1 : 0;
+  }
+  if (name === 'MORNING') stretch();
+  log('state -> ' + name);
+}
+
+// ── 기지개 — 아침에 한 번 ──────────────────────────────────────
+function stretch() {
+  for (const id of ['eyeL', 'eyeR']) {
+    const el = $(id);
+    el.style.transformBox = 'fill-box';
+    el.style.transformOrigin = 'center';
+    if (el.animate) el.animate(
+      [{ transform:'scaleY(1)' }, { transform:'scaleY(1.06)' }, { transform:'scaleY(1)' }],
+      { duration:1200, easing:'ease-in-out' }
+    );
+  }
+}
+
+// ── 깜빡임 봉투 — 상태 눈꺼풀 위에 얹힌다(덮어쓰지 않는다) ────
+function blinkAmount(t, env) {
+  const dn = env[0], hd = env[1], up = env[2];
+  if (t < dn) return t / dn;
+  if (t < dn + hd) return 1;
+  if (t < dn + hd + up) return 1 - (t - dn - hd) / up;
+  return -1;                                  // 끝났다는 신호
+}
+
+// 눈꺼풀 도형 — 아랫변이 곡선이다(가운데가 3mm 더 내려온다).
+function lidPath(cx, bottom) {
+  const l = (cx - 30).toFixed(2), r = (cx + 30).toFixed(2), c = cx.toFixed(2);
+  const top = (bottom - LID_H).toFixed(2);
+  const side = (bottom - 2).toFixed(2), ctrl = (bottom + 4).toFixed(2);
+  return 'M ' + l + ' ' + top + ' H ' + r + ' V ' + side +
+         ' Q ' + c + ' ' + ctrl + ' ' + l + ' ' + side + ' Z';
+}
+
+// 표정 채널 계산. ⛔ R4 게이트가 이 함수 최상단에 있다.
+function expression(t, dt) {
+  if (F.state === 'NIGHT') {          // 밤에는 아무것도 하지 않는다 (R4)
+    GL.now = 0; GL.flinch = -1; GL.relief = -1; GL.settle = 0;
+    return null;                      // 계산 자체를 돌리지 않는다
+  }
+  // 눈부심 — 비대칭 평활. 올라갈 때는 즉각, 내려올 때는 천천히.
+  const gate = GATE[F.state];
+  GL.now = smooth(GL.now, GL.raw, GL.raw > GL.now ? TAU_UP : TAU_DOWN, dt);
+
+  // 움찔 — 정상치보다 과하게 찡그렸다가 정착한다
+  let over = 0;
+  if (GL.flinch >= 0) {
+    GL.flinch += dt;
+    if (GL.flinch > 0.8) GL.flinch = -1;
+    else over = 0.25 * Math.exp(-GL.flinch / 0.25);
+  }
+  // 안도 — 눈이 5% 가라앉는다
+  if (GL.relief >= 0) { GL.relief += dt; GL.settle = 1; if (GL.relief > 0.3) GL.relief = -1; }
+  GL.settle = smooth(GL.settle, 0, 6.0, dt);
+
+  const g = clamp((GL.now + over) * gate, 0, 1.25);
+  const breathT = BREATH[F.state] ? Math.sin(2 * Math.PI * (t - F.stateAt) / BREATH[F.state]) : 0;
+
+  // 미세 표류 — 완전히 정지한 눈은 죽은 눈이다. 두 눈이 함께 움직인다.
+  const drift = (F.state === 'AWAKE' ? 1 : F.state === 'MORNING' ? 0.6 : 0);
+  return {
+    g: g,
+    h:  EYE.h * (1 - 0.62 * g) * (1 + 0.02 * breathT),
+    cy: EYE.cy - 1.5 * g,
+    tilt: 7 * g,                                   // 안쪽 끝을 내린다 = 찡그림
+    dx: drift * 0.4 * (Math.sin(t * 0.41) * 0.6 + Math.sin(t * 0.27 + 1.3) * 0.4),
+    dy: drift * 0.4 * (Math.sin(t * 0.33 + 2.1) * 0.6 + Math.sin(t * 0.19 + 0.7) * 0.4),
+    settle: GL.settle,
+    breath: breathT,
+    // 잠듦에서는 눈을 다시 뜨지 않는다 — 미세한 떨림만 남긴다
+    tremor: (F.state === 'ASLEEP' ? Math.sin(t * 17) * 0.25 * GL.now : 0),
+  };
+}
+
+// ── 단일 루프 — 라이브러리 0 ([PLAN-01b] 제약) ────────────────
+let last = 0, rafOff = false;   // rafOff: 검사에서 루프를 손으로 밟을 때만 true
+function frame(ts) {
+  const t = ts / 1000;
+  const dt = last ? Math.min(t - last, 0.1) : 0.016;
+  last = t;
+  const s = STATES[F.state];
+  const X = expression(t, dt);
+
+  // ── 깜빡임 ──────────────────────────────────────────────
+  if (s.blink && F.blinkT < 0 && t >= F.blinkAt) F.blinkT = 0;
+  let blink = 0;
+  if (F.blinkT >= 0) {
+    F.blinkT += dt;
+    // 무거워지는 깜빡임 — 감기는 속도가 아니라 *뜨는* 속도를 늦춘다
+    let env = F.blinkEnv || s.env;
+    if (!F.blinkEnv && F.state === 'DROWSY') {
+      env = [env[0], env[1], 0.40 + Math.min((t - F.stateAt) / 30, 1) * 0.35];
+    }
+    const a = blinkAmount(F.blinkT, env);
+    if (a < 0) {
+      F.blinkT = -1; F.blinkEnv = null;
+      F.blinkAt = s.blink ? t + rand(s.blink[0], s.blink[1]) : Infinity;
+    } else blink = a;
+  }
+
+  // ── 눈 기하 ─────────────────────────────────────────────
+  const h  = X ? X.h  : EYE.h;
+  const cy = X ? X.cy : EYE.cy;
+  const rx = Math.min(EYE.w, h) / 2;
+  const top = cy - h / 2;
+  const ox = VB.dx + (X ? X.dx : 0), oy = VB.dy + (X ? X.dy : 0);
+
+  for (let i = 0; i < 2; i++) {
+    F.lidNow[i] = smooth(F.lidNow[i], F.lid[i], 0.9, dt);
+    const lid = clamp(Math.max(F.lidNow[i], blink) + (X ? X.settle * 0.05 : 0), 0, 1);
+    const eye = $(i ? 'eyeR' : 'eyeL');
+    eye.setAttribute('y', top.toFixed(2));
+    eye.setAttribute('height', h.toFixed(2));
+    eye.setAttribute('rx', rx.toFixed(2));
+    // 눈꺼풀은 *현재* 눈 높이를 따라간다 — 찡그린 눈에 맞춰 짧아진다
+    $(i ? 'lidR' : 'lidL').setAttribute('d', lidPath(EYE.cx[i], top + lid * h));
+    // 기울기: 왼눈 +θ, 오른눈 −θ → 두 안쪽 끝이 내려간다
+    const th = (X ? X.tilt : 0) * (i ? -1 : 1);
+    $(i ? 'tiltR' : 'tiltL').setAttribute('transform',
+      'translate(' + ox.toFixed(2) + ' ' + oy.toFixed(2) + ') rotate(' +
+      th.toFixed(2) + ' ' + EYE.cx[i] + ' ' + cy.toFixed(2) + ')');
+  }
+  // 감긴 눈은 호흡으로 오르내리고, 빛이 들면 떨린다
+  const sy = VB.dy + (X ? X.breath * 0.3 + X.tremor : 0);
+  $('shutG').setAttribute('transform', 'translate(' + VB.dx.toFixed(2) + ' ' + sy.toFixed(2) + ')');
+
+  if (!rafOff) requestAnimationFrame(frame);
+}
+
+// ═══ BLE 배관 ═══════════════════════════════════════════════════
+//  Nordic UART Service. 연결·notify·라인버퍼는 원본
+//  ref/toython-sleeppal/toython-sleeppal/code/web-client-index.html 의
+//  것을 그대로 옮겼다 — 새로 만들지 않는다([PLAN-01b]).
+//  새로 붙은 것은 [CON-01] 규칙 3(정상 종료)과 규칙 4(무시)뿐이다.
+const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // 폰 → 보드 (write)
+const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // 보드 → 폰 (notify)
+
+// ⚠ [CON-01] — 광고 이름은 팀 고유값이어야 한다. 스캐폴드 기본값이
+//   "TOYTHON-01" 이라 참가자 100명이 모이면 목록이 전부 TOYTHON 이 된다.
+//   현장에서 재배포 없이 좁히려면 ?dev=<이름> 을 붙인다. ?dev=* 는 전체 목록.
+const DEVICE_PREFIX = qs.get('dev') || 'TOYTHON';
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+let device = null, rxChar = null, rxLineBuf = '';
+let normalEnd = false;      // SLEEPING 을 받고 끊긴 것인가 (규칙 3)
+let retries = 0;
+
+function setDot(cls) { $('dot').className = 'dot' + (cls ? ' ' + cls : ''); }
+
+async function connect() {
+  if (!navigator.bluetooth) {
+    log('이 브라우저는 Web Bluetooth 미지원 — 안드로이드 크롬으로 여세요');
+    $('entryNote').textContent = 'Web Bluetooth 미지원 브라우저입니다. 얼굴은 그대로 동작합니다.';
+    setDot('err');
+    return;
+  }
+  try {
+    log('보드를 찾는 중…');
+    device = await navigator.bluetooth.requestDevice(
+      DEVICE_PREFIX === '*'
+        ? { acceptAllDevices: true, optionalServices: [NUS] }
+        : { filters: [{ namePrefix: DEVICE_PREFIX }], optionalServices: [NUS] }
+    );
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    await openGatt();
+  } catch (e) {
+    log('연결 실패: ' + e.message);
+    setDot('err');
+    $('entryNote').textContent = '연결 실패 — ' + e.message;
+  }
+}
+
+async function openGatt() {
+  const server  = await device.gatt.connect();
+  const service = await server.getPrimaryService(NUS);
+  rxChar        = await service.getCharacteristic(RX);
+  const txChar  = await service.getCharacteristic(TX);
+  await txChar.startNotifications();
+  txChar.addEventListener('characteristicvaluechanged', onNotify);
+  rxLineBuf = ''; normalEnd = false; retries = 0;
+  setDot('on');
+  $('entryNote').textContent = '연결됨 — ' + (device.name || '?');
+  log('연결됨: ' + (device.name || '?'));
+}
+
+function onNotify(ev) {
+  rxLineBuf += dec.decode(ev.target.value);
+  let i;
+  while ((i = rxLineBuf.search(/[\r\n]/)) >= 0) {
+    const line = rxLineBuf.slice(0, i).trim();
+    rxLineBuf = rxLineBuf.slice(i + 1);
+    if (line) handleLine(line);
+  }
+}
+
+// [CON-01] 규칙 3 — SLEEPING 이후의 끊김은 오류가 아니라 정상 종료다.
+// 여기서 재연결을 시도하면 팰을 깨우는 그림이 된다.
+function onDisconnect() {
+  rxChar = null;
+  setDot(normalEnd ? '' : 'err');
+  if (normalEnd) { log('정상 종료 — System OFF (재연결하지 않는다)'); return; }
+  log('연결이 끊어졌습니다');
+  if (retries < 3 && device) {                 // 예기치 못한 끊김만 재시도
+    retries++;
+    const wait = retries * 1200;
+    log('재연결 시도 ' + retries + '/3 (' + wait + 'ms 뒤)');
+    setTimeout(() => { if (!rxChar && device) openGatt().catch(e => log('재연결 실패: ' + e.message)); }, wait);
+  }
+}
+
+async function send(str) {
+  if (!rxChar) { log('→ ' + str + ' (미연결, 무시)'); return; }
+  try { await rxChar.writeValue(enc.encode(str + '\n')); log('→ ' + str); }
+  catch (e) { log('전송 실패: ' + e.message); }
+}
+
+// ── [CON-01] v0.2 — 수신 라인 해석 ─────────────────────────────
+function handleLine(line) {
+  log('<- ' + line);
+  let m;
+  if ((m = line.match(/^STATE:(AWAKE|DROWSY|ASLEEP)$/))) { setEyeState(m[1]); return; }
+  // 유도: 밤. 이 뒤의 끊김은 정상 종료다(규칙 3) — 재연결 억제 플래그를 세운다.
+  if (line === 'SLEEPING') { normalEnd = true; setEyeState('NIGHT'); return; }
+  if (line === 'HELLO' && F.state === 'NIGHT') { setEyeState('MORNING'); return; }
+  if ((m = line.match(/^LUX:BASE:(\d+)$/))) { lux.base = +m[1]; return; }
+  if ((m = line.match(/^LUX:(\d+)$/)))      { lux.src = 'board'; feedLux(+m[1]); return; }
+  // 규칙 5 — 알 수 없는 메시지는 무시한다.
+}
+
+// ── lux — [WO-01b-4] 표정 레이어가 소비한다 ───────────────────
+//   규칙 2: 표정 변조는 허용, 상태 전이 유발은 금지.
+//   기준선은 폰이 자체 보유한다([ADR-103]) — 지금은 수집만 한다.
+const lux = { base: null, med: null, recent: [], last: null,
+              count: 0, at: null, mean: null, src: '—' };
+function feedLux(v) {
+  const t = now(), prev = lux.last;
+  lux.last = v;
+  lux.count++;          // 표본이 실제로 들어오고 있는지의 유일한 증거
+  lux.at = t;
+  lux.recent.push({ t: t, v: v });
+  while (lux.recent.length && lux.recent[0].t < t - 30) lux.recent.shift();
+
+  // 폰이 기준선을 자체 보유한다([ADR-103]) — 30초 롤링 중앙값.
+  // LUX:BASE 는 표본이 모이기 전의 씨앗으로만 쓴다. 보드가 기준선을
+  // 재보정해도 표정이 소리 없이 풀리지 않는다.
+  const vs = lux.recent.map(function (s) { return s.v; }).sort(function (a, b) { return a - b; });
+  lux.med = vs.length ? vs[vs.length >> 1] : null;
+  const base = (lux.recent.length >= 10) ? lux.med : (lux.base !== null ? lux.base : lux.med);
+  if (base !== null) GL.raw = clamp(Math.log((v + 1) / (base + 1)) / Math.log(16), 0, 1);
+
+  // 트랜지언트 — 한 샘플 안의 급변만 본다(5Hz 이므로 200ms 창)
+  if (prev !== null) {
+    const stops = Math.log((v + 1) / (prev + 1)) / Math.LN2;
+    if (stops >= 2) {                       // 움찔 — 하드 블링크 0.09초
+      GL.flinch = 0; F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0;
+      log('움찔 (+' + stops.toFixed(1) + ' stop)');
+    } else if (stops <= -2) {               // 안도 — 느린 부드러운 깜빡임 1회
+      GL.relief = 0; F.blinkEnv = [0.45, 0.15, 0.75]; F.blinkT = 0;
+      log('안도 (' + stops.toFixed(1) + ' stop)');
+    }
+  }
+  // ⚠ 여기서 setEyeState 를 부르지 않는다 — [CON-01] 규칙 2.
+}
+
+// ── 로그 — 콘솔과 디버그 화면에만 (R3·R6) ─────────────────────
+const LOG = [];
+function log(msg) {
+  LOG.push(new Date().toTimeString().slice(0, 8) + '  ' + msg);
+  if (LOG.length > 40) LOG.shift();
+  if ($('dbgScreen').classList.contains('on')) paintDebug();
+}
+function paintDebug() {
+  const conn = rxChar ? '연결됨 ' + (device && device.name ? device.name : '')
+             : normalEnd ? '정상 종료 (System OFF)' : '미연결';
+  // ── 살아 있는가 — age 가 유일하게 확실한 답이다 ──────────
+  const age = lux.at === null ? null : now() - lux.at;
+  $('luxBig').textContent = lux.last === null ? '—' : lux.last;
+  const ae = $('ageBig');
+  ae.textContent = age === null ? 'age —  수신 없음'
+                 : 'age ' + age.toFixed(2) + 's   n=' + lux.count + '   src=' + lux.src;
+  ae.className = 'age' + (age === null || age > 1.0 ? ' stale' : '');
+  $('barRaw').style.width = (GL.raw * 100).toFixed(1) + '%';
+  $('barNow').style.width = (GL.now * 100).toFixed(1) + '%';
+  paintSpark();
+
+  $('dbg').textContent =
+    'ble      ' + conn + '  [' + DEVICE_PREFIX + ']\n' +
+    'state    ' + F.state + '   gate ' + GATE[F.state] +
+      (F.state === 'NIGHT' ? '   ⛔ R4 — 표정 계산 정지' : '') + '\n' +
+    'lid      ' + F.lidNow.map(function (v) { return v.toFixed(2); }).join('  ') + '\n' +
+    'lux      ' + (lux.last === null ? '-' : lux.last) +
+      '   med ' + (lux.med === null ? '-' : lux.med) +
+      '   창 ' + lux.recent.length + '표본/30s\n' +
+    'camera   ' + (camStream ? 'ON  평균휘도 ' + (lux.mean === null ? '-' : lux.mean.toFixed(1)) + '/255' : 'OFF') + '\n' +
+    'glare    raw ' + GL.raw.toFixed(3) + '   now ' + GL.now.toFixed(3) + '\n' +
+    'screen   ' + screenWmm.toFixed(1) + ' mm\n\n' +
+    LOG.slice(-10).join('\n');
+}
+
+// 최근 30초 lux — 로그 스케일. 점선은 기준선(중앙값).
+function paintSpark() {
+  const c = $('spark'), g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  const R = lux.recent;
+  if (!R.length) return;
+  const t1 = now(), t0 = t1 - 30;
+  const lg = function (v) { return Math.log((v + 1)) / Math.LN10; };
+  let hi = 0;
+  for (const s of R) hi = Math.max(hi, lg(s.v));
+  hi = Math.max(hi, 1);
+  const yOf = function (v) { return c.height - 3 - (lg(v) / hi) * (c.height - 6); };
+
+  if (lux.med !== null) {                     // 기준선
+    g.strokeStyle = '#7F8BA3'; g.lineWidth = 1; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(0, yOf(lux.med)); g.lineTo(c.width, yOf(lux.med)); g.stroke();
+    g.setLineDash([]);
+  }
+  g.strokeStyle = '#5B8CFF'; g.lineWidth = 1.6; g.beginPath();
+  for (let i = 0; i < R.length; i++) {
+    const x = (R[i].t - t0) / 30 * c.width;
+    const y = yOf(R[i].v);
+    i ? g.lineTo(x, y) : g.moveTo(x, y);
+  }
+  g.stroke();
+  // 최신 표본에 점 — 오른쪽 끝에서 움직이면 살아 있는 것이다
+  const lastR = R[R.length - 1];
+  g.fillStyle = (t1 - lastR.t > 1.0) ? '#FF7A45' : '#39D98A';
+  g.beginPath(); g.arc((lastR.t - t0) / 30 * c.width, yOf(lastR.v), 3, 0, 6.284); g.fill();
+}
+
+// ── 입장 — 전체화면 · 회전 잠금 · Wake Lock ───────────────────
+let wakeLock = null;
+async function enter() {
+  try { await document.documentElement.requestFullscreen({ navigationUI:'hide' }); }
+  catch (e) { log('전체화면 실패: ' + e.message); }
+  try { await screen.orientation.lock('landscape'); }
+  catch (e) { log('회전 잠금 실패: ' + e.message); }   // iOS Safari 미지원 — 죽지 않는다
+  await requestWakeLock();
+  show('faceScreen');
+  applyViewBox();
+  setEyeState('AWAKE');
+  if (qs.get('demo') === '1') runDemo();
+}
+async function requestWakeLock() {
+  try { wakeLock = await navigator.wakeLock.request('screen'); log('Wake Lock ON'); }
+  catch (e) { log('Wake Lock 실패: ' + e.message); }
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible' && $('faceScreen').classList.contains('on')) requestWakeLock();
+});
+
+// ── 수동 전환 ──────────────────────────────────────────────────
+//  데스크톱은 1~5. 폰은 두 손가락 탭 = 다음 상태, 세 손가락 = 디버그.
+//  단일 탭은 전부 무시한다 — 몸통에 밀어 넣는 동안 손가락이 스친다.
+addEventListener('keydown', function (e) {
+  const i = '12345'.indexOf(e.key);
+  if (i >= 0) setEyeState(ORDER[i]);
+  else if (e.key === 'd') toggleDebug();
+  else if (e.key === 'c') openCal();
+});
+$('faceScreen').addEventListener('touchstart', function (e) {
+  if (e.touches.length === 2) setEyeState(ORDER[(ORDER.indexOf(F.state) + 1) % ORDER.length]);
+  else if (e.touches.length === 3) toggleDebug();
+}, { passive:true });
+
+function toggleDebug() {
+  const on = $('dbgScreen').classList.contains('on');
+  show(on ? 'faceScreen' : 'dbgScreen');       // 덮지 않고 대체한다 (R3)
+  if (!on) { paintDebug(); dbgTimer = setInterval(paintDebug, 100); }   // 10Hz
+  else { clearInterval(dbgTimer); dbgTimer = null; }
+}
+let dbgTimer = null;
+function openDev() {                       // dev 버튼 — 대기 화면에서 바로
+  show('dbgScreen');
+  paintDebug();
+  clearInterval(dbgTimer);
+  dbgTimer = setInterval(paintDebug, 100);
+}
+$('dbgClose').onclick   = function () {
+  clearInterval(dbgTimer); dbgTimer = null;
+  // 대기 화면에서 dev 로 들어왔으면 대기 화면으로 돌아간다
+  show($('faceScreen').dataset.seen ? 'faceScreen' : 'entryScreen');
+};
+// 폰이 몸통 안에 있을 때의 조작 경로. [CON-01] RX 메시지만 쓴다.
+$('dbgConnect').onclick = function () {
+  // 이미 고른 기기가 있으면 선택창 없이 다시 붙는다(아침 전이도 이 경로다).
+  if (device) { normalEnd = false; retries = 0; openGatt().then(paintDebug).catch(function (e) { log('재연결 실패: ' + e.message); }); }
+  else connect().then(paintDebug);
+};
+$('dbgLedOn').onclick  = function () { send('LED:255'); };
+$('dbgLedOff').onclick = function () { send('LED:0'); };
+$('dbgWake').onclick   = function () { send('WAKE'); };
+
+// ═══ 조도 대역 — 보드 없이 표정을 보기 위한 것 ═══════════════
+//  셋 다 feedLux() 또는 GL.raw 로만 들어간다. 상태 전이는 어느 경로로도
+//  일어나지 않는다([CON-01] 규칙 2).
+
+// ① glare 슬라이더 — 상수 튜닝용. lux 체인을 건너뛰고 목표값을 직접 준다.
+$('dbgGlare').oninput = function () {
+  GL.raw = this.value / 100;
+  $('dbgGlareV').textContent = GL.raw.toFixed(2);
+  lux.src = 'slider — lux 우회';   // 이 경로는 lux 를 안 거치므로 age 는 멈춘다
+};
+// ② 불 켜기/끄기 — 체인 전체(기준선·움찔·안도)를 태운다
+$('dbgLightOn').onclick  = function () { simStep(3, 500); };
+$('dbgLightOff').onclick = function () { simStep(500, 3); };
+function simStep(from, to) {
+  lux.src = 'sim';
+  if (lux.recent.length < 10) for (let i = 0; i < 12; i++) feedLux(from);
+  feedLux(to);
+}
+
+// ③ 카메라 조도계 — [ARCH-01] R7 이 명시적으로 허용하는 유일한 카메라 용도.
+//    ⚠ 최종 시연에서는 쓸 수 없다. 폰이 몸통 *안*에 들어가면 카메라는
+//      방이 아니라 골판지 안쪽을 본다. 손에 들고 반응을 볼 때만이다.
+//    ⚠ 자동 노출 때문에 *절대 조도는 못 잰다.* AE 가 잡히기까지 0.5~1초의
+//      스파이크는 진짜라 움찔·안도는 제대로 보이지만, 정상상태 찡그림
+//      깊이는 믿으면 안 된다. 그건 슬라이더로 볼 것.
+let camStream = null, camTimer = null;
+$('dbgCam').onclick = function () { camStream ? camStop() : camStart(); };
+
+async function camStart() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia(
+      { video: { facingMode: 'environment', width: 160, height: 120 } });
+    const track = camStream.getVideoTracks()[0];
+    // 가능하면 노출을 고정한다 — 되는 기기가 많지는 않다
+    try {
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (caps.exposureMode && caps.exposureMode.indexOf('manual') >= 0) {
+        await track.applyConstraints({ advanced: [{ exposureMode: 'manual' }] });
+        log('노출 고정됨 — 절대 조도 신뢰 가능');
+      } else log('노출 고정 불가 — 트랜지언트만 신뢰할 것');
+    } catch (e) { log('노출 고정 실패: ' + e.message); }
+
+    $('camV').srcObject = camStream;
+    await $('camV').play();
+    camTimer = setInterval(camSample, 200);      // [CON-01] 과 같은 5Hz
+    $('dbgCam').textContent = '카메라 끄기';
+    log('카메라 조도계 ON (R7 — 조도계 용도만)');
+  } catch (e) {
+    log('카메라 실패: ' + e.message);
+    camStream = null;
+  }
+}
+function camStop() {
+  clearInterval(camTimer); camTimer = null;
+  if (camStream) camStream.getTracks().forEach(function (t) { t.stop(); });
+  camStream = null;
+  $('camV').srcObject = null;
+  $('dbgCam').textContent = '카메라 조도계';
+  log('카메라 조도계 OFF');
+}
+function camSample() {
+  const v = $('camV'), c = $('camC');
+  if (!v.videoWidth) return;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(v, 0, 0, c.width, c.height);
+  const px = g.getImageData(0, 0, c.width, c.height).data;
+  let sum = 0;
+  for (let i = 0; i < px.length; i += 4)        // Rec.709 휘도
+    sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+  const mean = sum / (px.length / 4);
+  lux.mean = mean; lux.src = 'camera';
+  // sRGB 감마 디코드 → 선형 광량. 어림값이지만 물리적 근거는 있다.
+  feedLux(Math.round(Math.pow(mean / 255, 2.2) * 5000));
+  // 프레임은 여기서 버려진다. 저장·전송하지 않는다.
+}
+
+// ── 화면 보정 — 눈금바 100mm ──────────────────────────────────
+function openCal() { show('calScreen'); paintRuler(); }
+function paintRuler() {
+  // 100mm 는 화면 가로의 (100 / screenWmm) 비율이다.
+  $('ruler').style.width = (100 / screenWmm * 100).toFixed(3) + '%';
+  $('calVal').textContent = screenWmm.toFixed(1);
+}
+function bumpCal(d) { screenWmm = Math.max(80, Math.min(300, screenWmm + d)); paintRuler(); }
+$('calMinus').onclick  = function () { bumpCal(-1); };
+$('calMinus5').onclick = function () { bumpCal(-0.2); };
+$('calPlus5').onclick  = function () { bumpCal(0.2); };
+$('calPlus').onclick   = function () { bumpCal(1); };
+$('calDone').onclick   = function () {
+  localStorage.setItem('sp.screenWmm', String(screenWmm));
+  applyViewBox();
+  show($('faceScreen').dataset.seen ? 'faceScreen' : 'entryScreen');
+};
+
+// ── 폴백 데모 — BLE 가 죽어도 얼굴은 산다 ─────────────────────
+//  무대에서 실수로 켜지지 않게 ?demo=1 뒤에 둔다.
+function runDemo() {
+  const seq = [['AWAKE', 20], ['DROWSY', 25], ['ASLEEP', 15], ['NIGHT', 0]];
+  let acc = 0;
+  for (const step of seq) {
+    (function (st, at) { setTimeout(function () { setEyeState(st); }, at * 1000); })(step[0], acc);
+    acc += step[1];
+  }
+  // 보드 없이 표정을 확인할 수 있어야 한다 — 리허설용 조도 시나리오.
+  // 어두운 방(3) → 스탠드 켜짐(400) → 유지 → 다시 끔(3).
+  demoLux([[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,400],[7,420],[8,410],[9,400],
+           [10,400],[11,400],[12,3],[13,3],[14,3],
+           [30,3],[31,600],[32,580],[33,3],[34,3]]);
+  log('demo 모드 — 조도 시나리오 포함');
+}
+function demoLux(pairs) {
+  for (const p of pairs) {
+    (function (at, v) { setTimeout(function () { feedLux(v); }, at * 1000); })(p[0], p[1]);
+  }
+}
+
+// ── 시작 ───────────────────────────────────────────────────────
+$('bStart').onclick   = function () { $('faceScreen').dataset.seen = '1'; enter(); };
+$('bCal').onclick     = openCal;
+$('bConnect').onclick = connect;
+$('bDev').onclick     = openDev;
+if (!navigator.bluetooth) {
+  $('entryNote').textContent = 'Web Bluetooth 미지원 브라우저입니다 — 얼굴은 그대로 동작합니다(후광만 없음).';
+}
+addEventListener('resize', function () {
+  if ($('faceScreen').classList.contains('on')) applyViewBox();
+});
+applyViewBox();
+paintRuler();
+requestAnimationFrame(frame);
+
+// 검증 훅 — 콘솔/헤드리스에서 호출한다 (R3 게이트 등)
+window.SP = {
+  F: F, STATES: STATES, ORDER: ORDER,
+  setEyeState: setEyeState, handleLine: handleLine, feedLux: feedLux,
+  lux: lux, applyViewBox: applyViewBox, show: show,
+  connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
+  GL: GL, GATE: GATE, BREATH: BREATH, expression: expression, VB: VB,
+  NUS: NUS, RX: RX, TX: TX, DEVICE_PREFIX: DEVICE_PREFIX,
+  get screenWmm() { return screenWmm; },
+  get connected() { return !!rxChar; },
+  get normalEnd() { return normalEnd; },
+  get retries() { return retries; },
+  // 검사용 — 배관을 태우지 않고 라인 스트림만 흉내낸다
+  _feedRaw: function (s) { onNotify({ target: { value: enc.encode(s) } }); },
+  // 검사용 — rAF 없이 루프를 결정적으로 밟는다(반응 곡선 측정)
+  _step: function (ms) { rafOff = true; frame(ms); },
+  _reset: function () { normalEnd = false; retries = 0; rxLineBuf = ''; },
+};
+</script>
+</body>
+</html>

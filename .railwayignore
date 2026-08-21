@@ -1,0 +1,22 @@
+# railway up 은 현재 디렉터리를 통째로 업로드한다. 배포에 필요한 것은
+# app/ · scripts/serve.js · package.json 뿐이므로 나머지를 잘라낸다.
+#
+# 크기 문제만이 아니다 — .union-stack/ 은 내부 설계 평면이고
+# ref/ 는 대회 배포 자료라 공개 서버에 올릴 이유가 없다.
+
+.union-stack/
+ref/
+eval/
+.github/
+.claude/
+.git/
+
+# 문서·산출물
+*.md
+!package.json
+cut-sheet.html
+*.pdf
+
+# 하네스 스크립트 — serve.js 만 남긴다
+scripts/*
+!scripts/serve.js

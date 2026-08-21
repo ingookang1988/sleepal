@@ -1,0 +1,404 @@
+<title>슬립팰 작전 브리핑</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@500;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* dark-first: 기본은 밤, 밝은 곳에서도 읽히도록 라이트 팔레트를 따로 정의 */
+:root{
+  --ground:#F1F2F6; --surface:#FFFFFF; --surface-2:#E6E8EF;
+  --line:#D3D7E2; --line-soft:#E4E7EF;
+  --ink:#10141C; --ink-2:#454C5C; --ink-3:#767E90;
+  --glow:#9A5F0E; --glow-soft:#FBF0DD;
+  --moon:#2C4EA8; --moon-soft:#E4EAF9;
+  --alert:#A3382C; --alert-soft:#FAE7E4;
+  --ok:#1C6B4B; --ok-soft:#DFEFE7;
+  --shadow:0 1px 2px rgba(16,20,28,.06), 0 12px 32px -22px rgba(16,20,28,.35);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#080B12; --surface:#111621; --surface-2:#19202E;
+    --line:#28303F; --line-soft:#1F2734;
+    --ink:#EBEEF5; --ink-2:#A6AEC0; --ink-3:#798294;
+    --glow:#F0B265; --glow-soft:#2A2013;
+    --moon:#8FA8E8; --moon-soft:#161E33;
+    --alert:#E88478; --alert-soft:#2B1815;
+    --ok:#5FC29A; --ok-soft:#11291F;
+    --shadow:0 1px 2px rgba(0,0,0,.6), 0 14px 36px -24px rgba(0,0,0,1);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080B12; --surface:#111621; --surface-2:#19202E;
+  --line:#28303F; --line-soft:#1F2734;
+  --ink:#EBEEF5; --ink-2:#A6AEC0; --ink-3:#798294;
+  --glow:#F0B265; --glow-soft:#2A2013;
+  --moon:#8FA8E8; --moon-soft:#161E33;
+  --alert:#E88478; --alert-soft:#2B1815;
+  --ok:#5FC29A; --ok-soft:#11291F;
+  --shadow:0 1px 2px rgba(0,0,0,.6), 0 14px 36px -24px rgba(0,0,0,1);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ground);color:var(--ink);
+  font-family:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:16px;line-height:1.8;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px 100px}
+p{margin:0 0 14px;max-width:72ch}
+strong{font-weight:700;color:var(--ink)}
+
+/* progress bar */
+.bar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--ground) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-soft)}
+.bar-in{max-width:880px;margin:0 auto;padding:9px 24px;display:flex;align-items:center;gap:13px}
+.bar-l{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.track{flex:1;height:3px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.fill{height:100%;width:0%;background:var(--glow);transition:width .3s}
+.cnt{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+header{padding:56px 0 32px;border-bottom:1px solid var(--line)}
+.kick{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--glow);margin:0 0 16px}
+h1{font-family:"Black Han Sans","Apple SD Gothic Neo",sans-serif;font-weight:400;font-size:clamp(36px,7vw,64px);line-height:1.14;letter-spacing:-.01em;margin:0 0 18px}
+.stand{font-size:17px;color:var(--ink-2);margin:0;max-width:62ch}
+.by{margin-top:22px;display:flex;flex-wrap:wrap;gap:5px 16px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink-3)}
+
+section{margin-top:52px}
+.eye{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+h2{font-family:"Gothic A1",sans-serif;font-weight:800;font-size:clamp(23px,3.4vw,31px);line-height:1.35;letter-spacing:-.02em;margin:15px 0 15px;text-wrap:balance}
+h3{font-family:"Gothic A1",sans-serif;font-size:17px;font-weight:800;margin:28px 0 9px;letter-spacing:-.01em}
+
+ul,ol{margin:0 0 14px;padding-left:20px;max-width:72ch;display:flex;flex-direction:column;gap:7px}
+li{color:var(--ink-2)}
+li strong{color:var(--ink)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--glow);border-radius:0 10px 10px 0;padding:18px 22px;margin:20px 0;box-shadow:var(--shadow)}
+.card .l{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--glow);display:block;margin-bottom:6px}
+.card p:last-child{margin-bottom:0}
+.card.a{border-left-color:var(--alert)} .card.a .l{color:var(--alert)}
+.card.o{border-left-color:var(--ok)} .card.o .l{color:var(--ok)}
+.card.m{border-left-color:var(--moon)} .card.m .l{color:var(--moon)}
+
+/* checklist */
+.ck{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.ck:last-child{border-bottom:none}
+.ck input{appearance:none;flex:none;width:19px;height:19px;margin:4px 0 0;border:1.5px solid var(--line);border-radius:5px;background:var(--surface);cursor:pointer;position:relative;transition:.15s}
+.ck input:checked{background:var(--ok);border-color:var(--ok)}
+.ck input:checked::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--surface);border-width:0 2px 2px 0;transform:rotate(42deg)}
+.ck input:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.ck-t{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.ck-t b{color:var(--ink);font-weight:700}
+.ck input:checked ~ .ck-t{color:var(--ink-3)}
+.ck-box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 20px;margin:18px 0;box-shadow:var(--shadow)}
+
+/* time rail */
+.rail{margin:20px 0;border-left:2px solid var(--line);padding-left:0}
+.slot{display:grid;grid-template-columns:88px 1fr;gap:16px;padding:0 0 20px 0;position:relative}
+.slot::before{content:"";position:absolute;left:-7px;top:9px;width:12px;height:12px;border-radius:99px;background:var(--glow);border:3px solid var(--ground)}
+.slot.q::before{background:var(--ink-3)}
+.slot.hot::before{background:var(--alert)}
+.t{font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:700;color:var(--glow);padding-left:16px;font-variant-numeric:tabular-nums;line-height:1.9}
+.slot.q .t{color:var(--ink-3)}
+.slot.hot .t{color:var(--alert)}
+.s-b h4{font-family:"Gothic A1",sans-serif;font-size:16px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
+.s-b p{font-size:14.5px;color:var(--ink-2);margin:0 0 6px;max-width:60ch}
+.s-b p:last-child{margin-bottom:0}
+.dur{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-3);letter-spacing:.06em}
+
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:18px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:13.5px;line-height:1.6}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td{color:var(--ink-2)}
+td:first-child{color:var(--ink);font-weight:700}
+.mono{font-family:"JetBrains Mono",monospace;font-size:12px;white-space:nowrap}
+
+code{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--ink)}
+.pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:14px 0}
+.pre pre{margin:0;padding:13px 15px;font-family:"JetBrains Mono",monospace;font-size:12.5px;line-height:1.6;color:var(--ink);white-space:pre}
+
+.say{background:var(--moon-soft);border:1px solid color-mix(in srgb,var(--moon) 34%,transparent);border-radius:9px;padding:13px 17px;margin:11px 0;font-size:15px;color:var(--ink);line-height:1.75}
+.say::before{content:"대사";font-family:"JetBrains Mono",monospace;font-size:9.5px;font-weight:700;letter-spacing:.17em;color:var(--moon);display:block;margin-bottom:4px}
+
+a{color:var(--glow);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--glow) 34%,transparent)}
+a:hover{border-bottom-color:var(--glow)}
+a:focus-visible{outline:2px solid var(--glow);outline-offset:2px;border-radius:2px}
+
+footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3);line-height:1.8}
+
+@media (max-width:620px){
+  .wrap{padding:0 16px 76px} .bar-in{padding:9px 16px} header{padding:36px 0 24px}
+  .slot{grid-template-columns:1fr;gap:2px} .t{padding-left:16px}
+  .s-b{padding-left:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="bar"><div class="bar-in">
+  <span class="bar-l">Ready</span>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <span class="cnt" id="cnt">0 / 0</span>
+</div></div>
+
+<div class="wrap" style="padding-bottom:0">
+<div style="background:var(--alert-soft);border:1px solid var(--alert);border-radius:10px;padding:16px 20px;margin:28px 0 0">
+<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--alert);display:block;margin-bottom:6px">rev.1 &middot; 일부 내용 대체됨</span>
+<p style="margin:0;font-size:14.5px;line-height:1.7">이 문서는 폼팩터가 확정되기 전에 작성되었습니다. 아래 네 가지는 <strong>「제품 정의서 v1.1」과 「제작 도면」이 우선</strong>합니다 &mdash; ① 폼팩터는 <strong>가로형 수면등 + 폰 도크</strong> ② <strong>OLED 불필요</strong>(눈은 폰 화면) ③ 확보할 부품은 <strong>BH1750 하나</strong>(부저·OLED·진동모터 제외) ④ <strong>커버 닫기 관련 항목 전부 무효</strong>. 타임박스의 시간 배분과 무대 큐시트의 골격, 폴백 표는 그대로 유효합니다.</p>
+</div></div>
+<div class="wrap">
+
+<header>
+  <p class="kick">SleepPal · TOYTHON D-1</p>
+  <h1>작전 브리핑</h1>
+  <p class="stand">공식 가이드 확인 후 확정된 부품·핀·타임박스·무대 큐시트. 오늘 밤 준비부터 18:40 시상까지 이 문서 한 장으로 갑니다.</p>
+  <div class="by">
+    <span>모드 · HARD MODE</span>
+    <span>제작 · 11:30–16:30</span>
+    <span>발표 · 17:30–18:40</span>
+  </div>
+</header>
+
+<!-- 0. 확정 사항 -->
+<section>
+  <p class="eye">Corrections</p>
+  <h2>가이드로 확정된 것 (이전 정보 수정)</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>항목</th><th>확정</th><th>이전에 말했던 것</th></tr></thead>
+    <tbody>
+      <tr><td>모드 이름</td><td><strong>EASY MODE / HARD MODE</strong></td><td>MAKER MODE (틀림)</td></tr>
+      <tr><td>제공 IMU</td><td><strong>MPU-6050</strong> · I2C <span class="mono">0x68</span></td><td>LSM6DS3 (틀림 — 탭·자유낙하 하드웨어 엔진 없음)</td></tr>
+      <tr><td>Qwiic 커넥터</td><td><strong>보드에 내장</strong> — 핀맵에 표기 확인</td><td>없을 가능성 (틀림)</td></tr>
+      <tr><td>배터리</td><td><strong>BATT 커넥터 내장</strong> + 리튬폴리머 제공 → 무선 구동 가능</td><td>확인 불가</td></tr>
+      <tr><td>버튼 · LED</td><td>버튼 4 <span class="mono">P0.11 / P0.12 / P0.24 / P0.25</span> · LED 4 <span class="mono">P0.13–P0.16</span></td><td>동일 (Zephyr 문서와 일치 ✓)</td></tr>
+      <tr><td>보드 지급</td><td>팀당 <strong>기본 2대</strong> · 종료 후 <strong>반납</strong> · 현장 구매 가능</td><td>동일</td></tr>
+      <tr><td>추가 I2C</td><td><strong>선착순 · 인당 최대 2개</strong></td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card o">
+    <span class="l">가장 큰 발견</span>
+    <p>누코드 회사소개서 8페이지에 이렇게 적혀 있습니다 — <strong>타사 모듈 대기전류 15µA vs 누코드 0.4µA.</strong> "Deep Sleep Mode Low-Power Technology."</p>
+    <p style="margin-bottom:0"><strong>이 회사가 가장 자랑하는 스펙이 "잠들었을 때 얼마나 적게 쓰는가"입니다.</strong> 그리고 슬립팰의 핵심 동작이 정확히 그겁니다. 팰이 잠드는 장면은 후원사의 1번 세일즈 포인트를 <em>느낌으로</em> 시연하는 것이 됩니다. 오늘 다른 어떤 팀도 이걸 하지 않습니다.</p>
+  </div>
+
+  <div class="card a">
+    <span class="l">단, 숫자는 정직하게</span>
+    <p style="margin-bottom:0">0.4µA는 <strong>모듈 기준</strong>입니다. 개발보드에는 USB 칩·LED·레귤레이터가 붙어 있어 보드 전체로 재면 그 수치가 안 나옵니다. 하드웨어를 아는 심사위원 앞에서 "이 보드가 0.4µA"라고 하면 바로 틀립니다. <strong>"NU-40 모듈의 대기전류가 0.4µA대입니다. 양산하면 이 물체는 배터리 하나로 몇 달을 잡니다"</strong> 로 말하세요. 후원사 앞에서의 정직함이 반올림한 숫자보다 값이 큽니다.</p>
+  </div>
+</section>
+
+<!-- 1. 오늘 밤 -->
+<section>
+  <p class="eye">Tonight · D-1</p>
+  <h2>오늘 밤 남은 것</h2>
+  <div class="ck-box">
+    <label class="ck"><input type="checkbox" data-k="n1"><span class="ck-t"><b>커버 닫기 테스트</b> — 커버를 닫아도 화면이 켜져 있고 브라우저 탭이 살아있는가. 자석 커버면 자동 잠금되니 <b>비자석 플립 커버</b>로 교체. 이거 하나가 시연의 생사</span></label>
+    <label class="ck"><input type="checkbox" data-k="n2"><span class="ck-t"><b>라이브러리 설치 + 컴파일</b> — <code>Adafruit MPU6050</code>, <code>Adafruit Unified Sensor</code>, <code>BH1750</code>, <code>Adafruit DRV2605</code>. 내일 라이브러리 매니저 검색은 시간 낭비</span></label>
+    <label class="ck"><input type="checkbox" data-k="n3"><span class="ck-t"><b>웹앱 Vercel 배포</b> — Web Bluetooth는 HTTPS 필수. 폰 크롬으로 열어 카메라 권한 허용 → 밝기값이 손으로 가리면 떨어지는지 확인</span></label>
+    <label class="ck"><input type="checkbox" data-k="n4"><span class="ck-t"><b>quiet space 연결 지점 확인</b> — 이미 만든 자산을 내일 웹앱에 어떻게 붙일지 <b>인터페이스만</b> 정해두기. 내일 새로 만들지 않기</span></label>
+    <label class="ck"><input type="checkbox" data-k="n5"><span class="ck-t"><b>발표 첫 문장 한 줄</b> 써두기 — 5시간 뒤엔 못 씁니다</span></label>
+    <label class="ck"><input type="checkbox" data-k="n6"><span class="ck-t"><b>USB-C → HDMI 어댑터</b> 챙기기 + 신분증 + 노트북 충전기 + 데이터 케이블</span></label>
+    <label class="ck"><input type="checkbox" data-k="n7"><span class="ck-t"><b>10:00 정시 도착 알람</b> — 부품이 선착순입니다</span></label>
+  </div>
+</section>
+
+<!-- 2. 부품 -->
+<section>
+  <p class="eye">Parts · 10:00</p>
+  <h2>부품 확보 — 선착순 전쟁</h2>
+  <p>HARD MODE 기본은 <strong>NU-40 DK 2대 + Qwiic 케이블 + 6축 IMU</strong>입니다. 추가 I2C 장치는 <strong>선착순, 인당 최대 2개.</strong> 팀이 있다면 인원수만큼 확보 가능하니 역할을 미리 나누세요.</p>
+  <div class="ck-box">
+    <label class="ck"><input type="checkbox" data-k="p1"><span class="ck-t"><b>1순위 · BH1750 밝기 센서</b> <span class="mono">0x23</span> — 슬립팰의 <b>유일한 핵심 입력</b>. 이게 없으면 컨셉이 성립하지 않습니다. 체크인하자마자 이것부터</span></label>
+    <label class="ck"><input type="checkbox" data-k="p2"><span class="ck-t"><b>2순위 · 진동모터(DRV2605L)</b> <span class="mono">0x5A</span> — 팰의 <b>숨결</b>. 말 없이 살아있음을 전하는 유일한 촉각 출력. 손에 쥔 심사위원에게만 느껴지는 게 오히려 강합니다</span></label>
+    <label class="ck"><input type="checkbox" data-k="p3"><span class="ck-t"><b>예비 · MPU-6050</b> <span class="mono">0x68</span> — 기본 제공. 뒤척임 감지에 쓸 수 있으나 <b>없어도 시연은 성립</b>. 시간이 남을 때만</span></label>
+  </div>
+  <div class="card a">
+    <span class="l">일부러 받지 마세요</span>
+    <p style="margin-bottom:0"><strong>OLED 디스플레이와 부저는 받지 마세요.</strong> 침실에서 빛나는 화면과 소리 내는 물체는 이 제품이 없애려는 바로 그것입니다. 그리고 이건 발표에서 그대로 한 문장이 됩니다 — <em>"화면과 스피커를 받을 수 있었지만 안 받았습니다."</em> 절제가 설계라는 걸 증명하는 가장 싼 방법입니다.</p>
+  </div>
+</section>
+
+<!-- 3. 타임박스 -->
+<section>
+  <p class="eye">Build · 11:30–16:30</p>
+  <h2>5시간 타임박스</h2>
+  <p>보드가 2대입니다. 슬립팰은 1대만 쓰므로 <strong>나머지 1대는 예비기</strong>입니다. 같은 펌웨어를 양쪽에 올려두면 무대에서 하나가 죽어도 바꿔 끼우면 됩니다. 이건 사치가 아니라 보험입니다.</p>
+
+  <div class="rail">
+    <div class="slot"><div class="t">11:30</div><div class="s-b">
+      <h4>보드 살리기 <span class="dur">20분</span></h4>
+      <p>2대 모두 USB 연결 → <code>pin_finder.ino</code>로 버튼/LED 아두이노 핀 번호 확정 → Blink 업로드. <strong>여기서 막히면 혼자 붙잡지 말고 즉시 운영진 또는 Codex.</strong></p>
+    </div></div>
+
+    <div class="slot"><div class="t">11:50</div><div class="s-b">
+      <h4>BLE 생명선 <span class="dur">30분</span></h4>
+      <p>어제 만든 BLE UART 스캐폴드 업로드 → 폰 웹앱에서 연결 확인. <code>DEVICE_NAME</code>은 반드시 팀 고유값으로. <strong>여기까지가 12:20 안에 안 끝나면 나머지 계획을 버리고 이것만 붙듭니다.</strong></p>
+    </div></div>
+
+    <div class="slot"><div class="t">12:20</div><div class="s-b">
+      <h4>조도 읽기 <span class="dur">40분 · 점심 병행</span></h4>
+      <p><code>i2c_scan.ino</code>로 BH1750 주소 확인 → lux 값 읽어 BLE로 폰에 전송. 절대값이 아니라 <strong>기준선 대비 상대 변화</strong>로 판정하도록 처음부터 설계.</p>
+    </div></div>
+
+    <div class="slot"><div class="t">13:00</div><div class="s-b">
+      <h4>팰의 세 가지 상태 <span class="dur">40분</span></h4>
+      <p>LED 4개로 호흡을 만듭니다. <strong>각성</strong>(빠르고 불규칙) → <strong>졸림</strong>(느려짐) → <strong>수면</strong>(꺼짐). 진동모터를 확보했다면 호흡에 맞춰 약하게. 이 40분이 제품의 전부입니다 — 여기에 시간을 더 쓰세요.</p>
+    </div></div>
+
+    <div class="slot"><div class="t">13:40</div><div class="s-b">
+      <h4>케어 패널 <span class="dur">40분</span></h4>
+      <p>웹앱 UI. 대시보드가 아니라 <strong>한 줄 문장</strong>입니다. 2인칭 금지 규칙 지키기 — "팰이 눈부셔서 눈을 못 감고 있어요". 저조도 다크모드 전환도 여기서.</p>
+    </div></div>
+
+    <div class="slot"><div class="t">14:20</div><div class="s-b">
+      <h4>quiet space 접합 <span class="dur">40분</span></h4>
+      <p>이미 만든 것을 <strong>붙이기만</strong> 합니다. 새로 만들지 않습니다. 아침 일기 화면 한 장이면 충분하고, 프레이밍은 "팰이 밤새 들은 것".</p>
+    </div></div>
+
+    <div class="slot"><div class="t">15:00</div><div class="s-b">
+      <h4>잠들기 — System OFF <span class="dur">40분</span></h4>
+      <p>팰이 잠들면 <code>sd_power_system_off()</code>로 진입, 버튼(P0.11)으로 깨우기. <strong>주의: System OFF는 깨어날 때 리셋됩니다.</strong> RAM도 BLE 연결도 사라집니다. 그래서 이건 <strong>시연의 마지막 동작으로만</strong> 씁니다. 중간에 쓰면 재시연이 불가능해집니다.</p>
+    </div></div>
+
+    <div class="slot hot"><div class="t">15:40</div><div class="s-b">
+      <h4>기능 동결 <span class="dur">20분</span></h4>
+      <p><strong>동작하는 버전을 저장하고 여기서 기능 추가를 멈춥니다.</strong> 마지막 30분의 욕심이 시연을 죽이는 게 해커톤의 기본 법칙입니다. 예비 보드에 같은 펌웨어 올리기.</p>
+    </div></div>
+
+    <div class="slot"><div class="t">16:00</div><div class="s-b">
+      <h4>리허설 3회 <span class="dur">30분</span></h4>
+      <p>배터리 단독 구동 확인(USB 뽑고). 커버 닫기 확인. 프로젝터 연결 확인. <strong>처음부터 끝까지 3번</strong>, 말까지 붙여서.</p>
+    </div></div>
+
+    <div class="slot q"><div class="t">16:30</div><div class="s-b">
+      <h4>제작 마감</h4>
+      <p>코드 수정 불가. 케이블 재연결·배터리 교체 같은 유지보수만 허용.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- 4. 큐시트 -->
+<section>
+  <p class="eye">Stage · 17:30–18:40</p>
+  <h2>무대 큐시트</h2>
+  <p>무대 조명은 방보다 훨씬 밝습니다. 조명을 통제할 생각 말고 <strong>커버와 손</strong>으로 어둠을 만드세요. 폰은 프로젝터에 미러링합니다.</p>
+
+  <div class="rail">
+    <div class="slot"><div class="t">0:00</div><div class="s-b">
+      <h4>문제</h4>
+      <div class="say">"어젯밤 잠들기 직전에 마지막으로 본 게 폰 화면이었던 분, 손 들어보시겠어요?"</div>
+      <p>손이 올라가는 걸 기다립니다. 여기서 관객이 이미 자기 얘기가 됐습니다.</p>
+    </div></div>
+
+    <div class="slot"><div class="t">0:40</div><div class="s-b">
+      <h4>팰 등장 — 각성 상태</h4>
+      <p>조명이 밝으니 팰의 호흡이 빠르고 불규칙합니다. 프로젝터의 케어 패널에 한 줄이 뜹니다.</p>
+      <div class="say">"팰이 눈부셔서 눈을 못 감고 있어요"</div>
+    </div></div>
+
+    <div class="slot"><div class="t">1:30</div><div class="s-b">
+      <h4>심사위원에게 넘김 ★</h4>
+      <div class="say">"재워보세요."</div>
+      <p>팰을 건넵니다. 심사위원이 <strong>두 손으로 감싸 쥐면</strong> 조도가 떨어지고 호흡이 느려집니다. 진동모터가 있다면 손안에서 숨결이 느껴집니다. <strong>이 장면이 이 발표의 전부입니다.</strong> 서두르지 마세요.</p>
+    </div></div>
+
+    <div class="slot"><div class="t">2:30</div><div class="s-b">
+      <h4>팰이 잠든다</h4>
+      <p>LED가 서서히 꺼집니다. 케어 패널이 한 줄만 남깁니다.</p>
+      <div class="say">"팰이 잠들었어요"</div>
+    </div></div>
+
+    <div class="slot hot"><div class="t">3:00</div><div class="s-b">
+      <h4>커버를 닫는다 ★★</h4>
+      <p>프로젝터의 큰 화면이 어두워집니다. 무대에 남는 건 <strong>천천히 꺼져가는 작은 빛 하나</strong>뿐입니다.</p>
+      <div class="say">"앱은 잠들 수 없습니다. 사물만이 잠들 수 있습니다."</div>
+    </div></div>
+
+    <div class="slot"><div class="t">3:40</div><div class="s-b">
+      <h4>아침 — quiet space</h4>
+      <p>커버를 열고 아침 일기를 보여줍니다. <strong>이미 만들어둔 것</strong>이라는 사실을 반드시 말하세요. "5시간 만에 만든 것"과 "이미 작동하던 것"이 붙으면 신뢰도가 달라집니다.</p>
+      <div class="say">"당신이 뭐라고 중얼거렸는지가 아니라, 팰이 밤새 들은 것입니다."</div>
+    </div></div>
+
+    <div class="slot"><div class="t">4:10</div><div class="s-b">
+      <h4>스펙 한 방</h4>
+      <div class="say">"그리고 팰이 잠든 지금 — NU-40 모듈의 대기전류는 0.4마이크로암페어입니다. 누코드가 자사 자료에서 타사 대비 37배라고 쓴 그 숫자죠. 저희 제품에서 그건 스펙이 아니라 <strong>팰이 진짜로 잔다</strong>는 뜻입니다."</div>
+    </div></div>
+
+    <div class="slot"><div class="t">4:40</div><div class="s-b">
+      <h4>마무리</h4>
+      <p>저장소 공개 약속 한 줄 (후원사가 정확히 원하는 것) → 마지막 문장.</p>
+      <div class="say">"이제 저도 자야죠."</div>
+    </div></div>
+  </div>
+</section>
+
+<!-- 5. 리스크 -->
+<section>
+  <p class="eye">Fallback</p>
+  <h2>무너질 때</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>깨지는 것</th><th>즉시 대응</th></tr></thead>
+    <tbody>
+      <tr><td>커버 닫으니 화면 꺼짐</td><td>커버를 <strong>책이나 손수건</strong>으로 대체. 의미는 약해져도 100% 작동. 큐시트 3:00만 바꾸면 됨</td></tr>
+      <tr><td>BH1750 못 받음</td><td><strong>폰 카메라를 조도계로.</strong> 어제 만든 코드 그대로. 대신 "실제 제품은 보드 센서를 씁니다 — 침실에 카메라를 두고 싶은 사람은 없으니까요"가 오히려 좋은 답변이 됨</td></tr>
+      <tr><td>BLE 끊김</td><td>RESET 더블탭 → 부트로더 → 포트 재선택. 무대에서는 <strong>예비 보드로 교체</strong></td></tr>
+      <tr><td>System OFF에서 안 깨어남</td><td>RESET 한 번. 그래서 <strong>마지막 동작으로만</strong> 배치한 것</td></tr>
+      <tr><td>네트워크 죽음</td><td>조도→호흡 루프는 <strong>전부 로컬</strong>이라 무사. AI는 케어 패널 문장에만 쓰이므로 사전 작성 문장 5개로 폴백</td></tr>
+      <tr><td>프로젝터 연결 실패</td><td>폰을 들고 심사위원석 앞으로. 어차피 주인공은 <strong>손안의 팰</strong>이지 화면이 아님</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card a">
+    <span class="l">하지 말 것</span>
+    <ul style="margin-bottom:0">
+      <li><strong>MPU-6050에 시간 쓰지 않기.</strong> 뒤척임 감지는 있으면 좋은 것이지 필수가 아닙니다. 조도→호흡 루프가 먼저입니다</li>
+      <li><strong>수면 점수 만들지 않기.</strong> 오소솜니아. 그리고 2인칭 문장이 하나라도 들어가는 순간 컨셉이 무너집니다</li>
+      <li><strong>팰을 죽이지 않기.</strong> 다마고치 문법은 빌리되 사망·죄책감 메커니즘은 뺍니다</li>
+      <li><strong>15:40 이후 기능 추가하지 않기</strong></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6. 참조 -->
+<section>
+  <p class="eye">Reference</p>
+  <h2>현장에서 찾을 것</h2>
+  <div class="pre"><pre>보드매니저 URL
+https://raw.githubusercontent.com/Nucode01/Adafruit_nRF52_Arduino/refs/heads/master/package_nuduino_index.json
+
+보드 선택   Tools > Board > NUBoards nRF52 > NU40DK nRF52840
+부트로더    RESET 빠르게 두 번 → 맨 위 LED 천천히 점멸 → 포트 재선택
+I2C 주소    BH1750 0x23 · MPU-6050 0x68 · DRV2605L 0x5A · AHT20 0x38 · SSD1306 0x3C
+버튼        P0.11  P0.12  P0.24  P0.25
+LED         P0.13  P0.14  P0.15  P0.16</pre></div>
+  <p>macOS에서 <code>permission denied</code>가 뜨면 가이드 17페이지, <code>ASCII Encoding</code> 오류는 18~20페이지에 해결법이 있습니다. 복사·붙여넣기가 안 되면 <strong>마우스 우클릭</strong>으로 하세요 (macOS Arduino IDE 알려진 버그).</p>
+</section>
+
+<footer>
+  <p>핀 번호는 Zephyr 공식 보드 문서와 누코드 가이드 핀맵에서 교차 확인했습니다. 0.4µA는 누코드 회사소개서 8페이지의 NU-32 대기전류 표기이며 <strong>모듈 기준</strong>입니다 — 개발보드 전체 소비전류가 아닙니다. MPU-6050은 LSM6DS3와 달리 탭·자유낙하 하드웨어 이벤트 엔진이 없으니, 흔들림은 가속도 크기를 직접 계산해야 합니다.</p>
+  <p style="margin-bottom:0">추가 I2C 장치는 선착순이라 실제 확보 여부가 불확실합니다. BH1750을 못 받는 경우를 대비해 폰 카메라 조도계 코드를 <strong>반드시</strong> 함께 준비해 가세요.</p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var b=[].slice.call(document.querySelectorAll('.ck input'));
+  var f=document.getElementById('fill'), c=document.getElementById('cnt'), K='sleeppal-ops';
+  function load(){try{return JSON.parse(localStorage.getItem(K)||'{}')}catch(e){return{}}}
+  function save(s){try{localStorage.setItem(K,JSON.stringify(s))}catch(e){}}
+  function render(){var d=b.filter(function(x){return x.checked}).length;
+    f.style.width=(b.length?d/b.length*100:0)+'%'; c.textContent=d+' / '+b.length;}
+  var st=load();
+  b.forEach(function(x){
+    if(st[x.dataset.k])x.checked=true;
+    x.addEventListener('change',function(){var s=load();s[x.dataset.k]=x.checked;save(s);render();});
+  });
+  render();
+})();
+</script>

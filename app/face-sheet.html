@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SleepPal — 표정 시트 [WO-01b-1] 증거</title>
+<style>
+  body{margin:0;padding:28px;background:#14161C;color:#EAEEF7;
+       font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  h1{font-size:18px;margin:0 0 4px}
+  h2{font-size:13px;font-weight:600;margin:30px 0 10px;color:#7F8BA3;
+     letter-spacing:.12em;text-transform:uppercase}
+  .note{font-size:12.5px;line-height:1.75;color:#7F8BA3;max-width:60em;margin:0}
+  .grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .cell{display:flex;flex-direction:column;gap:6px}
+  .cap{font-size:11px;color:#7F8BA3;font-variant-numeric:tabular-nums}
+  iframe{border:1px solid #232C3E;border-radius:6px;display:block;
+         background:#000;color-scheme:normal}
+  .row10{display:flex;gap:10px;align-items:flex-end;background:#000;
+         padding:16px;border-radius:8px;border:1px solid #232C3E}
+  #verdict{font-family:ui-monospace,monospace;font-size:12px;line-height:1.9;
+           white-space:pre;background:#0B0E14;border:1px solid #232C3E;
+           border-radius:8px;padding:14px 16px;color:#9BA7BF}
+</style>
+</head>
+<body>
+
+<h1>표정 시트 — 5상태</h1>
+<p class="note">
+  아래 칸은 전부 <b>app/index.html 을 실제로 실행하는 iframe</b>이다. 그림을 옮겨 그리지 않는다 —
+  <code>cut-sheet.html</code> 이 [DOM-01] 에서 손으로 옮겨져 동기화가 끊긴 것과 같은 실수를 피하기 위함이다.
+  앱을 고치면 이 시트가 같이 바뀐다. <b>localhost 로 열어야 한다</b>(<code>node scripts/serve.js</code>) —
+  <code>file://</code> 에서는 iframe 접근이 막힌다.
+</p>
+
+<h2>1:1 — 158 × 73 mm 화면</h2>
+<div class="grid" id="full"></div>
+
+<h2>1/4 축소</h2>
+<div class="grid" id="quarter"></div>
+
+<h2>1/10 축소 — 10m 가독성 프록시</h2>
+<p class="note">각성과 졸림이 이 크기에서 구분되지 않으면 눈꺼풀 L=0.55 를 더 내려야 한다.</p>
+<div class="row10" id="tenth"></div>
+
+<h2>눈부심 — 각성</h2>
+<p class="note">
+  높이 45 → 17.1 · 모서리 = 높이/2 · 중심 Y 36.5 → 35.0 · <b>눈꼬리 안쪽 끝 7° 내림</b>.
+  기울기가 없으면 찡그림이 아니라 그냥 졸린 눈이다.
+</p>
+<div class="grid" id="glare"></div>
+
+<h2>눈부심 × 졸림 — 제품이 가장 선명해지는 지점</h2>
+<p class="note">
+  자려는데 빛 때문에 못 감고 있는 팰. [ARCH-01] R2 의 예시 문장
+  "팰이 눈부셔서 눈을 못 감고 있어요" 가 바로 이 그림이다. <b>상태는 DROWSY 그대로다</b> —
+  전이는 보드 몫이고 폰은 표정만 바꾼다([CON-01] 규칙 2).
+</p>
+<div class="grid" id="glareDrowsy"></div>
+
+<h2>⛔ 밤 — R4 하드 게이트</h2>
+<p class="note">
+  두 칸이 <b>완전히 같아야 한다.</b> 새벽에 누가 불을 켰다고 화면이 반응하면,
+  이 제품이 막으려던 바로 그 행동을 제품이 유발한다.
+</p>
+<div class="grid" id="glareNight"></div>
+
+<h2>검사</h2>
+<div id="verdict">측정 중…</div>
+
+<script>
+'use strict';
+const STATES = ['AWAKE', 'DROWSY', 'ASLEEP', 'NIGHT', 'MORNING'];
+const KO = { AWAKE:'각성', DROWSY:'졸림', ASLEEP:'잠듦', NIGHT:'밤', MORNING:'아침' };
+const W = 158, H = 73;                       // mm — 도면 기준
+const frames = [];
+
+function cell(container, mmPerPx, st, glare, cap) {
+  const box = document.createElement('div');
+  box.className = 'cell';
+  const f = document.createElement('iframe');
+  f.width = Math.round(W * mmPerPx);
+  f.height = Math.round(H * mmPerPx);
+  f.src = 'index.html';
+  f.scrolling = 'no';
+  box.appendChild(f);
+  if (cap) {
+    const c = document.createElement('div');
+    c.className = 'cap';
+    c.textContent = cap;
+    box.appendChild(c);
+  }
+  container.appendChild(box);
+  frames.push(f);
+  f.addEventListener('load', () => drive(f, st, glare));
+  return f;
+}
+
+// iframe 안의 앱을 상태·눈부심으로 몰아넣고 프레임을 손으로 밟아 얼린다.
+// _step 은 rAF 를 끄므로 이 시트는 정지 화면이 된다 — 증거용으로 의도한 것이다.
+function drive(f, st, glare) {
+  const w = f.contentWindow;
+  if (!w || !w.SP) return;
+  const S = w.SP;
+  S.show('faceScreen');
+  S.applyViewBox();
+  S.setEyeState(st);
+  S.F.lidNow = S.F.lid.slice();
+  S.F.blinkAt = Infinity;                    // 깜빡임 정지
+  S.F.blinkT = -1;
+  S.GL.raw = S.GL.now = glare || 0;          // 눈부심을 직접 박는다
+  S.GL.flinch = S.GL.relief = -1; S.GL.settle = 0;
+  // 호흡 위상을 0 으로 고정해 칸마다 눈 높이가 달라 보이지 않게 한다
+  let ms = 1e6; S.F.stateAt = ms / 1000;
+  for (let i = 0; i < 3; i++) { ms += 16.667; S._step(ms); }
+  f.dataset.ready = '1';
+}
+
+for (const st of STATES) cell(document.getElementById('full'), 2.0, st, 0, KO[st] + '  ' + st);
+for (const st of STATES) cell(document.getElementById('quarter'), 0.9, st, 0, null);
+for (const st of STATES) cell(document.getElementById('tenth'), 0.42, st, 0, null);
+
+// ── 눈부심 — 이 WO 의 핵심 증거 ─────────────────────────────
+const GROW = document.getElementById('glare');
+for (const g of [0, 0.25, 0.5, 0.75, 1.0])
+  cell(GROW, 2.0, 'AWAKE', g, 'glare ' + g.toFixed(2));
+const GROW2 = document.getElementById('glareDrowsy');
+for (const g of [0, 0.5, 1.0])
+  cell(GROW2, 2.0, 'DROWSY', g, 'glare ' + g.toFixed(2));
+const GROW3 = document.getElementById('glareNight');
+for (const g of [0, 1.0])
+  cell(GROW3, 2.0, 'NIGHT', g, 'glare ' + g.toFixed(2) + ' — 반드시 같아야 한다');
+
+// ── 검사 — [WO-01b-1] 수용 기준 기계 확인 ─────────────────────
+setTimeout(function () {
+  const f = frames[0];
+  const w = f.contentWindow, d = w.document;
+  const svg = d.getElementById('face'), vb = svg.viewBox.baseVal;
+  const L = d.getElementById('eyeL').getBBox(), R = d.getElementById('eyeR').getBBox();
+  const bad = ['eyeL','eyeR','shutL','shutR'].filter(function (id) {
+    const b = d.getElementById(id).getBBox();
+    return b.x < -0.01 || b.y < -0.01 || b.x + b.width > vb.width + 0.01 || b.y + b.height > vb.height + 0.01;
+  });
+  const faceTxt = d.getElementById('faceScreen').textContent.replace(/\s/g, '');
+  const src = d.documentElement.outerHTML;
+  const voice = /speechSynthesis|SpeechSynthesisUtterance/i.test(src);
+
+  const lines = [
+    pass('R1  발화 경로 0',        !voice,                'speechSynthesis / Utterance 미검출'),
+    pass('R3  얼굴 문자 0',        faceTxt.length === 0,  'textContent 길이 ' + faceTxt.length),
+    pass('R3  <text> 노드 0',      svg.querySelectorAll('text,tspan,foreignObject').length === 0, ''),
+    pass('    viewBox 넘침 0',     bad.length === 0,      bad.join(',') || '4/4 조각 내부'),
+    pass('    눈 지름 45mm',       Math.abs(L.width - 45) < 0.01,  L.width.toFixed(2) + ' mm'),
+    pass('    눈 간격 35mm',       Math.abs((R.x - (L.x + L.width)) - 35) < 0.01, (R.x - L.x - L.width).toFixed(2) + ' mm'),
+    pass('    좌우 여백 대칭',      Math.abs(L.x - (vb.width - R.x - R.width)) < 0.01, L.x.toFixed(2) + ' / ' + (vb.width - R.x - R.width).toFixed(2) + ' mm'),
+    pass('    5상태 렌더',         frames.filter(function (x) { return x.dataset.ready; }).length === frames.length,
+                                   frames.filter(function (x) { return x.dataset.ready; }).length + '/' + frames.length + ' 프레임'),
+  ];
+
+  // ── 표정 레이어 [WO-01b-4] ────────────────────────────────
+  const geo = function (i) {
+    const dd = frames[i].contentDocument;
+    return {
+      h: +dd.getElementById('eyeL').getAttribute('height'),
+      rx: +dd.getElementById('eyeL').getAttribute('rx'),
+      y: +dd.getElementById('eyeL').getAttribute('y'),
+      tl: dd.getElementById('tiltL').getAttribute('transform'),
+      tr: dd.getElementById('tiltR').getAttribute('transform'),
+      lid: dd.getElementById('lidL').getAttribute('d'),
+      shut: dd.getElementById('shutG').getAttribute('transform'),
+    };
+  };
+  const g0 = geo(15), g1 = geo(19);                 // 각성 glare 0 / 1
+  const n0 = geo(23), n1 = geo(24);                 // 밤 glare 0 / 1
+  const ang = function (s) { const m = s.match(/rotate\((-?[\d.]+)/); return m ? +m[1] : NaN; };
+
+  lines.push('');
+  lines.push(pass('    눈 높이 45 → 17.1', Math.abs(g0.h - 45) < 1 && Math.abs(g1.h - 17.1) < 1,
+                  g0.h.toFixed(2) + ' → ' + g1.h.toFixed(2)));
+  lines.push(pass('    모서리 = 높이/2',   Math.abs(g1.rx - g1.h / 2) < 0.02, g1.rx.toFixed(2)));
+  lines.push(pass('    중심 Y 36.5 → 35.0',
+                  Math.abs((g1.y + g1.h / 2) - 35.0) < 0.3, (g1.y + g1.h / 2).toFixed(2)));
+  lines.push(pass('    눈꼬리 ±7°',       Math.abs(ang(g1.tl) - 7) < 0.1 && Math.abs(ang(g1.tr) + 7) < 0.1,
+                  ang(g1.tl).toFixed(2) + ' / ' + ang(g1.tr).toFixed(2)));
+  lines.push(pass('    glare 0 은 무기울기', Math.abs(ang(g0.tl)) < 0.01, ang(g0.tl).toFixed(2)));
+  lines.push(pass('⛔ R4 밤 응답 0',
+                  n0.h === n1.h && n0.y === n1.y && n0.tl === n1.tl && n0.lid === n1.lid && n0.shut === n1.shut,
+                  'glare 0 과 1 의 기하가 동일'));
+  document.getElementById('verdict').textContent = lines.join('\n');
+}, 900);
+
+function pass(name, ok, detail) {
+  return (ok ? '  OK  ' : '  !!  ') + name.padEnd(22) + (detail || '');
+}
+</script>
+</body>
+</html>

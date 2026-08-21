@@ -1,0 +1,22 @@
+node_modules/
+*.log
+.claude/settings.local.json
+# real (PII) profiles — only *example* dummies are committed (AGENTS.local.md convention)
+.union-stack/profile/**/*.local.md
+
+# lineage-tree output (TOOL-24) — generated view, never committed
+lineage-tree.html
+dashboard.html
+
+# ref/ 원본 아카이브 — 옆의 toython-sleeppal/ 로 이미 풀려 있어 중복(14MB)
+ref/*.zip
+
+# 렌더 산출물 — cut-sheet.html 에서 생성한다
+slippal-parts-a4.pdf
+
+# ref/ 대회 배포 자료의 원본 소스(16MB PDF 등) — 스캐폴드 코드와 docs 만 남긴다.
+# 우리 코드가 참조하는 것은 code/ 와 docs/ 뿐이다([CON-01] · [PLAN-01a]).
+ref/**/source/
+
+# Claude Code 워크트리 작업 공간 — 세션 산물
+.claude/worktrees/

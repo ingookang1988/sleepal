@@ -1,0 +1,7 @@
+# union-stack 병렬 플릿 동시성 (PRO-05).
+# append-only 평면은 서로 다른 에이전트/worktree의 추가가 union으로 합쳐지게 해
+# 인접 추가의 *거짓* 충돌을 자동 흡수한다. 기존 줄 삭제는 permission-guard가 막으므로 안전하다.
+.union-stack/archive_ledger.md            merge=union
+.union-stack/verification/raw/*.md        merge=union
+.union-stack/plan/meetings/*.md           merge=union
+.union-stack/plan/analytics/*.md          merge=union

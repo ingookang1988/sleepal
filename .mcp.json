@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "union-stack": {
+      "command": "node",
+      "args": ["scripts/mcp-server.js"]
+    }
+  }
+}

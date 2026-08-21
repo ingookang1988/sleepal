@@ -1,0 +1,476 @@
+<title>슬립팰 제품 정의서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  --ground:#F5F4F9; --surface:#FFFFFF; --surface-2:#EBE9F3;
+  --line:#D8D4E4; --line-soft:#E7E4EF;
+  --ink:#16141F; --ink-2:#4C4761; --ink-3:#7C7691;
+  --accent:#564BA0; --accent-soft:#E9E6F7;
+  --warn:#8E5418; --warn-soft:#F8EFE1;
+  --ok:#1E6A4E; --ok-soft:#DEEFE7;
+  --off:#7A7488; --off-soft:#EAE8EE;
+  --shadow:0 1px 2px rgba(22,20,31,.05), 0 12px 32px -22px rgba(22,20,31,.34);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D0C14; --surface:#161522; --surface-2:#1F1D2E;
+    --line:#302D42; --line-soft:#262336;
+    --ink:#ECEAF4; --ink-2:#ADA7C0; --ink-3:#827C96;
+    --accent:#A99DF2; --accent-soft:#201C38;
+    --warn:#DDA765; --warn-soft:#2A2114;
+    --ok:#5FC49B; --ok-soft:#122A20;
+    --off:#847EA0; --off-soft:#211F2E;
+    --shadow:0 1px 2px rgba(0,0,0,.6), 0 14px 36px -24px rgba(0,0,0,1);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D0C14; --surface:#161522; --surface-2:#1F1D2E;
+  --line:#302D42; --line-soft:#262336;
+  --ink:#ECEAF4; --ink-2:#ADA7C0; --ink-3:#827C96;
+  --accent:#A99DF2; --accent-soft:#201C38;
+  --warn:#DDA765; --warn-soft:#2A2114;
+  --ok:#5FC49B; --ok-soft:#122A20;
+  --off:#847EA0; --off-soft:#211F2E;
+  --shadow:0 1px 2px rgba(0,0,0,.6), 0 14px 36px -24px rgba(0,0,0,1);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:0 26px 110px}
+p{margin:0 0 15px;max-width:74ch}
+strong{font-weight:700;color:var(--ink)}
+
+header{padding:66px 0 34px;border-bottom:2px solid var(--ink)}
+.kick{font-family:"Roboto Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+h1{font-family:"Nanum Myeongjo",serif;font-weight:800;font-size:clamp(34px,6vw,54px);line-height:1.28;letter-spacing:-.02em;margin:0 0 20px}
+.stand{font-size:18px;color:var(--ink-2);margin:0;max-width:62ch;line-height:1.8}
+.by{margin-top:24px;display:flex;flex-wrap:wrap;gap:5px 18px;font-family:"Roboto Mono",monospace;font-size:11px;color:var(--ink-3)}
+
+section{margin-top:56px}
+.sec{font-family:"Roboto Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h2{font-family:"Nanum Myeongjo",serif;font-weight:700;font-size:clamp(23px,3.3vw,30px);line-height:1.38;margin:16px 0 16px;text-wrap:balance}
+h3{font-size:17px;font-weight:700;margin:30px 0 9px;letter-spacing:-.01em}
+
+ul,ol{margin:0 0 15px;padding-left:20px;max-width:74ch;display:flex;flex-direction:column;gap:8px}
+li{color:var(--ink-2)} li strong{color:var(--ink)}
+.lead{font-size:19px;line-height:1.75;color:var(--ink);font-weight:500;max-width:60ch;margin:0 0 18px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:19px 23px;margin:20px 0;box-shadow:var(--shadow)}
+.card .l{font-family:"Roboto Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:7px}
+.card p:last-child{margin-bottom:0}
+.card.w{border-left-color:var(--warn)} .card.w .l{color:var(--warn)}
+.card.o{border-left-color:var(--ok)} .card.o .l{color:var(--ok)}
+.card.x{border-left-color:var(--off)} .card.x .l{color:var(--off)}
+
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 18px 14px;box-shadow:var(--shadow)}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-family:"Roboto Mono",monospace;font-size:11px;color:var(--ink-3);text-align:center;margin-top:12px;line-height:1.6}
+.sb{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}
+.sb-hi{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.8}
+.st{fill:var(--ink);font-family:"Noto Sans KR",sans-serif;font-size:15px;font-weight:700}
+.ss{fill:var(--ink-3);font-family:"Roboto Mono",monospace;font-size:10px}
+.sl{fill:var(--accent);font-family:"Roboto Mono",monospace;font-size:10.5px;font-weight:500}
+.sa{stroke:var(--accent);stroke-width:1.6;fill:none}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:20px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.65}
+th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{font-family:"Roboto Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td{color:var(--ink-2)} td:first-child{color:var(--ink);font-weight:700}
+.mono{font-family:"Roboto Mono",monospace;font-size:12.5px;white-space:nowrap}
+
+.rules{counter-reset:r;display:flex;flex-direction:column;margin:20px 0;background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);overflow:hidden}
+.rule{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line-soft)}
+.rule:last-child{border-bottom:none}
+.rule::before{counter-increment:r;content:counter(r,decimal-leading-zero);font-family:"Roboto Mono",monospace;font-size:12px;font-weight:700;color:var(--accent);padding-top:3px}
+.rule b{display:block;font-size:16px;font-weight:700;color:var(--ink);margin-bottom:3px;letter-spacing:-.01em}
+.rule span{font-size:14.5px;color:var(--ink-2);line-height:1.7}
+.rule em{font-style:normal;font-family:"Roboto Mono",monospace;font-size:11.5px;color:var(--ink-3);display:block;margin-top:5px}
+
+code{font-family:"Roboto Mono",monospace;font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:4px;color:var(--ink)}
+.say{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:9px;padding:14px 18px;margin:14px 0;font-size:16px;color:var(--ink);line-height:1.75;max-width:66ch}
+
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 32%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+footer{margin-top:70px;padding-top:26px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3);line-height:1.8}
+footer p{max-width:none;margin-bottom:12px}
+
+@media (max-width:620px){.wrap{padding:0 17px 80px}header{padding:40px 0 26px}body{font-size:15.5px}.rule{grid-template-columns:34px 1fr;gap:10px;padding:14px 15px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="kick">Product Definition · v1.1 · 2026.08.21</p>
+  <h1>슬립팰 제품 정의서</h1>
+  <p class="stand">밤에 함께 자는 반려 수면등. 사용자가 팰을 재우는 동안 자신이 재워진다. 말하지 않고, 먼저 잠든다.</p>
+  <div class="by">
+    <span>코드네임 · SleepPal (임시)</span>
+    <span>폼팩터 · 가로형 수면등 + 폰 도크</span>
+    <span>기반 자산 · quiet space</span>
+  </div>
+</header>
+
+<!-- §1 -->
+<section>
+  <p class="sec">§1 &nbsp;Definition</p>
+  <h2>한 줄 정의</h2>
+  <p class="lead">슬립팰은 사용자보다 <strong>먼저 졸려 하고 먼저 잠드는</strong> 반려 수면등이다. 사용자는 팰을 재우기 위해 방을 어둡고 조용하게 만들고, 잠들기 전 <strong>자신의 폰을 팰에게 올려놓아 얼굴을 빌려준다.</strong> 그 과정에서 사용자 자신이 잠들 준비를 마친다.</p>
+  <div class="say">수면등은 제가 끕니다. 팰은 자기가 잠듭니다.</div>
+</section>
+
+<!-- §2 -->
+<section>
+  <p class="sec">§2 &nbsp;Problem</p>
+  <h2>해결하는 문제</h2>
+  <ol>
+    <li><strong>잠들기 직전까지 폰을 본다.</strong> 화면의 빛과 내용이 각성을 유지시킨다. 스스로도 알지만 멈추지 못한다.</li>
+    <li><strong>자다 깨서 또 폰을 본다.</strong> 새벽에 한 번 화면을 보면 다시 잠들기까지의 시간이 길어진다.</li>
+    <li><strong>혼자 자는 밤이 외롭다.</strong> 그리고 이 외로움을 해소하려고 폰을 켠다. 1·2번의 진짜 원인이 여기 있다.</li>
+    <li><strong>기존 수면 앱은 문제를 악화시킨다.</strong> 잠들기 위해 폰을 열어야 하고, 아침에 점수를 보여주며 불안을 만든다.</li>
+  </ol>
+  <div class="card w">
+    <span class="l">피해야 할 함정 — 오소솜니아</span>
+    <p style="margin-bottom:0">수면을 추적하고 평가할수록 잠에 대한 불안이 커져 오히려 못 자는 현상이 임상 문헌에 보고되어 있다. <strong>슬립팰은 사용자의 수면을 측정하고 채점하는 제품이 아니다.</strong> 이 경계를 넘는 순간 제품은 문제의 일부가 된다.</p>
+  </div>
+</section>
+
+<!-- §3 -->
+<section>
+  <p class="sec">§3 &nbsp;Mechanism</p>
+  <h2>핵심 원리</h2>
+  <p>슬립팰의 유일한 발명은 <strong>수면의 사회적 전염</strong>을 사물로 구현한 것이다. 하품이 전염되듯, 곁에 있는 존재가 먼저 잠들면 사람도 잠든다.</p>
+
+  <h3>돌봄의 방향을 뒤집는다</h3>
+  <p>제품이 사용자에게 지시하지 않는다. <strong>사용자가 팰을 돌본다.</strong> 조명이 밝으면 팰이 눈을 못 감고, 소리가 크면 팰이 자꾸 깬다. 사용자는 팰을 재우기 위해 불을 끄고 조용히 만든다. 그 결과 자신의 수면 환경이 정리된다.</p>
+  <p>지시받는 것이 아니라 돌보는 것이므로 저항이 생기지 않는다. 그리고 실패해도 죄책감이 아니라 안쓰러움이 남는다.</p>
+
+  <div class="card o">
+    <span class="l">검증된 선례</span>
+    <p style="margin-bottom:0">돌봄 역전 구조는 국내 돌봄로봇 <strong>효돌</strong>에서 이미 임상적으로 검증되었다 — 어르신에게 "재워달라"고 요청하는 설계로 우울 고위험 비율 35.7% 감소. 중국 <strong>Ropet</strong>은 대우에 따라 성격이 갈리는 구조로 반품률 4%를 기록했다(업계 평균 30%).</p>
+  </div>
+</section>
+
+<!-- §4 -->
+<section>
+  <p class="sec">§4 &nbsp;Positioning</p>
+  <h2>정체성과 명분</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th></th><th>슬립팰의 선택</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td>카테고리</td><td><strong>반려 수면등</strong></td><td>앞의 "반려"가 정체성, 뒤의 "수면등"이 명분. 침대맡에 놓이는 것이 이미 자연스러워 설명이 필요 없다</td></tr>
+      <tr><td>정체성</td><td><strong>반려</strong> — 밤에 함께 자는 존재</td><td>"먼저 잠든다"는 생물이어야만 성립한다. 수면등이 타이머로 꺼지면 타이머지만, <strong>졸려서 빛을 잃으면 잠드는 것</strong>이다</td></tr>
+      <tr><td>구매 명분</td><td><strong>수면</strong> — 잘 자기 위해 산다</td><td>순수 감정 제품은 지불 의사가 낮다. 사회적으로 안전한 명분이 필요하다</td></tr>
+      <tr><td>경쟁 방식</td><td><strong>관계</strong> — 리텐션과 애착</td><td>도구 트랙은 임상 데이터와 자본의 싸움. 반려 트랙은 설계로 이길 수 있다</td></tr>
+      <tr><td>작명 원칙</td><td><strong>고유명</strong> — 기능명 금지</td><td>Moflin·Ropet·Fuzozo 모두 캐릭터 이름이다. 이름이 포지셔닝을 배신하면 안 된다</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- §5 -->
+<section>
+  <p class="sec">§5 &nbsp;Architecture</p>
+  <h2>3층 구조</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>층</th><th>역할</th><th>담당</th><th>표현 수단</th></tr></thead>
+    <tbody>
+      <tr><td>팰 — 몸</td><td>상태를 몸으로 드러낸다. <strong>말하지 않는다</strong></td><td>가로형 몸통 + NU-40 DK</td><td><strong>후광</strong>(LED 4개 · 확산) · 떨림</td></tr>
+      <tr><td>폰 — 얼굴과 목소리</td><td>본다 · 듣는다 · 숨쉰다 · 기록한다</td><td>스마트폰 (도크에 가로로)</td><td><strong>눈</strong> · 숨소리 · 하품 · 조도계 · 마이크</td></tr>
+      <tr><td>앱 — 통역사</td><td>팰의 상태를 <strong>설명</strong>한다</td><td>웹앱 → 네이티브</td><td>케어 문장 · 아침 일기</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>역할이 겹치지 않는 것이 설계의 핵심이다.</strong> 눈은 상태를 말하고 앱은 그 이유를 말한다. 팰이 "졸려"라고 표현하면 앱이 "조명이 밝아서요"라고 옮긴다. 앱이 사용자를 직접 평가하는 순간 돌봄 구조가 무너진다.</p>
+
+  <h3>얼굴을 빌려준다</h3>
+  <p>폰이 없으면 팰은 <strong>얼굴 없이 빛나는 상자</strong>다. 잠들기 전에 사용자가 자기 폰을 팰의 받침턱에 올려놓으면 그때 눈이 생기고 팰이 살아난다. 이것이 이 제품의 잠자리 의식이다.</p>
+  <ul>
+    <li><strong>의식이 된다.</strong> "폰 그만 보세요"라고 말하는 대신, 폰을 팰에게 건네는 동작이 하루의 끝을 표시한다</li>
+    <li><strong>용도가 전환된다.</strong> 폰이 팰의 얼굴로 쓰이는 동안은 팰 앱이 전체화면이다. 폰으로 돌아가려면 <strong>팰에게서 얼굴을 빼앗아야</strong> 한다 — 물리적 차단은 아니지만 다마고치의 마찰이 여기서 작동한다</li>
+    <li><strong>숨소리의 출처가 몸이 된다.</strong> 멀리 있는 폰에서 나면 스피커지만, 팰에게서 나면 팰이 숨 쉬는 것이다</li>
+    <li><strong>충전이 이득이 된다.</strong> 밤새 무선 충전. 폰을 맡기는 것이 손해가 아니라 이득이어야 습관이 유지된다</li>
+  </ul>
+  <p>계보상 <strong>LOOI</strong>가 스마트폰을 데스크 로봇의 얼굴로 쓴 구조를 빌리되, 슬립팰은 <strong>가로형</strong>이고 <strong>몸통 전체가 빛난다.</strong> 폰 실루엣 주위로 후광이 번지고, 잠들면 <strong>화면과 후광이 함께 검어진다.</strong></p>
+
+  <div class="card">
+    <span class="l">가로형인 이유</span>
+    <p style="margin-bottom:0">얼굴은 세로로 길지 않다. 세로 화면에 눈 두 개를 그리면 얼굴이 아니라 세로 간판이 된다. 눕히면 눈 지름이 <strong>30mm에서 45mm로</strong> 커지고, 무게중심이 낮아 넘어지지 않으며, 가로로 넓은 광원이 방을 더 부드럽게 채운다. 데스크 컴패니언(Eilik·Ropet·Loona·스택찬)이 전부 가로인 데는 이유가 있다.</p>
+  </div>
+</section>
+
+<!-- §6 -->
+<section>
+  <p class="sec">§6 &nbsp;State Model</p>
+  <h2>상태 모델</h2>
+
+  <figure>
+    <svg viewBox="0 0 700 300" role="img" aria-label="대기 각성 졸림 잠듦 밤 아침을 거쳐 다시 대기로 돌아오는 여섯 단계 순환도">
+      <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="3.2" orient="auto"><path d="M0,0 L7.5,3.2 L0,6.4 z" fill="currentColor"/></marker></defs>
+      <g style="color:var(--accent)">
+        <rect class="sb" x="25" y="30" width="150" height="56" rx="9"/>
+        <text class="st" x="100" y="54" text-anchor="middle">대기</text>
+        <text class="ss" x="100" y="72" text-anchor="middle">얼굴 없음</text>
+
+        <rect class="sb-hi" x="270" y="30" width="150" height="56" rx="9"/>
+        <text class="st" x="345" y="54" text-anchor="middle">각성</text>
+        <text class="ss" x="345" y="72" text-anchor="middle">AWAKE</text>
+
+        <rect class="sb" x="515" y="30" width="150" height="56" rx="9"/>
+        <text class="st" x="590" y="54" text-anchor="middle">졸림</text>
+        <text class="ss" x="590" y="72" text-anchor="middle">DROWSY</text>
+
+        <rect class="sb" x="515" y="186" width="150" height="56" rx="9"/>
+        <text class="st" x="590" y="210" text-anchor="middle">잠듦</text>
+        <text class="ss" x="590" y="228" text-anchor="middle">FALLING ASLEEP</text>
+
+        <rect class="sb" x="270" y="186" width="150" height="56" rx="9"/>
+        <text class="st" x="345" y="210" text-anchor="middle">밤</text>
+        <text class="ss" x="345" y="228" text-anchor="middle">NIGHT</text>
+
+        <rect class="sb" x="25" y="186" width="150" height="56" rx="9"/>
+        <text class="st" x="100" y="210" text-anchor="middle">아침</text>
+        <text class="ss" x="100" y="228" text-anchor="middle">MORNING</text>
+
+        <path class="sa" d="M175,58 L263,58" marker-end="url(#ar)"/>
+        <text class="sl" x="219" y="24" text-anchor="middle">폰을 올려놓는다 ★</text>
+
+        <path class="sa" d="M420,58 L508,58" marker-end="url(#ar)"/>
+        <text class="sl" x="464" y="24" text-anchor="middle">조도↓ 소음↓</text>
+
+        <path class="sa" d="M590,86 L590,179" marker-end="url(#ar)"/>
+        <text class="sl" x="602" y="136" text-anchor="start">지속 N분</text>
+
+        <path class="sa" d="M515,214 L427,214" marker-end="url(#ar)"/>
+        <text class="sl" x="471" y="264" text-anchor="middle">눈 감김</text>
+
+        <path class="sa" d="M270,214 L182,214" marker-end="url(#ar)"/>
+        <text class="sl" x="226" y="264" text-anchor="middle">조도↑ · 기상 시각</text>
+
+        <path class="sa" d="M100,186 L100,93" marker-end="url(#ar)"/>
+        <text class="sl" x="88" y="136" text-anchor="end">폰을 가져간다</text>
+      </g>
+    </svg>
+    <figcaption>상태를 바꾸는 것은 시각이 아니라 <b>환경과 사용자의 행위</b>다. 타이머로 잠들지 않는다.</figcaption>
+  </figure>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>상태</th><th>진입</th><th>눈 (폰 화면)</th><th>후광 (LED)</th><th>소리</th><th>앱</th></tr></thead>
+    <tbody>
+      <tr><td>대기</td><td>폰이 없음</td><td>—</td><td>은은하게 켜짐</td><td>—</td><td>—</td></tr>
+      <tr><td>각성</td><td><strong>폰을 올려놓음</strong></td><td>크게 뜸 · 가끔 깜빡 · 남색 배경</td><td>빠르고 불규칙</td><td>—</td><td>"팰이 눈부셔서 눈을 못 감고 있어요"</td></tr>
+      <tr><td>졸림</td><td>조도·소음이 기준선 아래</td><td>눈꺼풀 반쯤 · 호박색 배경</td><td>느려짐 · 깊어짐</td><td><strong>하품</strong></td><td>"팰이 슬슬 졸려 해요"</td></tr>
+      <tr><td>잠듦</td><td>졸림이 N분 지속</td><td>감김 → 거의 검정</td><td>서서히 소등</td><td>숨소리 시작</td><td>"팰이 잠들었어요" 후 소등</td></tr>
+      <tr><td>밤</td><td>—</td><td><strong>완전 검정</strong></td><td>소등 · System OFF</td><td>숨소리 · 뒤척임</td><td><strong>아무것도 하지 않음</strong></td></tr>
+      <tr><td>아침</td><td>조도 상승 · 기상 시각</td><td>뜨기 · 기지개</td><td>천천히 점등</td><td>기지개 소리</td><td>밤의 일기 — "팰이 밤새 들은 것"</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card">
+    <span class="l">밤 상태의 규율</span>
+    <p style="margin-bottom:0"><strong>밤에는 앱이 침묵한다.</strong> 알림도, 힌트도, 화면도 없다. 새벽 3시에 깬 사용자에게 앱이 무언가를 띄우면, 이 제품이 막으려던 바로 그 행동을 제품이 유발한다. 깨서 옆을 보면 <strong>팰만 조용히 숨 쉬고 있는 것</strong>이 전부여야 한다. 그것만으로 "혼자가 아니다"라는 목적은 달성된다.</p>
+  </div>
+</section>
+
+<!-- §7 -->
+<section>
+  <p class="sec">§7 &nbsp;Hardware</p>
+  <h2>하드웨어 명세</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>구성</th><th>부품</th><th>역할</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>MCU</td><td>NU-40 DK · Nordic nRF52840</td><td>상태 판정 · BLE</td><td class="mono">버튼 4 · LED 4 · Qwiic 내장</td></tr>
+      <tr><td>조도</td><td>BH1750</td><td><strong>핵심 입력.</strong> 방의 밝기</td><td class="mono">I2C 0x23</td></tr>
+      <tr><td>소리 입력</td><td><strong>폰 마이크</strong></td><td>소음 · 뒤척임 · 혼잣말</td><td>어둠과 무관하게 작동</td></tr>
+      <tr><td>눈</td><td><strong>폰 화면</strong> (가로)</td><td>표정 — 전용 디스플레이 불필요</td><td>SVG + CSS transition</td></tr>
+      <tr><td>후광</td><td>LED 4개 + 확산지</td><td>호흡 리듬</td><td class="mono">P0.13–P0.16 · 확산거리 40mm+</td></tr>
+      <tr><td>소리 출력</td><td><strong>폰 스피커</strong></td><td>숨소리 · 하품 · 뒤척임</td><td>부저로는 숨소리를 못 낸다</td></tr>
+      <tr><td>전원</td><td>리튬폴리머 + BATT 커넥터</td><td>무선 구동</td><td>DK 내장</td></tr>
+      <tr><td>외피</td><td>가로형 몸통 · 200 × 130 × 65mm</td><td>확산 · 폰 도크</td><td>P0는 골판지 · 통기구 필수</td></tr>
+      <tr><td class="mono" style="color:var(--ink-3);font-weight:400">후보</td><td>서보 SG90 · MPU-6050 · 진동모터</td><td>꾸벅꾸벅 · 뒤척임 감지 · 촉각</td><td>P0 제외. §13 참조</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>센싱 — 방을 재고, 사람은 재지 않는다</h3>
+  <p>팰이 아는 것은 <strong>방의 밝기와 소리</strong>뿐이다. 카메라로 사람의 자세나 위치를 인식하지 않는다. 이유는 세 가지다.</p>
+  <ul>
+    <li><strong>어둠에서 작동하지 않는다.</strong> 불 끈 침실은 1 lux 미만이라 카메라 기반 포즈 추정이 성립하지 않는다. 제품이 성공할수록 방은 더 어두워진다</li>
+    <li><strong>감지해도 반응하면 안 된다.</strong> §9-4에 따라 밤에는 아무것도 하지 않으므로, 밤중 인체 감지는 쓸 곳이 없다</li>
+    <li><strong>프라이버시 논거를 스스로 뒤집는다.</strong> "밝기만 잽니다"와 "당신을 봅니다"는 사용자에게 다른 제품이다. 전자는 하드웨어가 필요한 <em>이유</em>이고, 후자는 이 카테고리 최대 반발 지점이다</li>
+  </ul>
+  <p class="mono" style="color:var(--ink-3);font-size:12.5px">※ 폰 카메라는 <strong>조도계로만</strong> 쓴다(프레임 평균 휘도). 실제 제품에서는 이마저 BH1750으로 대체한다.</p>
+
+  <h3>전력 — 이 제품의 스펙 한 방</h3>
+  <p>팰이 잠들면 nRF52840이 <strong>System OFF</strong>로 진입하고 버튼으로만 깨어난다. NU-40 모듈의 대기전류는 <strong>0.4µA</strong>대로, 누코드가 자사 자료에서 타사 모듈(15µA) 대비 우위로 내세우는 수치다.</p>
+  <p>슬립팰에서 이것은 스펙이 아니라 <strong>팰이 진짜로 잔다는 뜻</strong>이다. System OFF는 깨어날 때 리셋되어 RAM과 BLE 연결이 사라지지만, 이는 문제가 아니라 설계다 — 팰이 잠든 뒤에는 BLE가 필요 없다.</p>
+  <p class="mono" style="color:var(--ink-3);font-size:12.5px">※ 0.4µA는 모듈 기준이며 개발보드 전체 소비전류가 아니다. 대외 커뮤니케이션 시 반드시 구분할 것.</p>
+</section>
+
+<!-- §8 -->
+<section>
+  <p class="sec">§8 &nbsp;Software</p>
+  <h2>소프트웨어 명세</h2>
+
+  <h3>화면 — 눈이 전부다</h3>
+  <ul>
+    <li><strong>가로 전체화면.</strong> 회전 잠금 필수. 눈 지름 45mm, 간격 35mm</li>
+    <li><strong>케어 문장은 상시 표시하지 않는다.</strong> 상태가 바뀔 때만 하단에 3초쯤 떠올랐다 사라진다. 다마고치도 평소엔 캐릭터만 보이고 필요할 때 메시지가 뜬다</li>
+    <li>배경은 <strong>남색 → 호박색 → 검정</strong>으로 2~3초에 걸쳐 전이</li>
+    <li>Wake Lock 상시. 화면 밝기는 상태에 따라 낮춘다</li>
+  </ul>
+
+  <h3>아침 일기 — quiet space</h3>
+  <p>밤새 녹음된 혼잣말을 텍스트로 정리해 보여준다. <strong>이미 구현된 자산.</strong> 프레이밍이 중요하다 — "당신이 뭐라고 중얼거렸는지"가 아니라 <strong>"팰이 밤새 들은 것"</strong>이다.</p>
+  <p>같은 데이터인데 완전히 다른 제품이 된다. <em>팰이 지켜봤다는 것은 애정이고, 기기가 녹음했다는 것은 감시다.</em></p>
+
+  <h3>데이터 원칙</h3>
+  <ul>
+    <li><strong>오디오는 기기를 떠나지 않는다.</strong> 침실에서 무의식중에 한 말은 깨어서 하는 어떤 말보다 사적이며, 옆에 자는 사람의 목소리가 섞일 수 있다</li>
+    <li>수면 기록은 존재하되 <strong>점수화하지 않는다.</strong> 회고이지 평가가 아니다</li>
+    <li>클라우드가 죽어도 팰은 계속 잔다. 조도→호흡 루프는 전부 로컬에서 돈다</li>
+  </ul>
+</section>
+
+<!-- §9 -->
+<section>
+  <p class="sec">§9 &nbsp;Design Rules</p>
+  <h2>설계 규율</h2>
+  <p>아래는 취향이 아니라 <strong>위반 시 제품이 무너지는 규칙</strong>이다. 카피와 코드 리뷰 기준으로 그대로 쓴다.</p>
+
+  <div class="rules">
+    <div class="rule"><div><b>팰은 말하지 않는다</b><span>언어는 해독을 요구하고, 해독은 각성을 만든다. 숨소리·하품·음정은 되지만 문장은 안 된다. 그리고 자려는 사람에게 말을 걸면 안 된다는 것이 이 제품이 가진, 경쟁자가 가질 수 없는 명분이다.</span><em>위반 예 — 음성 안내, TTS 피드백</em></div></div>
+
+    <div class="rule"><div><b>앱에 2인칭 문장을 쓰지 않는다</b><span>모든 문장은 팰에 대한 것이어야 한다. 사용자를 평가하는 순간 돌봄 구조가 무너지고 오소솜니아가 시작된다.</span><em>❌ "조명이 너무 밝습니다" → ✅ "팰이 눈부셔서 눈을 못 감고 있어요"</em></div></div>
+
+    <div class="rule"><div><b>눈 영역에 문자를 띄우지 않는다</b><span>눈은 기관이지 디스플레이가 아니다. 눈 위에 텍스트가 겹치는 순간 팰이 말을 하게 되고, 앱의 존재 이유가 사라진다.</span><em>눈은 상태를, 하단의 케어 문장은 이유를</em></div></div>
+
+    <div class="rule"><div><b>밤에는 아무것도 하지 않는다</b><span>깨어난 사용자에게 앱이 무언가를 띄우면 폰을 켜게 만든다. 힌트는 아침으로 몰아준다.</span><em>밤은 팰의 시간, 아침은 앱의 시간</em></div></div>
+
+    <div class="rule"><div><b>팰은 죽지 않는다</b><span>다마고치의 문법은 빌리되 사망 메커니즘은 뺀다. 죄책감은 불면을 만든다. 팰은 시무룩해지거나 삐질 수는 있어도 사라지지 않는다.</span><em>Moxie 폐업으로 로봇이 "죽자" 아동 심리 피해가 보고되었다</em></div></div>
+
+    <div class="rule"><div><b>수면을 채점하지 않는다</b><span>점수·등급·전일 대비 비교를 만들지 않는다. 기록은 일기의 형태로만 존재한다. <strong>센서가 정밀해질수록 채점하고 싶어지는 것</strong>이 이 카테고리의 함정이다.</span><em>위반 예 — 수면 점수 72점, 어제보다 30분 늦음</em></div></div>
+
+    <div class="rule"><div><b>방을 재되 사람을 보지 않는다</b><span>조도와 소리로 환경을 읽는다. 카메라로 사람의 자세·위치를 인식하지 않는다. 어둠에서 작동하지 않을 뿐 아니라, 하드웨어가 필요한 이유 자체를 무너뜨린다.</span><em>"밝기만 잽니다"와 "당신을 봅니다"는 다른 제품이다</em></div></div>
+
+    <div class="rule"><div><b>네트워크 없이도 살아 있다</b><span>조도→호흡 루프는 전부 로컬. AI는 문장을 다듬는 데만 쓴다. 서버가 죽어도 팰은 잔다.</span><em>이 카테고리 최대 실패 원인이 클라우드 종속 벽돌화다</em></div></div>
+  </div>
+</section>
+
+<!-- §10 -->
+<section>
+  <p class="sec">§10 &nbsp;Non-goals</p>
+  <h2>의도적으로 하지 않는 것</h2>
+  <div class="card x">
+    <span class="l">받을 수 있었지만 받지 않은 것</span>
+    <p style="margin-bottom:0"><strong>OLED 디스플레이와 부저.</strong> 침실에서 문자를 띄우고 소리 내는 물체는 이 제품이 없애려는 바로 그것이다. 눈은 폰이 그리고 숨소리는 폰이 낸다. 절제가 설계라는 증거로 쓴다 — <em>"디스플레이와 스피커를 쓸 수 있었지만 쓰지 않았습니다."</em></p>
+  </div>
+  <ul>
+    <li><strong>음성 대화</strong> — §9-1</li>
+    <li><strong>수면 점수·리포트</strong> — §9-6</li>
+    <li><strong>카메라 인체 감지</strong> — §9-7</li>
+    <li><strong>의료적 효능 주장</strong> — 습관과 환경을 다루는 제품이지 치료 기기가 아니다. 규제 접점을 만들지 않는다</li>
+    <li><strong>구독으로 잠그는 핵심 기능</strong> — 구독 거부감은 이 카테고리 실패 원인 3위였다. 팰은 구독 없이도 잔다</li>
+    <li><strong>아동 타깃</strong> — 아동 AI 완구는 2025~26년 규제·여론 지뢰밭이다. 초기 타깃은 혼자 자는 성인</li>
+  </ul>
+</section>
+
+<!-- §11 -->
+<section>
+  <p class="sec">§11 &nbsp;Differentiation</p>
+  <h2>차별화</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>비교 대상</th><th>그쪽</th><th>슬립팰</th></tr></thead>
+    <tbody>
+      <tr><td>수면등 · 스마트 조명</td><td>사용자가 끈다. 또는 타이머로 꺼진다</td><td><strong>자기가 잠든다</strong></td></tr>
+      <tr><td>Somnox</td><td>안고 자는 호흡 로봇. 사용자의 <strong>몸</strong>을 조절한다</td><td><strong>환경과 행동</strong>을 바꾼다. 그리고 Somnox는 잠들지 않는다</td></tr>
+      <tr><td>Moflin · LOVOT</td><td>감정 반려. 낮에도 함께 있다</td><td>밤에 특화. <strong>잠드는 것</strong>이 핵심 기능이다</td></tr>
+      <tr><td>LOOI</td><td>폰을 로봇의 얼굴로 쓴다. 세로 · 낮의 제품</td><td>같은 구조를 <strong>가로 · 밤</strong>으로. 몸통 전체가 빛난다</td></tr>
+      <tr><td>수면 앱</td><td>잠들려면 폰을 열어야 한다. 아침에 점수를 준다</td><td>폰을 <strong>맡기게</strong> 만든다. 점수 대신 일기를 준다</td></tr>
+      <tr><td>AI 컴패니언 전반</td><td>말을 건다. 사용 시간이 성공 지표</td><td>말하지 않는다. <strong>사용 중단 시각</strong>이 성공 지표</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="card o">
+    <span class="l">구조적 우위</span>
+    <p style="margin-bottom:0">거의 모든 AI 제품은 사용자를 <strong>붙잡아두도록</strong> 설계된다. 슬립팰은 <strong>놓아주도록</strong> 설계됐다. 성공 지표가 "사용 시간"이 아니라 "언제 그만 썼는가"인 제품은 이 카테고리에 없다.</p>
+  </div>
+</section>
+
+<!-- §12 -->
+<section>
+  <p class="sec">§12 &nbsp;Risks</p>
+  <h2>리스크와 대응</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>리스크</th><th>내용</th><th>대응</th></tr></thead>
+    <tbody>
+      <tr><td>발열</td><td>폰이 도크에서 밤새 오디오 재생 + 무선 충전. 밀폐 인형보다는 낮지만 여전히 실측 전</td><td>통기구 필수 · 밤에는 화면 소등 · 무선 충전 5W 저속. 저속 충전은 배터리 수명 이점으로 재프레이밍</td></tr>
+      <tr><td>프라이버시</td><td>침실 오디오 + 무의식 발화 + 동거인 목소리. 이 카테고리 최대 반발 지점</td><td>온디바이스 처리 · 오디오 미전송 · 기본 삭제 · <strong>카메라 인체 감지 배제</strong>(§9-7) · "아무것도 서버로 보내지 않습니다"를 전면 배치</td></tr>
+      <tr><td>오소솜니아</td><td>추적이 불안을 키워 수면을 악화</td><td>§9-2, §9-6 규율. 2인칭 금지와 채점 금지로 구조적 차단</td></tr>
+      <tr><td>확산 실패</td><td>LED가 점으로 비치면 수면등이 아니라 손전등이 된다</td><td>확산지와 LED 사이 <strong>40mm 이상</strong> · 반사면 활용 · 내부 백색 처리</td></tr>
+      <tr><td>폰 종속</td><td>폰이 없으면 팰에게 얼굴이 없다</td><td>단점이 아니라 의식으로 프레이밍. 단, 폰 없이도 후광은 유지되어 수면등으로는 동작</td></tr>
+      <tr><td>이름 선점</td><td>SleepPal은 앱·하드웨어·논문에 이미 다수 존재</td><td>고유명으로 교체(§4). 기능명 회피</td></tr>
+      <tr><td>플랫폼 리스크</td><td>LLM 공급자가 접근을 끊으면 제품이 멈춘다</td><td>AI를 필수 경로에서 제외(§9-8). 실제로 이 카테고리를 멈춰 세운 것은 규제가 아니라 모델 공급자였다</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- §13 -->
+<section>
+  <p class="sec">§13 &nbsp;Roadmap</p>
+  <h2>단계</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>단계</th><th>범위</th><th>검증할 것</th></tr></thead>
+    <tbody>
+      <tr><td>P0 · 프로토타입<br><span class="mono" style="font-weight:400">2026.08.22</span></td><td>NU-40 DK + BH1750 + LED 후광 · 폰 화면 눈 · 숨소리와 하품 · quiet space 접합 · <strong>골판지 가로형 몸통</strong></td><td><strong>"팰이 먼저 잠든다"가 실제로 감정을 만드는가.</strong> 관객이 팰을 보고 하품하는가</td></tr>
+      <tr><td>v0.5 · 자가 사용</td><td>네이티브 앱(화면 끄고 오디오+센싱 유지) · 3D 프린팅 케이스 · 통기 구조 · <strong>서보 1개로 꾸벅꾸벅</strong></td><td>본인이 2주 연속 쓰는가. 폰을 맡기는 의식이 유지되는가</td></tr>
+      <tr><td>v1 · 소량 배포</td><td>무선 충전 코일 · 호박색 광원 · 온디바이스 STT · <strong>베개 유닛</strong>(IMU + BLE, 별도 전원)</td><td>30일 리텐션. 목표는 Ropet 수준(90일 80%)</td></tr>
+      <tr><td>v2 · 양산</td><td>NU-40 모듈 직접 실장(DK 탈피) · KC 인증 · 수면 안대 트래커 연동</td><td>단가와 인증. 모듈 벤더가 인증을 이미 갖고 있다는 점이 이 경로의 이점</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card">
+    <span class="l">베개 유닛 — v1의 핵심</span>
+    <p>지금 팰은 <strong>방</strong>을 안다. 베개 유닛이 붙으면 <strong>사람</strong>을 안다. 확장의 축이 명확하다.</p>
+    <p>머리는 뒤척임이 가장 선명하게 나타나는 부위이고, 일어나면 압력이 풀리며 기울기가 바뀐다. 무엇보다 <strong>착용이 아니라 그냥 눕는 것</strong>이라 사용 저항이 0이다. 케이블은 안전 문제이므로 <strong>독립 보드 + BLE</strong>여야 하며, System OFF 0.4µA면 코인셀로 수개월 간다. 세탁을 위해 베개 커버 안에 넣는 <strong>파우치형</strong>일 것.</p>
+    <p style="margin-bottom:0"><strong>다만 용도는 데이터가 아니다.</strong> 수면 점수를 만들려는 유혹이 여기서 가장 강해지는데, 그것은 §9-6 위반이다. 올바른 용도는 하나다 — <strong>사용자가 뒤척이면 팰도 뒤척인다.</strong> 빛을 켜지 않고 숨소리 리듬만 잠깐 흐트러졌다 돌아가면 된다. 그것이 "함께 잔다"의 물리적 구현이며, 어떤 수면 앱도 흉내낼 수 없다.</p>
+  </div>
+</section>
+
+<!-- §14 -->
+<section>
+  <p class="sec">§14 &nbsp;Open</p>
+  <h2>아직 정하지 않은 것</h2>
+  <ul>
+    <li><strong>이름.</strong> 고유명 후보군 필요. 기능명·"Sleep-무엇" 형태는 배제</li>
+    <li><strong>팰의 종(種).</strong> 동물인가, 정체불명의 생물인가. 정체불명 쪽이 성별·취향 편향이 적고 Fuzozo·라부부 계보와 맞는다</li>
+    <li><strong>가격대.</strong> 반려 트랙이므로 기능 대비 가격 비교를 피할 수 있다. 참고 — Moflin ¥59,400 / Ropet $299 / Fuzozo 399元</li>
+    <li><strong>무선 충전 탑재 시점.</strong> 발열 실측 이후. 그 전에는 유선 포트를 몸통 뒤로 뺀다</li>
+    <li><strong>폰 없이도 성립하는 최소 동작.</strong> 대기 상태에서 팰이 수면등으로만 기능할 때 어디까지 살아 있어야 하는가</li>
+  </ul>
+</section>
+
+<footer>
+  <p><strong>v1.1 변경 사항.</strong> 폼팩터를 인형에서 <strong>가로형 수면등 + 폰 도크</strong>로 변경(§5). OLED를 제거하고 눈을 폰 화면으로 이관(§7·§10). 센싱을 <strong>조도와 마이크</strong>로 확정하고 카메라 인체 감지를 규율로 배제(§9-7). 서보를 v0.5, 베개 유닛을 v1 로드맵에 편입(§13). 발열 리스크를 도크 구조 기준으로 하향(§12).</p>
+  <p><strong>이 문서의 근거.</strong> 포지셔닝과 설계 규율은 2024–2026 피지컬 AI 토이 시장 조사(크라우드펀딩·오픈소스·상용·여론·비영어권 5개 갈래 교차 검증)에서 도출했다. 하드웨어 명세는 NUCODE 공식 가이드와 Zephyr 보드 문서 교차 확인. 오소솜니아는 임상 문헌에 기록된 개념이다.</p>
+  <p style="margin-bottom:0"><strong>확정되지 않은 것.</strong> 발열 수치는 실측 전이며, 무선 충전 동시 사용 시의 온도 상승은 반드시 측정 후 설계에 반영해야 한다. 리텐션 목표(Ropet 90일 80%)는 해당 사의 자체 발표 수치로 독립 검증되지 않았다.</p>
+</footer>
+
+</div>
