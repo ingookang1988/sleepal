@@ -28,7 +28,8 @@
 - **ADR 번호는 자기 계보 대역에서만 할당한다** — 얼굴 101–199(다음 112) · 몸통 201–299(다음 206) · 그 외 301–399. 06–42 는 상류 인용이라 은퇴
 - 인간 결정 1건 미해결 — [WO-01e-1] 3:00 연출(후보 3개)
 - **전 문서 `tier: draft` — 규범적 효력 0.** [ARCH-01]을 검수 게이트로 쓰려면 인간 승격 필요
-- 잔여: **git 커밋 0건**(`ref/**/source/` 16MB 포함 여부 미정 — 배포는 `.railwayignore` 로 이미 우회) · 루트 README 2종 템플릿 · 훅 미설치
+- 잔여: 루트 README 2종이 아직 템플릿 설명서 · 훅 미설치(`scripts/HOOKS.md`)
+- git: 초기 커밋 완료 · `origin` = github.com/ingookang1988/sleepal (public) · `main` 추적 중. `ref` 하위 `source/`(16MB)는 gitignore
 
 ## 5. Verification status
 - 하네스: `node scripts/health.js` **게이트 전부 통과** · `zfs-linter` 통과 · ADR 중복 0
