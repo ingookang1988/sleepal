@@ -5,31 +5,24 @@
 # Handoff → next session
 
 ## 1. Summary
-P1 기획·기록 → 공통 셸 구현까지 한 세션에 갔다. [PHASE-02]·[PLAN-02] v0.2(파트 H/T 파티션)·CON-02~04·WO 9건·ADR 대역 401–499([ARCH-00])·팀 프로필(`team_sleepal`)이 평면에 들어갔고, 코드는 [WO-02a-1](PWA 셸, **Closed**·아카이브됨)과 [WO-02a-2](모듈 분할, **Verifying**)가 main 머지·배포됐다(BUILD **2026-08-22f** 서빙 검증). CI 영구 적색이던 adopter-arm 게이트도 수정([ADR-303]). PR #1·#2 전부 머지. **그리고 보드 하드웨어를 수령했다** — 실기 검증 계보가 열린다.
+NU40·조도 전용 RN 앱 [WO-02f-1]을 Galaxy S22에 설치해 수직 슬라이스 실기까지 완료하고 Closed→아카이브했다. `SLEEPPAL-PILLOW-01` NUS notify, `LUX:2344`, RSSI -66, USB reverse 로컬 PWA 얼굴, SQLite 14:36~14:38 조도 버킷 3개를 확인했고 `feature/live.md`에 Live로 반영했다.
 
 ## 2. Changed locations (ID list)
-- 평면: [PHASE-02] · [PLAN-02] v0.2 · [CON-02] [CON-03] [CON-04] · HISTORY 2026-08-22 행 · [ADR-302] [ADR-303] · [ARCH-00] §ADR bands(+401–499) · `profile/human/team_sleepal.md` · `feature/live.md`(PWA 셸 Live)
-- WO: [WO-02a-1] Closed → `sprint/archived/` · [WO-02a-2] Verifying · 02a-3~02e-1 Draft 7건
-- 코드: `app/` 8모듈 분할 + PWA 5파일(BUILD 22f) · `scripts/deploy.js`([ADR-116] 자동화) · `scripts/adopter-arm.js`+회귀 4건
-- 시연 시나리오 세션(2026-08-22, 인간 합의 반영): [PLAN-02] v0.3(시연 시나리오 v1 + 놀이 후보 — 거치/이탈 트리거·알람·시간당 기록·대화 일기) · [CON-03] v0.2(alarm·wake·diary·밤중 이벤트) · [WO-02d-3](알람) 신설 Draft · [WO-02d-1] 거치/이탈 행 추가 · `next.md` 재생성. 코드 변경 없음
-- **화면 목업**: `ref/mockups/sleepal-mockups.html` — 시연 시나리오 9화면(팰 앱 6 + 트래킹 앱 3), 단일 HTML. 색·눈 좌표는 `app/face/eyes.js` STATES 상속, 화면별 트리거·WO·규범 주석 포함. **표정 FE 진행 중인 에이전트가 이어서 업데이트할 예정**(소유 이관 — 이 세션은 더 안 건드린다). 미결 1건: PLAY 화면 하단 "듣는 중" 점 표시의 R3 저촉 여부(목업에 후보로만 표기)
+- [PLAN-02] v0.3 · [CON-03] v0.2 · [PLAN-02f] v0.4 · [CON-02f] v0.3 · [CON-02f1] v0.1 · [WO-02f-1] Closed→archived
+- `mobile/` · `feature/live.md` · `sprint/next.md` · `sprint/HANDOFF.md`
 
 ## 3. Next task (single entry point)
-**하드웨어 수령으로 [WO-01a-1](툴체인·컴파일 검증)이 최우선이 됐다** — [CON-01]은 여전히 한 번도 보드 왕복이 없는 미검증 계약이고, H 파트(강인구 PO) 소유다. 이어서 보드 lux → `LUX:` 5Hz → 표정 체인 실검증.
-병행 가능: [WO-02a-3](프록시 — 공통 셸 마지막) · [WO-02a-2] 폰 스모크 마감(아래 방법).
-- **02a-2 스모크 방법**: dev 화면과 얼굴이 서로 대체 관계(R3)라 버튼과 얼굴을 동시에 못 본다 — dev에서 ①카메라 조도계 ON ②표정 HUD ON 후 **닫기 → 얼굴 화면에서** 손전등 비췄다 끄기(움찔·안도 + HUD 수치), 두 손가락 탭 상태 전환. 확인되면 02a-2 Closed → **02b~02e 병렬 게이트 해제**
+**[PLAN-02f] 단계 7 밤샘 검증** — 30분 예비 런으로 `LUX:` 수신율·`gapMs`·배터리·발열과 `SLEEPING` 정상 종료를 먼저 확인한 뒤 8시간 런으로 확장한다. 새 WO를 02f-2로 만들고 시작할 것.
 
 ## 4. Open / cautions
-- [WO-02a-2]가 **Verifying = 02a 계보 잠금**(blast-radius fail-close) — 스모크 마감 전 다른 세션이 02a 를 건드리면 막힌다
-- ⚠ **railway.json (Config as Code) 폐기 예고** — 2026-12-01 이후 중단, `.railway/railway.ts` 마이그레이션 필요(`railway config migrate`). 급하지 않음
-- 배포: `npm run deploy -- -p 7acb7b60-33ef-4d38-a44a-83f997f53226` (스테이징+BUILD 검증 자동). 이 원격 세션엔 railway CLI 없음 — 배포는 로컬
-- PWA 는 SW 캐시라 **재실행 1회 후 새 빌드** — dev 화면 build 줄로 확인
-- 실프로필 `user_ingookang.local.md` — **로컬 체크아웃 저장 필요**(원격 컨테이너 휘발), 내용은 세션 대화에
-- ADR 대역: 얼굴 101–(다음 118) · 몸통 201–(다음 206) · 그 외/02a·02b 301–(다음 304) · **트래킹 401–(다음 401)**
-- 이월 미해결: [WO-01d-1] 인간 보류 · [WO-01e-1] 3:00 연출 · 전 문서 tier: draft(승격은 인간)
+- 동시 보드 세션이 [CON-01] v0.3에 `IMU:`/`MOVE:`를 추가했지만 RN의 [CON-02f1] 범위는 조도 전용이다. 현재 앱은 둘을 unknown으로 무시하고 얼굴/DB에 전달하지 않는다.
+- 최신 main의 [CON-03] 제품 기록과 RN 조도 SQLite [CON-02f1]은 별도 계약이다. 동기화는 정의되지 않았고 암묵적으로 합치지 않는다.
+- RSSI는 `VERY_NEAR 추정`뿐이며 10cm를 보장하지 않는다. 백그라운드 강제 화면 실행도 범위 밖이다.
+- PWA는 현재 HTTPS URL을 WebView로 읽는다. 릴리스 R8을 위한 번들 내장/오프라인 패키징은 후속이다.
+- 폰 인터넷이 꺼져 Railway PWA가 실패해 `.env.local`의 `http://127.0.0.1:5173` + ADB reverse로 실기했다. Metro와 `scripts/serve.js`가 현재 실행 중이며 USB 연결이 끊기면 이 로컬 PWA도 끊긴다.
+- `npm audit --omit=dev`: Expo CLI/config 전이 의존성 moderate 10건. expo-doctor 권장 버전은 모두 일치하고 비파괴 수정 경로가 없어 강제 downgrade하지 않았다.
 
 ## 5. Verification status
-- 하네스: 전 게이트 통과 · npm test 35/35 · CI(main) 그린([ADR-303] 이후)
-- 얼굴: 분할 후 face-sheet **22/22 동일**(시상수·R4·AE 램프 포함) — 동작 보존 기계 증명 완료. 폰 실기: PWA 설치·오프라인 OK([WO-02a-1] 증거) · 분할판 스모크(BLE·표정·HUD) **미완**
-- 배포: BUILD 2026-08-22f 서빙 검증(deploy.js 폴링 ✓)
-- 실기 전부 미완 유지: 보드 · BLE 왕복 · 발열 — **하드웨어 수령으로 이제 가능**
+- mobile: Jest 13/13 · `tsc` · expo-doctor 21/21 · Gradle `assembleDebug` 489 tasks · Galaxy S22 설치/실행 · NUS GATT/notify/RSSI/LUX/SQLite/PWA 얼굴 실기 통과.
+- APK: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` 171MB(재생성 산출물).
+- root: npm test 35/35 · lint · health 전 게이트 통과. 미검증: 5Hz 유실률, `SLEEPING` System OFF, 30분/8시간 지속성, PWA 번들 내장.

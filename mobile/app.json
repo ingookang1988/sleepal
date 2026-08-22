@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "SleepPal",
+    "slug": "sleepal-mobile",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "sleepal",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.sleepal.mobile",
+      "permissions": [
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "neverForLocation": false,
+          "bluetoothAlwaysPermission": "팰의 NU40 조도 센서와 연결하기 위해 Bluetooth를 사용합니다."
+        }
+      ]
+    ]
+  }
+}
