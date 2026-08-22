@@ -15,7 +15,9 @@
       "permissions": [
         "android.permission.BLUETOOTH_SCAN",
         "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -38,6 +40,12 @@
           "bluetoothAlwaysPermission": "팰의 NU40 조도 센서와 연결하기 위해 Bluetooth를 사용합니다."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "80ac0c69-1dcd-44fe-85a0-41d3244fb14b"
+      }
+    },
+    "owner": "geusanlim"
   }
 }

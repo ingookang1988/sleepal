@@ -5,6 +5,7 @@
 | WO | 제목 | 부모 | 상태 | 증거 |
 |---|---|---|---|---|
 | [WO-01a-1] | 라이브러리 설치와 컴파일 검증 — 집 와이파이에서 | PLAN-01a | Draft | 해당없음 |
+| [WO-01a-2] | Pillow Node — CON-01 상태·조도·릴리스 정합 | PLAN-01a | Draft | 있음 |
 | [WO-01b-1] | 눈 5상태 렌더 + 가로 전체화면 + Wake Lock | PLAN-01b | Active | 있음 |
 | [WO-01b-2] | HTTPS 배포와 폰 실기 확인 | PLAN-01b | Active | 있음 |
 | [WO-01b-3] | 숨소리·하품 오디오와 백그라운드 재생 실측 | PLAN-01b | Draft | 해당없음 |
@@ -28,4 +29,7 @@
 | [WO-02d-2] | 트래커 엔진 v1 — 마이크 분석 → 수면 이벤트 기록 | PLAN-02 | Draft | 해당없음 |
 | [WO-02d-3] | 알람 — 등록·울림·반복 카운트·기상 판정 연동 | PLAN-02 | Draft | 해당없음 |
 | [WO-02e-1] | 트래커 기록 화면 — Vite+React 스캐폴드 + 일기 뷰 | PLAN-02 | Draft | 해당없음 |
+| [WO-02f-3] | RN Android Firebase App Distribution 연결 | PLAN-02f | Active | 있음 |
+| [WO-02g-1] | 수동 NFC 태그 — RN App Link와 PWA 폴백 | PLAN-02g | Draft | 해당없음 |
+| [WO-02g-2] | NU40 NFCT Type 2 Tag 에뮬레이션 스파이크 | PLAN-02g | Draft | 해당없음 |
 <!-- worktable:end -->

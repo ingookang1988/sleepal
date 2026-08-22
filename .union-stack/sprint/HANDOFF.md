@@ -5,24 +5,24 @@
 # Handoff → next session
 
 ## 1. Summary
-NU40·조도 전용 RN 앱 [WO-02f-1]을 Galaxy S22에 설치해 수직 슬라이스 실기까지 완료하고 Closed→아카이브했다. `SLEEPPAL-PILLOW-01` NUS notify, `LUX:2344`, RSSI -66, USB reverse 로컬 PWA 얼굴, SQLite 14:36~14:38 조도 버킷 3개를 확인했고 `feature/live.md`에 Live로 반영했다.
+중복 RN 커밋의 rebase 충돌을 최신 `main` 기준으로 해소하고, 기존 staged Firebase 배포·BLE 촬영 트리거·NFC 조사 자산을 복원했다. NFC custom-scheme 프로토타입은 [CON-02g] HTTPS App Link 확정 전까지 앱 설정에 연결하지 않았다.
 
 ## 2. Changed locations (ID list)
-- [PLAN-02] v0.3 · [CON-03] v0.2 · [PLAN-02f] v0.4 · [CON-02f] v0.3 · [CON-02f1] v0.1 · [WO-02f-1] Closed→archived
-- `mobile/` · `feature/live.md` · `sprint/next.md` · `sprint/HANDOFF.md`
+- [CON-01] v0.6 · [ANL-01a] · [WO-01a-2] · [WO-02f-3]
+- [PLAN-02g] · [ANL-02g] · [CON-02g] v0.2 · [WO-02g-1] · [WO-02g-2]
+- `demo/` · `mobile/` · `sprint/next.md` · `sprint/HANDOFF.md`
 
 ## 3. Next task (single entry point)
-**[PLAN-02f] 단계 7 밤샘 검증** — 30분 예비 런으로 `LUX:` 수신율·`gapMs`·배터리·발열과 `SLEEPING` 정상 종료를 먼저 확인한 뒤 8시간 런으로 확장한다. 새 WO를 02f-2로 만들고 시작할 것.
+**[WO-01b-5] 브라우저 시트·폰 미적 검증** — `app/face-sheet.html`의 37개 assertion을 실제 브라우저에서 실행하고, 앱 키 6/7/8과 조도 불켜기·끄기로 happy/curious/sad/startled/relieved의 입·눈꺼풀 강도를 확인한다.
 
 ## 4. Open / cautions
-- 동시 보드 세션이 [CON-01] v0.3에 `IMU:`/`MOVE:`를 추가했지만 RN의 [CON-02f1] 범위는 조도 전용이다. 현재 앱은 둘을 unknown으로 무시하고 얼굴/DB에 전달하지 않는다.
-- 최신 main의 [CON-03] 제품 기록과 RN 조도 SQLite [CON-02f1]은 별도 계약이다. 동기화는 정의되지 않았고 암묵적으로 합치지 않는다.
-- RSSI는 `VERY_NEAR 추정`뿐이며 10cm를 보장하지 않는다. 백그라운드 강제 화면 실행도 범위 밖이다.
-- PWA는 현재 HTTPS URL을 WebView로 읽는다. 릴리스 R8을 위한 번들 내장/오프라인 패키징은 후속이다.
-- 폰 인터넷이 꺼져 Railway PWA가 실패해 `.env.local`의 `http://127.0.0.1:5173` + ADB reverse로 실기했다. Metro와 `scripts/serve.js`가 현재 실행 중이며 USB 연결이 끊기면 이 로컬 PWA도 끊긴다.
-- `npm audit --omit=dev`: Expo CLI/config 전이 의존성 moderate 10건. expo-doctor 권장 버전은 모두 일치하고 비파괴 수정 경로가 없어 강제 downgrade하지 않았다.
+- [WO-02f-3] 실제 Firebase 업로드는 Firebase·EAS 재로그인과 서명 APK가 필요하다.
+- `mobile/src/nfc/`·`plugins/withSleepalNfc.js`의 `sleepal://` 프로토타입은 [CON-02g] v0.2의 HTTPS PWA 폴백과 불일치하므로 앱 설정에서 비활성이다.
+- [WO-01a-2]의 `STATE:`·`SLEEPING`·System OFF·의도 LUX step 실기는 미완료다.
+- [WO-01b-5]는 브라우저·폰 표정 실기 전 Closed로 올리지 않는다.
 
 ## 5. Verification status
-- mobile: Jest 13/13 · `tsc` · expo-doctor 21/21 · Gradle `assembleDebug` 489 tasks · Galaxy S22 설치/실행 · NUS GATT/notify/RSSI/LUX/SQLite/PWA 얼굴 실기 통과.
-- APK: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` 171MB(재생성 산출물).
-- root: npm test 35/35 · lint · health 전 게이트 통과. 미검증: 5Hz 유실률, `SLEEPING` System OFF, 30분/8시간 지속성, PWA 번들 내장.
+- 충돌 마커 0 · root 37/37 · lint · health · strict permission guard 통과.
+- mobile Jest 19/19 · App Distribution 2/2 · `tsc` · expo-doctor 21/21 · Expo public config 통과.
+- demo Python compile · shell syntax 통과.
+- 직전 실기: Gradle `assembleDebug` 성공(346 tasks) · Galaxy S22 설치 · NU40 RSSI -54 · `LUX:1780` 수신.

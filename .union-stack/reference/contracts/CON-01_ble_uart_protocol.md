@@ -4,7 +4,7 @@ id: CON-01
 title: BLE UART 메시지 계약 (보드 ↔ 폰)
 status: Draft
 tier: draft
-version: 0.4
+version: 0.6
 consumers: [PLAN-02f, CON-02f, WO-02f-1]
 ---
 
@@ -18,7 +18,11 @@ consumers: [PLAN-02f, CON-02f, WO-02f-1]
 >
 > **v0.4 — 아날로그 조도 센서로 교체.** P0.02(A0)의 12-bit ADC 상대값을 필터링해 기존 `LUX:` wire name으로 보낸다. 교정된 lux 단위가 아니며 이름은 RN/PWA 호환 때문에 유지한다.
 >
-> ※ `consumers:`를 선언하지 않는다 — 두 소비자가 이 계약과 같은 계보(`01`)에 있어 `blast-radius`가 이미 잡는다. 다른 계보의 소비자가 생기면 그때 선언할 것.
+> **v0.5 — issue #5 정합.** Pillow Node의 필수/미지원 명령을 분리하고, raw IMU 릴리스 기본 OFF·현재 상태 replay·LUX 실측 게이트를 명시한다. 근거 [ANL-01a].
+>
+> **v0.6 — 무선 촬영 트리거.** NU40은 휴대폰과 외부 컴퓨터 2개 central 연결을 허용한다. 컴퓨터가 NUS RX에 `FACE`를 쓰면 보드는 기존 `BTN:A:DOWN/UP`을 notify해 앱 얼굴을 연다.
+>
+> ※ 01 계보의 [PLAN-01a]·[PLAN-01b]는 `blast-radius`가 자동으로 잡고, 계보 밖 [PLAN-02f]·[CON-02f]·[WO-02f-1]은 frontmatter `consumers:`로 선언한다.
 
 ## 전송 계층
 Nordic UART Service (NUS). 기존 배관은 `ref/toython-sleeppal/toython-sleeppal/code/`의 `toython_ble.ino`(보드)와 `web-client-index.html`(폰)에 이미 구현되어 있고 **검증 대상은 배관이 아니라 메시지다.**
@@ -67,6 +71,24 @@ TX       6e400003-b5a3-f393-e0a9-e50e24dcca9e   보드 → 폰 (notify)
 | `TILT:<-90..90>` | 기울기 → 밝기 매핑. **P0에서 미사용** | 기존 |
 | `SHAKE` | LED 3회 점멸. **P0에서 미사용** | 기존 |
 | `WAKE` | 아침 전이 요청 | **신규** |
+| `FACE` | 외부 컴퓨터 촬영 신호. 보드가 `BTN:A:DOWN`→`BTN:A:UP`으로 변환 | **v0.6 · 시연 전용** |
+
+### 2중 central 시연 경로
+
+```text
+wake-face.sh → 컴퓨터 BLE central → NU40 NUS RX `FACE\n`
+             → NU40 NUS TX `BTN:A:DOWN\nBTN:A:UP\n` → RN 앱
+```
+
+- 휴대폰이 첫 central로 계속 연결되고 notify를 구독한 상태에서 컴퓨터가 두 번째 central로 잠깐 연결한다.
+- `FACE`는 사용자 데이터·인증·제품 원격제어가 아닌 촬영용 물리 버튼 대체다.
+- 컴퓨터가 끊겨도 휴대폰 연결과 센서 notify는 유지돼야 한다.
+
+### Pillow Node 지원 프로필
+
+- 필수 TX: `HELLO`, `LUX`, `LUX:BASE`, `STATE`, `SLEEPING`, `MOVE`; 개발 전용 TX: `IMU`.
+- 필수 RX: `WAKE`; 시연 전용 RX: `FACE`. `LED`, `TILT`, `SHAKE`는 데모 스캐폴드 명령이며 `NU40_Pillow_Node`에서는 **미지원**이다. 호출자는 Pillow 광고명에 이 셋을 릴리스 UI로 노출하지 않는다.
+- `IMU:` 빌드 플래그는 기본 0이다. 보정 빌드만 명시적으로 1로 올리며, 런타임 기본값으로 대신하지 않는다.
 
 ## 유도 상태 — 밤·아침은 메시지가 없다
 [IDENTITY]의 상태 6종 중 `밤`·`아침`을 나르는 `STATE:` 값이 없다. **메시지를 늘리지 않고 기존 신호에서 유도한다.**
@@ -90,6 +112,7 @@ TX       6e400003-b5a3-f393-e0a9-e50e24dcca9e   보드 → 폰 (notify)
 
 ## 계약 규칙
 1. **상태 판정은 보드가 한다.** 여기서 *판정*이란 **`STATE:` 전이**를 말한다. 폰은 `STATE:`를 받아 눈을 바꿀 뿐, lux를 보고 스스로 상태를 옮기지 않는다. 판정 주체가 둘이면 무대에서 반드시 어긋난다.
+   - 보드는 상태 전이 때뿐 아니라 BLE 연결 직후 현재 `STATE:` snapshot을 다시 보낸다. 폰 reload·재연결이 상태 전이를 기다리며 잘못 깨어 있으면 안 된다.
 2. **표정 변조는 폰이 한다 — 단 상태 전이를 유발할 수 없다.** 폰은 `LUX:`를 읽어 눈부심 찡그림 같은 *연속적 표정*을 만들어도 된다(규칙 1의 "판정"에 해당하지 않는다). 이산 상태는 보드, 연속 표정은 폰 — 두 층은 합성되지 표를 덮어쓰지 않는다.
    - **폰은 glare 기준선을 자체 보유한다.** `LUX:BASE`는 초기 시드로만 쓰고, 이후에는 최근 30초 lux의 롤링 중앙값을 쓴다. 보드가 기준선을 재보정할 때 폰의 표정이 소리 없이 풀리는 결합을 끊기 위함이며, 결과적으로 규칙 1이 더 강하게 지켜진다.
    - **밤 상태에서 `LUX:` 응답은 0이다** — [ARCH-01] R4. 새벽에 누가 불을 켰다고 화면이 반응하면 이 제품이 막으려던 행동을 제품이 유발한다.
@@ -98,6 +121,7 @@ TX       6e400003-b5a3-f393-e0a9-e50e24dcca9e   보드 → 폰 (notify)
 5. **알 수 없는 메시지는 무시한다.** 양쪽 다 파싱 실패로 죽지 않는다(스캐폴드는 이미 그렇게 동작한다).
 6. 메시지를 추가·변경하려면 **이 문서를 먼저 고치고** 양쪽을 맞춘다. 한쪽만 고치면 계약 위반이다.
 7. **IMU 의미는 베개 움직임에 한정한다.** `MOVE:`를 사람의 뒤척임·자세·수면 단계로 사용자에게 단정해 표시하지 않는다.
+8. **Pillow Node의 `LUX:` 동적 범위는 실측으로 문턱을 정한다.** wire 선형값을 임의 감마 변환하지 않는다. 정지 잡음과 의도 step이 분리되면 폰의 board source 문턱만 조정하고, 분리되지 않아 매핑을 바꿔야 하면 이 계약을 코드보다 먼저 버전업한다.
 
 ## 호출 예
 ```cpp
@@ -114,5 +138,6 @@ const l = line.match(/^LUX:(\d+)$/);
 if (l) feedLux(+l[1]);                          // 연속 — 표정만, 전이 금지
 ```
 
-## 미검증
-`toython_ble.ino`는 **컴파일 검증 전**이다. 이 계약의 기존 메시지들도 실기에서 왕복이 확인된 적이 없다 — [PLAN-01a] 작업 2(BLE 생명선, 12:20 데드라인)가 이 계약의 첫 검증이다. **5Hz 데드밴드는 펌웨어 미구현** — [PLAN-01a]에 반영 필요.
+## 검증 상태
+
+`7de9e9b`와 [WO-02f-1]에서 `HELLO`·5Hz/deadband `LUX`·`LUX:BASE`의 NUS→RN 실기 수신은 확인됐다. `STATE`·`SLEEPING`·System OFF는 Pillow Node에 미구현이고, `LUX` 의도 step과 잡음 분포도 미측정이다. [WO-01a-2]가 남은 계약 사이클을 닫는다.

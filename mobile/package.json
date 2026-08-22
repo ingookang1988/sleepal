@@ -29,8 +29,14 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand",
-    "prebuild:android": "expo prebuild --platform android"
+    "test": "jest --runInBand && node --test scripts/*.test.cjs",
+    "prebuild:android": "expo prebuild --platform android",
+    "eas:login": "npx --yes eas-cli@22.2.0 login",
+    "eas:init": "npx --yes eas-cli@22.2.0 init",
+    "build:distribution": "npx --yes eas-cli@22.2.0 build --platform android --profile app-distribution",
+    "firebase:login": "npx --yes firebase-tools@15.28.1 login --reauth",
+    "firebase:apps": "npx --yes firebase-tools@15.28.1 apps:list ANDROID --project sleepal-app",
+    "distribute:firebase": "node scripts/distribute-firebase.cjs"
   },
   "jest": {
     "preset": "jest-expo",
