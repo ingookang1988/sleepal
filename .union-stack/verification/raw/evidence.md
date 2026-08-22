@@ -4,3 +4,4 @@
 - [2026-08-22][EVD-ci] gates green @ 5579e82 (run 32546338425) — naming·history·permission·handoff·tests·health·adopter-arm
 - [2026-08-22][EVD-ci] gates green @ 536af87 (run 32547346891) — naming·history·permission·handoff·tests·health·adopter-arm
 - [2026-08-22][EVD-ci] gates green @ 7f2d0aa (run 32551627028) — naming·history·permission·handoff·tests·health·adopter-arm
+- [2026-08-22][EVD-ci] gates green @ 9ff988a (run 32552665512) — naming·history·permission·handoff·tests·health·adopter-arm
