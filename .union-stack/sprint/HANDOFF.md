@@ -20,6 +20,7 @@
 ⚠ 배포는 로컬에서 `npm run deploy -- -p <projectId>`([ADR-116]) — 배포 시 BUILD 2026-08-22g 확인.
 
 ## 4. Open / cautions
+- **`feat/connection-and-sensor`(geusan) 통합 검토 완료(2026-08-22)** — 펌웨어(NU40_Pillow_Node: HELLO·LUX:·LUX:BASE:·IMU:·MOVE:) + RN WebView 브리지(`window.SP.handleLine` 직접 호출 — FE 훅 기존 노출로 즉시 호환) + [CON-01] v0.4. FE 대응: `DEVICE_PREFIX` 기본 TOYTHON→**SLEEPPAL**(BUILD 2026-08-22j). ⚠ 잔여 리스크: ① 펌웨어에 `STATE:`/`SLEEPING` 미구현 — 상태 전이는 여전히 수동 ② ADC 상대값(4095−필터ADC)의 다이내믹 레인지가 로그 lux 대비 압축 — 실측(가림 1420↔1900)만으로는 움찔 문턱 **2 stop 미달**(1.53 stop) 가능성 → 실기 직사광 범위 측정 후 문턱 또는 펌웨어 매핑 튜닝 필요(마운틴과 합의) ③ 이 브랜치가 HANDOFF·CON-03 을 main 기준으로 수정 — 본 브랜치와 **병합 충돌 예정**(HANDOFF 는 latest-only, 병합 시 수동 통합) ④ RN 래퍼의 등장으로 [ADR-401](NFC 자동 실행) 재검토 여지 — 네이티브 래퍼는 충전 트리거 자동 실행이 가능
 - [WO-01b-5] 폰 실기 미확인(이 머신 브라우저 비표시 — 전부 `SP._step` 결정적 경로) · 미적 판단 인간 몫 · [PLAN-01b] v0.3(입 기하 반영) 승격은 인간 몫
 - `expr:trigger` 어휘는 **잠정 합의**([CON-02] v0.2) — babble.js([WO-02b-2])·sound.js([WO-02c-1]) 착수 시 규칙 3(전원 합의)로 확정할 것
 - P1 최대 리스크 밤샘 상시 가동(발열·배터리) → [PLAN-02] §리스크 · [PHASE-02] Exit gate 5 (불변)
