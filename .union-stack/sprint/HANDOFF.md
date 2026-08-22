@@ -13,7 +13,8 @@
 - 인간 디렉션 반영: [WO-02b-3] **Verifying**(목업 v1.2 = 디렉션 보드 · 확정값은 [ADR-123]) · [WO-01b-5] **Verifying**(런타임 구현 + 시트 +5) · [WO-02b-2] 병합(main 판 LISTEN/THINK 기준 + 01b-7 수신부 주석)
 - 코드(app/): `face/{mouth,fx,ear}.js` 신설 · `expression.js`(EMO·GZ·MORNING 포즈) · `eyes.js`(lowLidPath·소등 연기·개안 시간차) · `main.js`(MIN_APERTURE 5mm·깜빡임 좌우 60ms·배선·키 6~0 `,` `.` `/` `m`) · `ble.js`(DEVICE_PREFIX **SLEEPPAL**) · `index.html`(BUILD **2026-08-22k**) · `sw.js`(+3) · `face-sheet.html`(게이트 45 · 준비 폴링)
 - [CON-02] v0.2 · `ref/mockups/sleepal-mockups.html` **v1.2**(가로 158×73 팰 5화면 · 세로 트래커 · 제스처 6종 디렉션 보드 · 녹색 듣기 점 제거)
-- [ADR-401](초안 — NFC 거치 자동 실행) · 마운틴 전달용 이슈 초안(스크래치, 게시 대기)
+- [ADR-401](초안 — NFC 거치 자동 실행) · 마운틴 전달용 이슈 초안 → **`.union-stack/spike/issue_draft_connection_and_sensor.md`**(게시 대기 — gh CLI/Chrome 확장 부재로 인간이 붙여넣기, 게시 후 spike 폐기)
+- 신설 [LSN-01b](SW 캐시 — BUILD 범프 직후 시트 첫 로드는 이전 모듈 서빙, 재로드 후 판독. 2회 관측)
 
 ## 3. Next task (single entry point)
 **[WO-02b-3]·[WO-01b-5] 인간 확인** — 목업 v1.2 디렉션 보드 승인 + 로컬 `node scripts/serve.js` → `/app/` 실기: 키 5(아침 시퀀스) · 4→5(개안 좌우 시간차) · 3→4(소등 연기 6.5s) · 2+슬라이더(최소 개구) · 6~9·`,` `.` `/`(제스처·시선). 이후 [WO-02b-2](옹알이+LISTEN·THINK — 선행 충족됨) 또는 [WO-02a-3] 잔여 → 02b~02e 병렬.
@@ -27,7 +28,7 @@
 - `expr:trigger` 어휘 v0.2 잠정 — [WO-02b-2] 착수 시 6제스처(LISTEN·THINK 포함) 확장 합의(규칙 3)
 - ADR 대역: 얼굴 101– **다음 124** · 몸통 201– 다음 206 · 그 외 301– 다음 305 · 트래킹 401– 다음 402
 - [CON-01] 보드 왕복 0회 · [WO-01b-3] 오디오 미구현 · [WO-01e-1] 3:00 연출 미해결 · 몸통 [WO-01d-1] 인간 보류 · P1 밤샘 발열 리스크([PHASE-02] Exit gate 5)
-- git: 브랜치 `claude/sleeppal-fe-expression-rendering-7b2e04` ← main 병합 필요(HANDOFF 수동 통합 각오)
+- git: 브랜치 `claude/sleeppal-fe-expression-rendering-7b2e04` — **전부 커밋·푸시 완료**(e796b02 → d7b2ae3 + 종료 커밋). main 병합 필요 — `feat/connection-and-sensor` 와 PR 순서 협의 후 나중 쪽이 HANDOFF·CON-03 수동 통합
 
 ## 5. Verification status
 - `app/face-sheet.html` **45/45**(기존 40 회귀 무손상 + 아침 포즈/개안/최소 개구/깜빡임 시간차/소등 연기 5) · `zfs-linter` · `permission-guard` · `work-close --table --write` 통과 · 목업 렌더 검증(가로 5 · 세로 4 · 비율 2.16 · 오버플로 0)
