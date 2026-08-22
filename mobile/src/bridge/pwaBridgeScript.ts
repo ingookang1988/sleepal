@@ -12,6 +12,8 @@ export const PWA_BRIDGE_SCRIPT = `
       lastSeq = message.seq;
       if (message.type === 'ble/line' && window.SP && window.SP.handleLine) {
         window.SP.handleLine(message.payload.line);
+      } else if (message.type === 'expr/trigger' && window.SP && window.SP.emitExpression) {
+        window.SP.emitExpression(message.payload);
       }
     } catch (_) {}
   }
@@ -20,8 +22,13 @@ export const PWA_BRIDGE_SCRIPT = `
   document.addEventListener('message', receive);
 
   var readyTimer = setInterval(function () {
-    if (!window.ReactNativeWebView || !window.SP || !window.SP.handleLine) return;
+    if (!window.ReactNativeWebView || !window.SP || !window.SP.handleLine || !window.SP.emitExpression) return;
     clearInterval(readyTimer);
+    var startButton = document.getElementById('bStart');
+    var entryScreen = document.getElementById('entryScreen');
+    if (startButton && entryScreen && entryScreen.classList.contains('on')) {
+      startButton.click();
+    }
     window.ReactNativeWebView.postMessage(JSON.stringify({
       v: 1,
       type: 'web/ready',

@@ -6,6 +6,7 @@
 'use strict';
 import { $, clamp, palBus, rand } from '../core.js';
 import { F, STATES, VB } from './eyes.js';
+import { normalizeExpressionTrigger } from './expression-protocol.mjs';
 
 const NS = 'http://www.w3.org/2000/svg';
 export const FX = { alive: [], music: false, nextZ: 0, nextNote: 0 };
@@ -25,12 +26,13 @@ function spawn(kind, x, y) {
 // 음표 1개 — 지금은 디버그·데모 경로뿐이고, 음악 재생([WO-02c-1])이 붙으면
 // 사운드 파트가 [CON-01b] expr:trigger {kind:'note'} 로 이 함수를 때린다.
 export function fxNote() {
-  if (F.state === 'NIGHT') return;                       // ⛔ R4
+  if (F.state === 'ASLEEP' || F.state === 'NIGHT') return; // 잠듦은 zzz만 · ⛔ R4
   spawn('note', 79 + rand(-9, 9), 61);
 }
 export function setMusic(on) { FX.music = !!on; }
 palBus.addEventListener('expr:trigger', function (e) {
-  if (e.detail && e.detail.kind === 'note') fxNote();
+  const payload = normalizeExpressionTrigger(e.detail);
+  if (payload && payload.kind === 'note') fxNote();
 });
 
 export function tickFx(t, dt) {

@@ -5,7 +5,8 @@
 import { $, clamp, log, palBus, qs, rand, smooth } from './core.js';
 import { applyViewBox, blinkAmount, EYE, F, getScreenWmm, lidPath, lowLidPath, ORDER,
          setEyeState, setScreenWmm, show, STATES, VB } from './face/eyes.js';
-import { BREATH, EMO, expression, exprTrigger, GATE, GAZE_MM, gazeTo, GL, GZ } from './face/expression.js';
+import { BREATH, EMO, emitExpression, expression, exprTrigger, GATE, GAZE_MM, gazeTo, GL, GZ,
+         normalizeExpressionTrigger } from './face/expression.js';
 import { tickMouth } from './face/mouth.js';
 import { FX, fxNote, setMusic, tickFx } from './face/fx.js';
 import { earBanned, earOn, earStart, earStop, feedSnd, snd, tickEar } from './face/ear.js';
@@ -146,7 +147,7 @@ addEventListener('keydown', function (e) {
   else if (e.key === 'm') { earOn() ? earStop() : earStart(); }
 });
 function emitTrigger(kind, tone) {
-  palBus.dispatchEvent(new CustomEvent('expr:trigger', { detail: { kind: kind, tone: tone } }));
+  emitExpression(kind, tone === undefined ? 1 : tone, 'system');
 }
 $('faceScreen').addEventListener('touchstart', function (e) {
   if (e.touches.length === 2) setEyeState(ORDER[(ORDER.indexOf(F.state) + 1) % ORDER.length]);
@@ -290,7 +291,9 @@ export function boot(build) {
     connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
     GL: GL, GATE: GATE, BREATH: BREATH, expression: expression, VB: VB,
     // [WO-01b-5] 이산 표정·입·fx — 시트 게이트가 읽는다
-    EMO: EMO, exprTrigger: exprTrigger, FX: FX, fxNote: fxNote, setMusic: setMusic,
+    EMO: EMO, emitExpression: emitExpression, exprTrigger: exprTrigger,
+    normalizeExpressionTrigger: normalizeExpressionTrigger,
+    FX: FX, fxNote: fxNote, setMusic: setMusic,
     // [WO-01b-6] 시선·귀 (+[ADR-121] 마이크 생애 정책)
     GZ: GZ, GAZE_MM: GAZE_MM, gazeTo: gazeTo, feedSnd: feedSnd, snd: snd,
     earStart: earStart, earStop: earStop, earBanned: earBanned,
