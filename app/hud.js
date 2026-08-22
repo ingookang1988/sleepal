@@ -4,7 +4,8 @@
 'use strict';
 import { $, clamp, logLines, now, qs, setLogHook } from './core.js';
 import { F, VB, getScreenWmm, show } from './face/eyes.js';
-import { GATE, GL, TAU_DOWN, TAU_RELEASE } from './face/expression.js';
+import { GATE, GL, GZ, TAU_DOWN, TAU_RELEASE } from './face/expression.js';
+import { earOn, snd } from './face/ear.js';
 import { camOn, lux } from './lux.js';
 import { bleStatus, DEVICE_PREFIX } from './ble.js';
 
@@ -53,7 +54,18 @@ export function paintDebug() {
     'expr     ' + (F.state === 'NIGHT' ? '⛔ 정지 (R4)'
       : 'g ' + (F.X ? F.X.g : 0).toFixed(3) +
         '  h ' + F.hNow.toFixed(2) + '  cy ' + F.cyNow.toFixed(2) +
-        '  tilt ' + (F.X ? F.X.tilt : 0).toFixed(1) + '°') + '\n' +
+        '  tilt ' + (F.X ? F.X.tilt : 0).toFixed(1) + '°' +
+        '  emo ' + (F.X && F.X.emo ? F.X.emo + ' ' + F.X.emoAmt.toFixed(2) : '-') +
+        '  low ' + (F.X ? F.X.lowLid : 0).toFixed(2)) + '\n' +
+    'ear      ' + (F.state === 'NIGHT' ? '⛔ 정지 (R4)'
+      : (earOn() ? 'mic' : snd.src) +
+        '  mode ' + (snd.mode || '-') +
+        '  lvl ' + (snd.last === null ? '-' : snd.last.toFixed(3)) +
+        '  base ' + snd.base.toFixed(3) +
+        '  bal ' + snd.bal.toFixed(2) +
+        '  n=' + snd.n +
+        '  gaze ' + GZ.x.toFixed(2) + '/' + GZ.y.toFixed(2) +
+        (GZ.hold > 0 ? ' (머묾 ' + GZ.hold.toFixed(2) + ')' : '')) + '\n' +
     'micro    ' + (F.state === 'NIGHT' ? '-'
       : 'drift ' + (F.X ? F.X.dx : 0).toFixed(2) + '/' + (F.X ? F.X.dy : 0).toFixed(2) +
         '  breath ' + (F.X ? F.X.breath : 0).toFixed(2) +
@@ -179,10 +191,13 @@ export function paintHud() {
     'g ' + f2(X ? X.g : 0, 3) +
       '  h <span class="hi">' + f2(F.hNow) + '</span>' +
       '  cy ' + f2(F.cyNow) +
-      '  tilt ' + f2(X ? X.tilt : 0, 1) + '°' +
+      '  tilt ' + f2(X ? X.tilt + X.tiltE : 0, 1) + '°' +
       '  lid ' + f2(F.lidNow[0]) + '/' + f2(F.lidNow[1]) +
-      '  blk ' + f2(F.blinkNow) + '\n' +
+      '  low ' + f2(X ? X.lowLid : 0) +
+      '  blk ' + f2(F.blinkNow) +
+      (X && X.emo ? '  <span class="ok">' + X.emo + ' ' + f2(X.emoAmt) + '</span>' : '') + '\n' +
     'drift ' + sgn(X ? X.dx : 0) + '/' + sgn(X ? X.dy : 0) +
+      '  gaze ' + sgn(X ? X.gx : 0) + '/' + sgn(X ? X.gy : 0) +
       '  breath ' + sgn(X ? X.breath : 0) +
       '  settle ' + f2(X ? X.settle : 0) +
       '  tremor ' + sgn(X ? X.tremor : 0) +

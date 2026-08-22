@@ -15,6 +15,7 @@ import { BleSnapshot, Nu40BleClient } from './ble/Nu40BleClient';
 import { parseNu40Line, shouldForwardToFace } from './ble/protocol';
 import { RssiProximityEstimator } from './ble/proximity';
 import { BridgeSequencer, parseWebEnvelope, statusPayload } from './bridge/envelope';
+import { ExpressionTriggerPayload, expressionForBoardMessage } from './bridge/expression';
 import { PWA_BRIDGE_SCRIPT } from './bridge/pwaBridgeScript';
 import { LightBucketRow, LightRepository } from './data/LightRepository';
 
@@ -40,6 +41,7 @@ export default function SleepPalApp() {
   const webView = useRef<WebView>(null);
   const webReady = useRef(false);
   const latestReplayLines = useRef(new Map<string, string>());
+  const pendingExpression = useRef<ExpressionTriggerPayload | null>(null);
   const night = useRef(false);
 
   const [screen, setScreen] = useState<Screen>('connect');
@@ -60,6 +62,21 @@ export default function SleepPalApp() {
     setHistory(await repository.recentBuckets());
   }, [repository]);
 
+  const queueExpression = useCallback(
+    (payload: ExpressionTriggerPayload) => {
+      pendingExpression.current = payload;
+      if (!webReady.current || !webView.current) return;
+      postToWeb('expr/trigger', payload);
+      pendingExpression.current = null;
+    },
+    [postToWeb]
+  );
+
+
+  useEffect(() => {
+    if (screen !== 'face') webReady.current = false;
+  }, [screen]);
+
   useEffect(() => {
     void repository.init();
     const unsubscribeSnapshot = ble.subscribe((snapshot) => {
@@ -72,6 +89,12 @@ export default function SleepPalApp() {
     const unsubscribeLines = ble.subscribeLines((line, receivedAt) => {
       const message = parseNu40Line(line);
       if (message.kind === 'lux') void repository.recordLux(message.value, receivedAt);
+      const expression = expressionForBoardMessage(message);
+      if (expression) {
+        queueExpression(expression);
+        night.current = false;
+        setScreen('face');
+      }
       if (message.kind === 'sleeping') {
         night.current = true;
         setScreen('standby');
@@ -97,7 +120,7 @@ export default function SleepPalApp() {
       void repository.flush();
       void ble.destroy();
     };
-  }, [ble, postToWeb, refreshHistory, repository]);
+  }, [ble, postToWeb, queueExpression, refreshHistory, repository]);
 
   useEffect(() => {
     if (bleSnapshot.state !== 'connected') {
@@ -126,6 +149,10 @@ export default function SleepPalApp() {
         postToWeb('native/ready', { bridgeVersion: 1, platform: 'android' });
         postToWeb('ble/status', statusPayload(ble.getSnapshot()));
         for (const line of latestReplayLines.current.values()) postToWeb('ble/line', { line });
+        if (pendingExpression.current) {
+          postToWeb('expr/trigger', pendingExpression.current);
+          pendingExpression.current = null;
+        }
       } else if (message.type === 'ble/connect') {
         void ble.connect();
       } else if (message.type === 'ble/write') {
@@ -145,6 +172,7 @@ export default function SleepPalApp() {
           style={styles.webView}
           originWhitelist={[PWA_ORIGIN]}
           injectedJavaScript={PWA_BRIDGE_SCRIPT}
+          onLoadStart={() => { webReady.current = false; }}
           onMessage={handleWebMessage}
           onShouldStartLoadWithRequest={(request) =>
             request.url === 'about:blank' || request.url.startsWith(PWA_ORIGIN)

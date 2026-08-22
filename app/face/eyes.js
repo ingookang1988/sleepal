@@ -125,3 +125,15 @@ export function lidPath(cx, bottom) {
   return 'M ' + l + ' ' + top + ' H ' + r + ' V ' + side +
          ' Q ' + c + ' ' + ctrl + ' ' + l + ' ' + side + ' Z';
 }
+
+// 아래꺼풀 — 위꺼풀의 거울. 윗변 가운데가 arch 만큼 *올라와* 눈 아래를
+// ⌣ 로 깎는다. 웃는 눈은 위가 아니라 아래에서 만들어진다([WO-01b-5]).
+// arch 는 올라온 양(0이면 평평)과 함께 준다 — 완전히 내려간 상태(top이
+// 눈 바닥 아래)에서는 arch 도 0 에 수렴시켜 눈에 1px 도 닿지 않게 한다.
+export function lowLidPath(cx, top, arch) {
+  const l = (cx - 30).toFixed(2), r = (cx + 30).toFixed(2), c = cx.toFixed(2);
+  const bottom = (top + LID_H).toFixed(2);
+  const side = (top + 2).toFixed(2), ctrl = (top + 2 - arch).toFixed(2);
+  return 'M ' + l + ' ' + bottom + ' H ' + r + ' V ' + side +
+         ' Q ' + c + ' ' + ctrl + ' ' + l + ' ' + side + ' Z';
+}

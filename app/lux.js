@@ -4,7 +4,7 @@
 'use strict';
 import { $, clamp, log, now } from './core.js';
 import { F } from './face/eyes.js';
-import { GL, RELEASE_T } from './face/expression.js';
+import { emitExpression, GL, RELEASE_T } from './face/expression.js';
 
 export const lux = { base: null, med: null, recent: [], last: null,
               count: 0, at: null, mean: null, src: '—', baseUsed: null,
@@ -51,12 +51,14 @@ export function feedLux(v) {
     if (stops >= 2 && Math.max(v, prev) >= 16 && t - GL.flinchAt >= 2.0) {
       GL.flinch = 0; GL.flinchAt = t;      // 움찔 — 하드 블링크 0.09초
       F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0;
+      emitExpression('startled', clamp(stops / 4, 0.55, 1), 'lux');
       log('움찔 (+' + stops.toFixed(1) + ' stop)');
     } else if (wStops <= -2 && Math.max(v, ref) >= 16 && t - GL.reliefAt >= 2.0) {
       // 안도. 깜빡임과 같은 길이로 *놓아주는* 창을 연다 — 눈꺼풀이 다시 열릴 때
       // 찡그림도 함께 풀려야 "빛이 져서 다시 떴다"로 읽힌다.
       GL.relief = 0; GL.release = RELEASE_T; GL.reliefAt = t;
       F.blinkEnv = [0.45, 0.15, 0.75]; F.blinkT = 0;
+      emitExpression('relieved', clamp(-wStops / 4, 0.55, 1), 'lux');
       log('안도 (' + wStops.toFixed(1) + ' stop/1s)');
     }
   }

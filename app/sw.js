@@ -12,7 +12,9 @@ const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE = 'sleepal-' + VERSION;
 const SHELL = ['./', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
   // [WO-02a-2] ES 모듈 셸 — 오프라인에서도 전부 있어야 얼굴이 뜬다
-  'core.js', 'main.js', 'ble.js', 'lux.js', 'hud.js', 'face/eyes.js', 'face/expression.js'];
+  'core.js', 'main.js', 'ble.js', 'lux.js', 'hud.js',
+  'face/eyes.js', 'face/expression.js', 'face/expression-protocol.mjs',
+  'face/mouth.js', 'face/fx.js', 'face/ear.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
