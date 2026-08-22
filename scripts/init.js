@@ -160,6 +160,6 @@ function main(argv = process.argv.slice(2)) {
   return 0;
 }
 
-module.exports = { planOps, RESET_TARGETS, TEMPLATE_BITS };
+module.exports = { planOps, RESET_TARGETS, TEMPLATE_BITS, IDENTITY_SRC };
 
 if (require.main === module) process.exit(main());

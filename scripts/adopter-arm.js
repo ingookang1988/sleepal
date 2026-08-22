@@ -32,6 +32,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { copyTree } = require('./fs_walk');
 const { read: readLedger } = require('./ledger');
+const { IDENTITY_SRC } = require('./init');
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -141,16 +142,31 @@ function noJsReachable(html) {
   return { ok, why: ok ? '' : `라디오 ${radios}/${views.length} · 규칙 ${rules} · 앵커 ${anchors}` };
 }
 
+/**
+ * "상류 ADR 잔존 0" 판정(순수). [ADR-303] — 이 불변식은 **상류(템플릿) 형상에서만** 성립 대상이다:
+ * 채택 인스턴스에서는 `IDENTITY_example.md` 가 없어 init 이 Fail-close no-op 으로 끝나고(init.js 의
+ * append-only 보호 — 옳은 동작), 원장에 남는 것은 상류 잔존이 아니라 **어답터 자신의 결정 기록**이다.
+ * 그걸 0으로 요구하면 실ADR을 가진 모든 채택 레포의 CI가 영구 적색이 된다(실측: sleepal#1).
+ */
+function upstreamAdrBar({ before, after, adopted }) {
+  if (adopted) {
+    return { name: '상류 ADR 잔존 0', ok: true, detail: `채택 인스턴스(init no-op) — 자기 원장 ${after}건은 상류 잔존이 아니다. 건너뜀` };
+  }
+  return { name: '상류 ADR 잔존 0', ok: after === 0, detail: `${before} → ${after}건(회전본 포함 전수)` };
+}
+
 function envArm(ws) {
   const bars = [];
   const before = (readLedger(ws).match(/^- \[\d{4}-\d{2}-\d{2}\]\[ADR-\d+\]:/gm) || []).length;
+  // 채택 여부는 init 과 같은 신호로 판정한다(로직 1벌) — IDENTITY_example 부재 = init 이 no-op.
+  const adopted = !fs.existsSync(path.join(ws, IDENTITY_SRC));
   const init = run(ws, ['scripts/init.js', '--name', 'Adopter Probe', '--slug', 'probe', '--apply', '--drop-template-bits']);
   bars.push({ name: 'init 적용', ok: init.code === 0, detail: init.code === 0 ? '' : init.stderr.slice(0, 200) });
 
   // 상류 결정 기록이 한 건도 넘어가지 않는가([ADR-36]① — 머리는 리셋되는데 **회전본이 남아**
   // 신선한 어답터가 상류 ADR 24건을 물려받았다). 머리만 보면 못 잡는다: 저장소 전체를 센다.
   const after = (readLedger(ws).match(/^- \[\d{4}-\d{2}-\d{2}\]\[ADR-\d+\]:/gm) || []).length;
-  bars.push({ name: '상류 ADR 잔존 0', ok: after === 0, detail: `${before} → ${after}건(회전본 포함 전수)` });
+  bars.push(upstreamAdrBar({ before, after, adopted }));
 
   const suite = run(ws, ['--test', 'scripts/*.test.js']);
   const failLine = (suite.stdout.match(/^# fail (\d+)$/m) || [])[1];
@@ -242,6 +258,6 @@ function main(argv = process.argv.slice(2)) {
   return failed ? 1 : 0;
 }
 
-module.exports = { dataShape, rawMarkers, noJsReachable, crashed, ZONES, ROWS_PER_ZONE, HISTORY_ENTRIES };
+module.exports = { dataShape, rawMarkers, noJsReachable, crashed, upstreamAdrBar, ZONES, ROWS_PER_ZONE, HISTORY_ENTRIES };
 
 if (require.main === module) process.exit(main());

@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <title>SleepPal</title>
 <style>
   /* ── 좌표계는 mm ─────────────────────────────────────────────
@@ -62,6 +64,33 @@
   #dbgGlare{width:200px;accent-color:#5B8CFF}
   #dbg{font-family:ui-monospace,monospace;font-size:12px;line-height:1.8;
        color:#7F8BA3;white-space:pre;text-align:left}
+
+  /* ── dev HUD — 얼굴 위에 겹치되 *눈 아래 띠*에만 놓는다 ─────
+     R3 은 "눈 렌더 영역과 텍스트 영역이 물리적으로 분리"를 요구한다.
+     그래서 이 띠의 높이는 CSS 상수가 아니라 매 프레임 눈 바운딩박스
+     아래쪽에서 계산된다(paintHud). 눈에 1px 도 닿지 않는다.
+     ⛔ NIGHT 에서는 devMode 와 무관하게 강제로 사라진다 (R4).
+     기본값 OFF · sessionStorage 라 탭을 닫으면 죽는다 — 무대로 새지 않는다. */
+  /* 가로 화면에서 눈 아래 띠는 73mm 중 14mm — 화면 높이의 19% 뿐이다.
+     그래서 글자 크기를 띠에 맞춰 줄이고(paintHud), 넘치면 위로 잘라낸다.
+     아래로 넘치게 두면 마지막 줄이 화면 밖으로 나가고, 잘라내지 않으면
+     눈 영역을 침범한다(R3). 둘 다 막는 조합이 overflow:hidden + 하단 정렬이다. */
+  #hud{position:fixed;left:0;right:0;bottom:0;display:none;
+       padding:3px 8px;pointer-events:none;overflow:hidden;
+       flex-direction:column;justify-content:flex-end;
+       font-family:ui-monospace,monospace;font-size:10px;line-height:1.4;
+       color:#7F8BA3;white-space:pre;text-align:left;
+       background:linear-gradient(to top,rgba(6,9,16,.82),rgba(6,9,16,0));
+       text-shadow:0 1px 2px #000}
+  #hud.on{display:flex}
+  #hud .hi{color:#EAEEF7}
+  #hud .warn{color:#FF7A45;font-weight:700}
+  #hud .ok{color:#39D98A}
+  #hud .hbars{display:flex;gap:6px;align-items:center;margin-top:2px}
+  #hud .hbar{height:4px;width:84px;background:#131926;border:1px solid #232C3E;
+       border-radius:99px;overflow:hidden}
+  #hud .hbar i{display:block;height:100%;width:0;background:#5B8CFF}
+  #hud .hbar.now i{background:#39D98A}
 </style>
 </head>
 <body>
@@ -168,6 +197,12 @@
     <button id="dbgLightOff">불 끄기</button>
     <button id="dbgCam">카메라 조도계</button>
   </div>
+  <!-- 얼굴을 보면서 표정 수치를 읽기 위한 것. 디버그 화면은 얼굴을
+       *대체*하므로 여기서는 둘을 동시에 볼 수 없다 — 그게 HUD 의 이유다. -->
+  <div class="rowbtn">
+    <button id="dbgHud">표정 HUD</button>
+    <button id="dbgHold">기준선 고정</button>
+  </div>
   <div class="rowbtn"><button class="primary" id="dbgClose">닫기</button></div>
   <!-- R7 — 카메라는 조도계로만 읽는다. 프레임은 32x24 평균 휘도 하나로
        줄여 즉시 버린다. 저장·전송하지 않고, 인체·자세를 보지 않는다. -->
@@ -177,6 +212,18 @@
 
 <div id="dim"></div>
 
+<!-- dev HUD — #faceScreen *바깥*의 형제다. 안에 두면 얼굴 문자가 0 이 아니게 되어
+     face-sheet 의 R3 게이트가 잡는다(실제로 잡혔다). 얼굴 요소에는 문자가
+     하나도 없어야 하고, HUD 는 그 위에 겹치는 별개의 층이다.
+     띠의 위 경계는 매 프레임 눈 바운딩박스에서 계산된다(paintHud). -->
+<div id="hud" aria-hidden="true">
+  <div id="hudTxt"></div>
+  <div class="hbars">
+    <span>raw</span><div class="hbar"><i id="hudRaw"></i></div>
+    <span>now</span><div class="hbar now"><i id="hudNow"></i></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 // ═══════════════════════════════════════════════════════════════
@@ -185,6 +232,18 @@
 //  R1 — 팰은 말하지 않는다. 음성 출력 경로가 이 파일에 없다.
 //  R3 — 눈 영역에 문자가 없다. 디버그는 얼굴을 *대체*한다.
 // ═══════════════════════════════════════════════════════════════
+
+// 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 파일의 전제다).
+// 왜 있나 — 배포 후 폰에서 "지금 보는 게 새 빌드가 맞나"를 확인할 방법이
+// 없어서 한 번 크게 헤맸다. dev 화면과 HUD 에 그대로 뜬다.
+const BUILD = '2026-08-22e';
+
+// PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
+// 이전 버전 캐시를 지운다([WO-02a-1] · [ADR-116] BUILD 연동). 등록 실패는
+// 조용히 무시한다 — file://·비보안 컨텍스트에서 얼굴은 그대로 떠야 한다.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js?v=' + BUILD).catch(() => {});
+}
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -233,10 +292,29 @@ const GL = {
   flinch:-1,    // 움찔 경과(초). -1 = 없음
   relief:-1,    // 안도 경과(초)
   settle:0,     // 안도 뒤 가라앉음 0~1
+  release:0,    // 놓아주는 창 남은 시간(초). 0 = 평소의 느린 이완
+  // 불응기 2초는 **유형별**이다([ADR-117]) — 움찔이 안도를 막으면 "불 켰다
+  // 바로 끈" 실제 시나리오에서 안도가 죽는다(검증 중 실측). 잡음 연발만 막는다.
+  flinchAt:-9,  // 마지막 움찔 발화 시각
+  reliefAt:-9,  // 마지막 안도 발화 시각
 };
 // 비대칭 시상수 — 이 두 숫자가 이 레이어의 핵심이다.
 // 대칭이면 슬라이더로 보이고, 비대칭이어야 *반응*으로 보인다.
 const TAU_UP = 0.15, TAU_DOWN = 2.5;
+
+// ── 놓아줌 — 빛이 실제로 진 것에 *대한 반응*으로 눈을 뜬다 ──────
+//  왜 필요한가: 위 두 시상수만으로는 사건 구조가 비대칭이다. 빛이 오를 때는
+//  움찔이라는 능동적 제스처가 눈을 감기지만, 빛이 질 때는 안도가 **닫는
+//  것으로 시작**하고 뜨는 일은 TAU_DOWN 의 수동 감쇠에 맡겨져 있었다.
+//  그래서 90% 회복에 4.3초, 99% 에 8.4초가 걸리고 "다시 안 떠진다"로 읽힌다.
+//
+//  고치는 방향은 TAU_DOWN 을 깎는 것이 아니다 — 그 숫자는 *배경 이완*의
+//  느림이고 안도는 큐시트 30초의 핵심 표정이라 느려야 한다([WO-01b-4]).
+//  대신 **안도가 발화한 동안에만** 짧은 시상수로 놓아준다. 빛이 서서히
+//  질 때(안도 미발화)는 예전 그대로 2.5초로 천천히 풀린다.
+//  창 길이는 안도 깜빡임 봉투 전체(0.45+0.15+0.75)와 같게 잡는다 —
+//  눈꺼풀이 다시 열리는 그 순간에 찡그림도 이미 풀려 있어야 한다.
+const TAU_RELEASE = 0.4, RELEASE_T = 1.35;
 
 // ── 한 프레임의 진실 ───────────────────────────────────────────
 const F = {
@@ -247,6 +325,9 @@ const F = {
   blinkT: -1,             // 진행 중인 깜빡임 경과(초). -1 = 없음
   blinkEnv: null,         // 이번 한 번만 쓸 봉투(움찔·안도가 넣는다)
   stateAt: 0,             // 상태 진입 시각 = [CON-01] 호흡 위상 0
+  // ── 계측용 (렌더에 쓰이지 않는다) ──
+  X: null,                // 마지막 프레임의 expression() 반환값. NIGHT 이면 null
+  hNow: 0, cyNow: 0, blinkNow: 0, fps: 0, hudAt: 0,
 };
 const ASYM = 1.04;        // 두 눈꺼풀 높이가 정확히 같으면 기계다
 
@@ -336,12 +417,16 @@ function lidPath(cx, bottom) {
 // 표정 채널 계산. ⛔ R4 게이트가 이 함수 최상단에 있다.
 function expression(t, dt) {
   if (F.state === 'NIGHT') {          // 밤에는 아무것도 하지 않는다 (R4)
-    GL.now = 0; GL.flinch = -1; GL.relief = -1; GL.settle = 0;
+    GL.now = 0; GL.flinch = -1; GL.relief = -1; GL.settle = 0; GL.release = 0;
     return null;                      // 계산 자체를 돌리지 않는다
   }
   // 눈부심 — 비대칭 평활. 올라갈 때는 즉각, 내려올 때는 천천히.
+  // 단, 안도가 연 창 안에서는 *놓아주는* 짧은 시상수를 쓴다 — 빛이 진 것에
+  // 대한 반응으로 눈이 다시 떠져야 하기 때문이다. 창 밖의 이완은 예전 그대로다.
   const gate = GATE[F.state];
-  GL.now = smooth(GL.now, GL.raw, GL.raw > GL.now ? TAU_UP : TAU_DOWN, dt);
+  if (GL.release > 0) GL.release = Math.max(0, GL.release - dt);
+  const tauFall = GL.release > 0 ? TAU_RELEASE : TAU_DOWN;
+  GL.now = smooth(GL.now, GL.raw, GL.raw > GL.now ? TAU_UP : tauFall, dt);
 
   // 움찔 — 정상치보다 과하게 찡그렸다가 정착한다
   let over = 0;
@@ -377,7 +462,12 @@ function expression(t, dt) {
 let last = 0, rafOff = false;   // rafOff: 검사에서 루프를 손으로 밟을 때만 true
 function frame(ts) {
   const t = ts / 1000;
-  const dt = last ? Math.min(t - last, 0.1) : 0.016;
+  // ⚠ dt 는 아래를 반드시 0 에서 막아야 한다. smooth() 는 exp(-dt/tau) 이므로
+  //   dt < 0 이면 계수가 1 을 넘어 **목표에서 멀어지는 방향으로 증폭**한다 —
+  //   수렴이 아니라 발산이고, 몇 프레임이면 GL.now 가 200 을 넘는다.
+  //   그러면 g 가 영구히 1.25 에 붙어 **눈이 다시 떠지지 않는다.**
+  //   위쪽 0.1 캡은 탭 복귀 시 한 프레임이 몇 초를 건너뛰는 것을 막는다.
+  const dt = last ? clamp(t - last, 0, 0.1) : 0.016;
   last = t;
   const s = STATES[F.state];
   const X = expression(t, dt);
@@ -424,6 +514,13 @@ function frame(ts) {
   // 감긴 눈은 호흡으로 오르내리고, 빛이 들면 떨린다
   const sy = VB.dy + (X ? X.breath * 0.3 + X.tremor : 0);
   $('shutG').setAttribute('transform', 'translate(' + VB.dx.toFixed(2) + ' ' + sy.toFixed(2) + ')');
+
+  // ── 계측 — 이 프레임이 실제로 그린 값 ────────────────────
+  //  expression() 의 반환값은 지금까지 frame() 안에서 소비되고 사라졌다.
+  //  HUD·계기판이 읽을 수 있게 여기 남긴다. 렌더에는 영향이 없다.
+  F.X = X; F.hNow = h; F.cyNow = cy; F.blinkNow = blink;
+  F.fps = dt > 0 ? smooth(F.fps || 60, 1 / dt, 0.5, dt) : F.fps;
+  if (t - F.hudAt >= 0.1) { F.hudAt = t; paintHud(); }   // 10Hz — 프레임마다 그리면 레이아웃이 튄다
 
   if (!rafOff) requestAnimationFrame(frame);
 }
@@ -534,7 +631,12 @@ function handleLine(line) {
 //   규칙 2: 표정 변조는 허용, 상태 전이 유발은 금지.
 //   기준선은 폰이 자체 보유한다([ADR-103]) — 지금은 수집만 한다.
 const lux = { base: null, med: null, recent: [], last: null,
-              count: 0, at: null, mean: null, src: '—' };
+              count: 0, at: null, mean: null, src: '—', baseUsed: null,
+              // dev 전용 — 기준선을 이 값에 묶는다. null = 평소대로 롤링 중앙값.
+              // 카메라 조도계는 자동 노출이 평균 휘도를 붙들어서 중앙값이 신호를
+              // 그대로 따라온다 → base ≈ v → glare 가 영원히 0 이다. 고정해야
+              // 체인이 눈에 보인다. 보드 경로에는 쓰지 않는다([ADR-103] 유지).
+              hold: null };
 function feedLux(v) {
   const t = now(), prev = lux.last;
   lux.last = v;
@@ -548,18 +650,37 @@ function feedLux(v) {
   // 재보정해도 표정이 소리 없이 풀리지 않는다.
   const vs = lux.recent.map(function (s) { return s.v; }).sort(function (a, b) { return a - b; });
   lux.med = vs.length ? vs[vs.length >> 1] : null;
-  const base = (lux.recent.length >= 10) ? lux.med : (lux.base !== null ? lux.base : lux.med);
+  const base = lux.hold !== null ? lux.hold
+             : (lux.recent.length >= 10) ? lux.med
+             : (lux.base !== null ? lux.base : lux.med);
+  lux.baseUsed = base;                // HUD·계기판이 읽는다 — base 가 보여야 raw 0 이 설명된다
   if (base !== null) GL.raw = clamp(Math.log((v + 1) / (base + 1)) / Math.log(16), 0, 1);
 
-  // 트랜지언트 — 한 샘플 안의 급변만 본다(5Hz 이므로 200ms 창)
+  // 트랜지언트 — 상승은 한 샘플, 하강은 **1초 창**으로 본다.
+  //  하강을 한 샘플 비교로 잡으면 카메라에서 안도가 영영 안 뜬다 — AE 가
+  //  복귀를 ~1초(5표본)에 뭉개서 표본당 낙폭이 항상 문턱 아래로 내려간다.
+  //  상승은 그대로 둔다: 스파이크는 AE 가 물기 *전*이라 한 샘플에 온전히 실린다.
+  //  가드 둘([ADR-117]):
+  //   · 저조도 가드 — 두 값 모두 16 lux 미만이면 무시. 어두운 카메라의 양자화
+  //     잡음은 log 스케일에서 수 stop 짜리 유령 급변을 만든다(실측 30초에 16발).
+  //   · 불응기 2초 — 같은 하강이 창을 지나는 동안 안도가 연발하지 않는다.
   if (prev !== null) {
     const stops = Math.log((v + 1) / (prev + 1)) / Math.LN2;
-    if (stops >= 2) {                       // 움찔 — 하드 블링크 0.09초
-      GL.flinch = 0; F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0;
+    // 1초 전 표본(창 안에서 가장 오래된 0.95초 이상 지난 것)
+    let ref = prev;
+    for (let i = lux.recent.length - 1; i >= 0; i--)
+      if (t - lux.recent[i].t >= 0.95) { ref = lux.recent[i].v; break; }
+    const wStops = Math.log((v + 1) / (ref + 1)) / Math.LN2;
+    if (stops >= 2 && Math.max(v, prev) >= 16 && t - GL.flinchAt >= 2.0) {
+      GL.flinch = 0; GL.flinchAt = t;      // 움찔 — 하드 블링크 0.09초
+      F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0;
       log('움찔 (+' + stops.toFixed(1) + ' stop)');
-    } else if (stops <= -2) {               // 안도 — 느린 부드러운 깜빡임 1회
-      GL.relief = 0; F.blinkEnv = [0.45, 0.15, 0.75]; F.blinkT = 0;
-      log('안도 (' + stops.toFixed(1) + ' stop)');
+    } else if (wStops <= -2 && Math.max(v, ref) >= 16 && t - GL.reliefAt >= 2.0) {
+      // 안도. 깜빡임과 같은 길이로 *놓아주는* 창을 연다 — 눈꺼풀이 다시 열릴 때
+      // 찡그림도 함께 풀려야 "빛이 져서 다시 떴다"로 읽힌다.
+      GL.relief = 0; GL.release = RELEASE_T; GL.reliefAt = t;
+      F.blinkEnv = [0.45, 0.15, 0.75]; F.blinkT = 0;
+      log('안도 (' + wStops.toFixed(1) + ' stop/1s)');
     }
   }
   // ⚠ 여기서 setEyeState 를 부르지 않는다 — [CON-01] 규칙 2.
@@ -593,10 +714,30 @@ function paintDebug() {
     'lid      ' + F.lidNow.map(function (v) { return v.toFixed(2); }).join('  ') + '\n' +
     'lux      ' + (lux.last === null ? '-' : lux.last) +
       '   med ' + (lux.med === null ? '-' : lux.med) +
+      // base 가 보여야 "raw 가 왜 0 인가"가 설명된다. 카메라에서는 base 가 신호를
+      // 그대로 따라오므로 lux 와 base 가 나란히 붙어 움직인다 — 그게 원인이다.
+      '   base ' + (lux.baseUsed === null ? '-' : lux.baseUsed) + (lux.hold !== null ? ' (고정)' : '') +
       '   창 ' + lux.recent.length + '표본/30s\n' +
     'camera   ' + (camStream ? 'ON  평균휘도 ' + (lux.mean === null ? '-' : lux.mean.toFixed(1)) + '/255' : 'OFF') + '\n' +
-    'glare    raw ' + GL.raw.toFixed(3) + '   now ' + GL.now.toFixed(3) + '\n' +
-    'screen   ' + screenWmm.toFixed(1) + ' mm\n\n' +
+    'glare    raw ' + GL.raw.toFixed(3) + '   now ' + GL.now.toFixed(3) +
+      '   움찔 ' + (GL.flinch >= 0 ? GL.flinch.toFixed(2) : '-') +
+      '   안도 ' + (GL.relief >= 0 ? GL.relief.toFixed(2) : '-') +
+      '   settle ' + GL.settle.toFixed(2) +
+      // 놓아줌 창 안이면 이완 시상수가 2.5 가 아니라 0.4 다
+      '   놓아줌 ' + (GL.release > 0 ? GL.release.toFixed(2) + ' (τ ' + TAU_RELEASE + ')' : '- (τ ' + TAU_DOWN + ')') + '\n' +
+    // 표정 레이어가 이번 프레임에 실제로 그린 값. NIGHT 이면 X 가 null 이다(R4).
+    'expr     ' + (F.state === 'NIGHT' ? '⛔ 정지 (R4)'
+      : 'g ' + (F.X ? F.X.g : 0).toFixed(3) +
+        '  h ' + F.hNow.toFixed(2) + '  cy ' + F.cyNow.toFixed(2) +
+        '  tilt ' + (F.X ? F.X.tilt : 0).toFixed(1) + '°') + '\n' +
+    'micro    ' + (F.state === 'NIGHT' ? '-'
+      : 'drift ' + (F.X ? F.X.dx : 0).toFixed(2) + '/' + (F.X ? F.X.dy : 0).toFixed(2) +
+        '  breath ' + (F.X ? F.X.breath : 0).toFixed(2) +
+        '  tremor ' + (F.X ? F.X.tremor : 0).toFixed(2) +
+        '  blink ' + F.blinkNow.toFixed(2)) + '\n' +
+    'hud      ' + (devMode ? 'ON — 얼굴 하단 띠' : 'OFF') + '   fps ' + F.fps.toFixed(0) + '\n' +
+    'screen   ' + screenWmm.toFixed(1) + ' mm\n' +
+    'build    ' + BUILD + '\n\n' +
     LOG.slice(-10).join('\n');
 }
 
@@ -629,6 +770,80 @@ function paintSpark() {
   const lastR = R[R.length - 1];
   g.fillStyle = (t1 - lastR.t > 1.0) ? '#FF7A45' : '#39D98A';
   g.beginPath(); g.arc((lastR.t - t0) / 30 * c.width, yOf(lastR.v), 3, 0, 6.284); g.fill();
+}
+
+// ═══ dev HUD — 얼굴을 보면서 표정 레이어를 읽는다 ═══════════════
+//  왜 필요한가: 디버그 화면은 얼굴을 *대체*한다(R3). 그래서 지금까지는
+//  숫자를 보거나 얼굴을 보거나 둘 중 하나였고, "카메라를 켰는데 아무
+//  반응이 없다"가 *경로가 죽은 것*인지 *glare 가 정말 0 인 것*인지
+//  구분할 방법이 없었다. HUD 는 그 둘을 한 화면에 놓는다.
+//
+//  R3 — 눈 바운딩박스 *아래* 띠에만 그린다. 띠의 위 경계는 CSS 상수가
+//       아니라 매번 눈 기하에서 계산한다(EYE_SAFE).
+//  R4 — NIGHT 이면 devMode 와 무관하게 강제로 꺼진다.
+//  기본 OFF · sessionStorage — 탭을 닫으면 사라져 무대로 새지 않는다.
+const EYE_SAFE = 61;   // 눈이 닿을 수 있는 최대 y(mm). cy 36.5 + h/2 22.95 + 표류 0.4 ≈ 59.9
+let devMode = sessionStorage.getItem('sp.dev') === '1' || qs.get('dev') === '1';
+
+function setDev(on) {
+  devMode = !!on;
+  sessionStorage.setItem('sp.dev', devMode ? '1' : '0');
+  $('dbgHud').textContent = devMode ? '표정 HUD 끄기' : '표정 HUD';
+  if (!devMode) $('hud').classList.remove('on');
+  paintHud();
+}
+
+const f2 = function (v, d) { return (v === null || v === undefined || !isFinite(v)) ? '—' : v.toFixed(d === undefined ? 2 : d); };
+const sgn = function (v) { return (v >= 0 ? '+' : '') + f2(v); };
+
+function paintHud() {
+  const hud = $('hud');
+  // ⛔ R4 — 밤에는 화면에 아무것도 띄우지 않는다. dev 도 예외가 아니다.
+  const live = devMode && F.state !== 'NIGHT' && $('faceScreen').classList.contains('on');
+  hud.classList.toggle('on', live);
+  if (!live) return;
+
+  // 눈 아래 띠만 차지한다 — 눈에 1px 도 닿지 않는다 (R3)
+  const vw = window.innerWidth, vh = window.innerHeight;
+  if (vw > 0) {
+    const pxPerMm = vw / screenWmm;
+    const top = Math.min(vh - 8, (VB.dy + EYE_SAFE) * pxPerMm);
+    const avail = Math.max(0, vh - top);
+    hud.style.height = avail + 'px';
+    // 내용 높이 ≈ 4줄 × 1.4em + 막대줄 1.2em + 세로 패딩 6px
+    hud.style.fontSize = clamp((avail - 6) / 6.8, 7, 11).toFixed(1) + 'px';
+  }
+
+  const X = F.X, age = lux.at === null ? null : now() - lux.at;
+  const stale = age === null || age > 1.0;
+  const held = lux.hold !== null;
+
+  $('hudRaw').style.width = (clamp(GL.raw, 0, 1) * 100).toFixed(1) + '%';
+  $('hudNow').style.width = (clamp(GL.now, 0, 1) * 100).toFixed(1) + '%';
+
+  $('hudTxt').innerHTML =
+    '<span class="hi">' + F.state + '</span> gate ' + f2(GATE[F.state]) +
+      '   src ' + lux.src +
+      '   <span class="' + (stale ? 'warn' : 'ok') + '">age ' +
+      (age === null ? '— 수신없음' : f2(age) + 's') + ' n=' + lux.count + '</span>' +
+      '   fps ' + f2(F.fps, 0) + '   b' + BUILD.slice(-3) + '\n' +
+    'lux ' + (lux.last === null ? '—' : lux.last) +
+      '  base ' + (lux.baseUsed === null ? '—' : lux.baseUsed) + (held ? ' <span class="warn">고정</span>' : '') +
+      '  raw ' + f2(GL.raw, 3) + '  now <span class="hi">' + f2(GL.now, 3) + '</span>' +
+      (camStream ? '  cam ' + f2(lux.mean, 1) + '/255' : '') + '\n' +
+    'g ' + f2(X ? X.g : 0, 3) +
+      '  h <span class="hi">' + f2(F.hNow) + '</span>' +
+      '  cy ' + f2(F.cyNow) +
+      '  tilt ' + f2(X ? X.tilt : 0, 1) + '°' +
+      '  lid ' + f2(F.lidNow[0]) + '/' + f2(F.lidNow[1]) +
+      '  blk ' + f2(F.blinkNow) + '\n' +
+    'drift ' + sgn(X ? X.dx : 0) + '/' + sgn(X ? X.dy : 0) +
+      '  breath ' + sgn(X ? X.breath : 0) +
+      '  settle ' + f2(X ? X.settle : 0) +
+      '  tremor ' + sgn(X ? X.tremor : 0) +
+      '  <span class="' + (GL.flinch >= 0 ? 'warn' : '') + '">움찔 ' + (GL.flinch >= 0 ? f2(GL.flinch) : '—') + '</span>' +
+      '  <span class="' + (GL.relief >= 0 ? 'ok' : '') + '">안도 ' + (GL.relief >= 0 ? f2(GL.relief) : '—') + '</span>' +
+      '  <span class="' + (GL.release > 0 ? 'ok' : '') + '">놓아줌 ' + (GL.release > 0 ? f2(GL.release) : '—') + '</span>';
 }
 
 // ── 입장 — 전체화면 · 회전 잠금 · Wake Lock ───────────────────
@@ -721,6 +936,21 @@ function simStep(from, to) {
 //      깊이는 믿으면 안 된다. 그건 슬라이더로 볼 것.
 let camStream = null, camTimer = null;
 $('dbgCam').onclick = function () { camStream ? camStop() : camStart(); };
+
+// ④ 표정 HUD — 얼굴 위 눈 아래 띠. 닫으면 얼굴로 돌아가므로 여기서 켜고 닫는다.
+$('dbgHud').onclick = function () { setDev(!devMode); paintDebug(); };
+
+// ⑤ 기준선 고정 — 카메라 조도계를 쓸 때만 의미가 있다.
+//    자동 노출이 평균 휘도를 붙들면 30초 롤링 중앙값이 신호를 그대로 따라와
+//    base ≈ v 가 되고 glare 는 영원히 0 이다. 지금 중앙값에 base 를 묶으면
+//    그 뒤의 변화가 raw 로 나타난다. **절대 조도가 생기는 것은 아니다** —
+//    체인이 눈에 보이게 될 뿐이다. 보드 경로에서는 쓰지 않는다([ADR-103]).
+$('dbgHold').onclick = function () {
+  lux.hold = lux.hold === null ? (lux.med !== null ? lux.med : lux.last) : null;
+  $('dbgHold').textContent = lux.hold === null ? '기준선 고정' : '기준선 풀기 (' + lux.hold + ')';
+  log(lux.hold === null ? '기준선 고정 해제 — 롤링 중앙값으로' : '기준선 ' + lux.hold + ' 에 고정');
+  paintDebug();
+};
 
 async function camStart() {
   try {
@@ -823,6 +1053,7 @@ addEventListener('resize', function () {
 });
 applyViewBox();
 paintRuler();
+setDev(devMode);          // 버튼 라벨 동기화. 기본 OFF — ?dev=1 이나 이전 토글이 있을 때만 ON
 requestAnimationFrame(frame);
 
 // 검증 훅 — 콘솔/헤드리스에서 호출한다 (R3 게이트 등)
@@ -832,6 +1063,9 @@ window.SP = {
   lux: lux, applyViewBox: applyViewBox, show: show,
   connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
   GL: GL, GATE: GATE, BREATH: BREATH, expression: expression, VB: VB,
+  // 계측 — HUD 검사가 읽는다
+  paintHud: paintHud, setDev: setDev, EYE_SAFE: EYE_SAFE,
+  get devMode() { return devMode; },
   NUS: NUS, RX: RX, TX: TX, DEVICE_PREFIX: DEVICE_PREFIX,
   get screenWmm() { return screenWmm; },
   get connected() { return !!rxChar; },

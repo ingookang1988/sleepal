@@ -69,6 +69,11 @@
 
 <script>
 'use strict';
+// dev HUD 는 sessionStorage 로 기억된다. iframe 이 같은 세션을 공유하므로
+// 앱에서 한 번 켜두면 시트가 "기본 OFF" 를 검사할 수 없다 — 프레임을 만들기
+// 전에 지워서 검사를 앱 사용 이력과 무관하게 만든다.
+sessionStorage.removeItem('sp.dev');
+
 const STATES = ['AWAKE', 'DROWSY', 'ASLEEP', 'NIGHT', 'MORNING'];
 const KO = { AWAKE:'각성', DROWSY:'졸림', ASLEEP:'잠듦', NIGHT:'밤', MORNING:'아침' };
 const W = 158, H = 73;                       // mm — 도면 기준
@@ -185,6 +190,90 @@ setTimeout(function () {
   lines.push(pass('⛔ R4 밤 응답 0',
                   n0.h === n1.h && n0.y === n1.y && n0.tl === n1.tl && n0.lid === n1.lid && n0.shut === n1.shut,
                   'glare 0 과 1 의 기하가 동일'));
+
+  // ── dev HUD — 켜져 있을 때도 R3·R4 를 깨지 않는가 ─────────
+  //  HUD 를 #faceScreen *안*에 두면 위의 "얼굴 문자 0" 이 깨진다(실제로 깨졌다).
+  //  구조를 못으로 박아둔다 — 다음에 누가 옮겨 넣으면 여기서 잡힌다.
+  const hf = frames[0], hw = hf.contentWindow, hd = hf.contentDocument;
+  const hud = hd.getElementById('hud');
+  lines.push('');
+  lines.push(pass('R3  HUD 가 얼굴 밖', !hd.getElementById('faceScreen').contains(hud),
+                  '#faceScreen 의 형제여야 한다'));
+  lines.push(pass('    HUD 기본 OFF',   hw.SP.devMode === false && !hud.classList.contains('on'),
+                  'sessionStorage · 무대로 새지 않는다'));
+
+  // 켠 상태에서: 눈에 닿지 않는가 · 밤에 사라지는가
+  hw.SP.setDev(true);
+  drive(hf, 'AWAKE', 1.0);                       // 가장 찡그린 상태 = 눈이 가장 작을 때
+  hw.SP.paintHud();                              // drive 의 3프레임은 HUD 10Hz 창에 못 미친다
+  const hb = hud.getBoundingClientRect();
+  const eb = hd.getElementById('eyeL').getBoundingClientRect();
+  const sb = hd.getElementById('shutG').getBoundingClientRect();
+  lines.push(pass('R3  HUD ∩ 눈 = 0',  hud.classList.contains('on') && hb.top >= Math.max(eb.bottom, sb.bottom),
+                  '간격 ' + (hb.top - Math.max(eb.bottom, sb.bottom)).toFixed(1) + 'px'));
+  drive(hf, 'NIGHT', 1.0);
+  hw.SP.paintHud();
+  lines.push(pass('⛔ R4 밤 HUD 0',     !hud.classList.contains('on') && hw.SP.devMode === true,
+                  'devMode 는 켜진 채인데 HUD 만 사라진다'));
+  hw.SP.setDev(false);
+
+  // ── 놓아줌 — 빛이 지면 *반응으로* 눈이 다시 떠지는가 ────────
+  //  급락(안도 발화)은 1초 안에 열리고, 완만한 하강은 예전의 느린 이완을
+  //  그대로 유지해야 한다. 둘이 갈리지 않으면 TAU_DOWN 을 깎은 것과 같다.
+  const S = hw.SP;
+  let clk = 9e7;
+  const runFall = function (fall) {
+    S.show('faceScreen'); S.setEyeState('AWAKE');
+    S.GL.now = 0; S.GL.raw = 0; S.GL.flinch = -1; S.GL.relief = -1;
+    S.GL.settle = 0; S.GL.release = 0; S.GL.flinchAt = -9; S.GL.reliefAt = -9;
+    S.lux.recent.length = 0; S.lux.count = 0; S.lux.last = null; S.lux.hold = null;
+    S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.blinkEnv = null;
+    const step = function (n) { for (let i = 0; i < n; i++) { clk += 16.667; S._step(clk); } };
+    step(1);
+    for (let i = 0; i < 14; i++) { S.feedLux(900); step(12); }
+    S.feedLux(9000); step(60);
+    const squint = S.F.hNow;
+    fall.forEach(function (v) { S.feedLux(v); step(12); });
+    step(60);                                     // 하강 종료 후 1초
+    return { squint: squint, after1s: S.F.hNow };
+  };
+  const sharp = runFall([900]);                            // -3.3 stop 한 방 → 안도
+  const slow  = runFall([4500, 2200, 1100, 900, 900]);     // 매 표본 -1 stop → 미발화
+
+  lines.push('');
+  lines.push(pass('    찡그림은 그대로',  Math.abs(sharp.squint - 17.1) < 5.5,
+                  sharp.squint.toFixed(1) + ' mm'));
+  lines.push(pass('    급락 → 1초 안에 뜸', sharp.after1s >= 45 * 0.95,
+                  (sharp.after1s / 45 * 100).toFixed(0) + '% (' + sharp.after1s.toFixed(1) + 'mm)'));
+  lines.push(pass('    완만 하강은 느림',  slow.after1s < 45 * 0.85,
+                  (slow.after1s / 45 * 100).toFixed(0) + '% — τ 2.5 유지'));
+
+  // ── 카메라 AE 램프 — 하강이 여러 표본에 번져도 안도가 뜬다 ──
+  //  실기에서 "감기는 건 되는데 떠지는 건 안 된다"의 원인: AE 가 복귀를
+  //  ~1초에 뭉개 한 표본 비교로는 안도가 영영 안 떴다. 1초 창 감지([ADR-117])
+  //  를 가상 시계로 검사한다 — 위 runFall 은 압축 시간이라 창이 안 생긴다.
+  (function () {
+    const P = hw.performance, o = P.now.bind(P);
+    let vt = o(); P.now = function () { return vt; };
+    try {
+      S.show('faceScreen'); S.setEyeState('AWAKE');
+      S.GL.now = 0; S.GL.raw = 0; S.GL.flinch = -1; S.GL.relief = -1;
+      S.GL.settle = 0; S.GL.release = 0; S.GL.flinchAt = -9; S.GL.reliefAt = -9;
+      S.lux.recent.length = 0; S.lux.count = 0; S.lux.last = null; S.lux.hold = null;
+      S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.blinkEnv = null;
+      let ck = 12e7;
+      const feed = function (v) { vt += 200; S.feedLux(v); for (let i = 0; i < 12; i++) { ck += 16.667; S._step(ck); } };
+      for (let i = 0; i < 10; i++) feed(9000);
+      let fired = false;
+      [4500, 2200, 1100, 700, 500].forEach(function (v) { feed(v); if (S.GL.relief >= 0 || S.GL.release > 0) fired = true; });
+      for (let i = 0; i < 60; i++) { ck += 16.667; S._step(ck); }
+      lines.push(pass('    AE 램프 하강도 안도', fired && S.F.hNow >= 45 * 0.9,
+                      (fired ? '발화' : '미발화') + ' · 1초 뒤 ' + (S.F.hNow / 45 * 100).toFixed(0) + '%'));
+    } finally { P.now = o; }
+  })();
+
+  drive(hf, STATES[0], 0);                       // 시트 그림을 원래대로 되돌린다
+
   document.getElementById('verdict').textContent = lines.join('\n');
 }, 900);
 

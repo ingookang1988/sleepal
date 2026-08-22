@@ -17,4 +17,13 @@
 | [WO-01d-4] | 2호기 — 1호기 본떠서 | PLAN-01d | Draft | 해당없음 |
 | [WO-01e-1] | 발표 첫 문장 확정 + 3:00 연출 결정 | PLAN-01e | Draft | 해당없음 |
 | [WO-01e-2] | 지참물과 도착 알람 | PLAN-01e | Draft | 해당없음 |
+| [WO-02a-1] | PWA 요건 — 매니페스트·서비스워커·아이콘 | PLAN-02 | Verifying | 있음 |
+| [WO-02a-2] | 팰 런타임 ES 모듈 분할 — 파일 경계 = 파트 경계 | PLAN-02 | Draft | 해당없음 |
+| [WO-02a-3] | serve.js 프록시 — STT·LLM 키의 서버측 격리 | PLAN-02 | Draft | 해당없음 |
+| [WO-02b-1] | 놀이 왕복 v1 — 녹음→STT→LLM→반응 JSON | PLAN-02 | Draft | 해당없음 |
+| [WO-02b-2] | 옹알이 절차 합성 + 표정 매핑 — 팰의 고유 발화 | PLAN-02 | Draft | 해당없음 |
+| [WO-02c-1] | 내장 수면 사운드 — 라이브러리·믹서·페이드 | PLAN-02 | Draft | 해당없음 |
+| [WO-02d-1] | 모드 상태 머신 — PLAY→WIND_DOWN→SLEEP→WAKE | PLAN-02 | Draft | 해당없음 |
+| [WO-02d-2] | 트래커 엔진 v1 — 마이크 분석 → 수면 이벤트 기록 | PLAN-02 | Draft | 해당없음 |
+| [WO-02e-1] | 트래커 기록 화면 — Vite+React 스캐폴드 + 일기 뷰 | PLAN-02 | Draft | 해당없음 |
 <!-- worktable:end -->
