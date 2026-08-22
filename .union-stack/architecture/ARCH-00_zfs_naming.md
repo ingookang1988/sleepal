@@ -56,9 +56,13 @@ A counter cannot be made safe by convention alone once writers are concurrent �
 
 | Band | Lineage |
 |---|---|
-| **101–199** | 얼굴/폰 (`01b`) |
+| **101–199** | 얼굴/폰 (`01b`) — P1 하드웨어–표정 파트(H)의 얼굴측 결정도 여기 |
 | **201–299** | 몸통 (`01d`) |
-| **301–399** | 그 외 · 하네스 |
+| **301–399** | 그 외 · 하네스 · 공통 셸(`02a`) · 놀이(`02b`) |
+| **401–499** | 트래킹 앱 (`02c` `02d` `02e`) — added 2026-08-22, 인간 승인. 파트 T 전용([PLAN-02] §경계 3) |
+
+> 3번째 팀원이 `02b`를 맡아 301–399의 동시 쓰기가 실제로 발생하면, 위의 기존 규칙대로
+> **next free band(501–599)를 `02b`에 할당**한다 — 대역 분리의 기준은 계보가 아니라 *동시 쓰기 주체*다.
 
 - **06–42 are retired** — template guides cite them as upstream ids; reusing them would make those
   dangling refs resolve to unrelated entries.
