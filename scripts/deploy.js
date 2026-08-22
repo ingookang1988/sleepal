@@ -82,7 +82,11 @@ async function main() {
   const project = arg('-p', '--project');
   const args = ['up', '-s', arg('-s', '--service') || 'face', '-e', arg('-e', '--env') || 'production', ...(project ? ['-p', project] : [])];
   console.log(`railway ${args.join(' ')}  (cwd=${dir})`);
-  const r = spawnSync('railway', args, { cwd: dir, stdio: 'inherit', shell: process.platform === 'win32' });
+  // Windows 는 railway.cmd 라 shell 이 필요하다 — DEP0190(인자 배열+shell) 을 피해
+  // 한 문자열로 합친다. 인자는 전부 내부 생성값(공백·따옴표 없음)이라 안전하다.
+  const r = process.platform === 'win32'
+    ? spawnSync(['railway'].concat(args).join(' '), { cwd: dir, stdio: 'inherit', shell: true })
+    : spawnSync('railway', args, { cwd: dir, stdio: 'inherit' });
   if (r.status !== 0) { console.error(`railway up 실패 (exit ${r.status ?? 'spawn error'})`); process.exit(1); }
 
   console.log('업로드 완료 — 배포본 BUILD 검증([ADR-116]: SUCCESS 는 증거가 아니다)');
