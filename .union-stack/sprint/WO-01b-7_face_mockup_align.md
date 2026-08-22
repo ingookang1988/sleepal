@@ -3,7 +3,7 @@ id: WO-01b-7
 title: 얼굴 목업 정합 — 스쿼클 눈 + 잠듦 감쇠 + 대기 화면
 status: Active
 parent: PLAN-01b
-evidence: "face-sheet 게이트 22/22 통과(모서리 min(12,h/2) 12.00→8.71 포함) + 5상태·대기 화면 캡처 목업 대조 · npm test 36/36 — 폰 실기 확인 잔여"
+evidence: "face-sheet 게이트 통과(모서리 min(12,h/2) 12.00→8.71 포함) + 5상태·대기 화면 캡처 목업 대조 · storylog 세션 병합본(ab8d6fa)에 편입되어 22m 배포 예정(게이트 45/45·node 41/41 재통과) — 폰 실기 확인 잔여"
 closed_by: []
 ---
 # [WO-01b-7] 얼굴 목업 정합
