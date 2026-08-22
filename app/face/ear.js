@@ -13,7 +13,7 @@
 'use strict';
 import { clamp, log, now, palBus, smooth } from '../core.js';
 import { F } from './eyes.js';
-import { gazeTo } from './expression.js';
+import { emitExpression, gazeTo } from './expression.js';
 
 // 계측용 상태 — HUD·계기판이 읽는다. 원음이 아니라 전부 파생 수치다.
 export const snd = {
@@ -128,5 +128,6 @@ export function tickEar(t, dt) {
     snd.fireAt = t;
     const dir = Math.abs(bal) < BAL_DEAD ? 0 : clamp(bal * 2.2, -1, 1) * EAR_SIGN;
     gazeTo(dir);
+    emitExpression('curious', clamp(0.55 + (level - snd.base) * 1.5, 0.55, 1), 'sound');
   }
 }

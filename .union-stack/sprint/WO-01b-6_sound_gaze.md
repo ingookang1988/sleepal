@@ -3,7 +3,7 @@ id: WO-01b-6
 title: 시선 — 소리 나는 쪽으로 눈이 이동한다 (귀 + 사카드)
 status: Verifying
 parent: PLAN-01b
-evidence: "app/face-sheet.html — 검사 40/40 OK(기존 31 + 시선 7 + 마이크 정책 2). 사카드 0.2s에 목표 98%(gx 2.95/3.0mm) · 복귀 0.01 · 모노 정면 응시 gy −0.59 · 불응기 1.2s · 졸림 게이트 0.3(gx 0.88) · 잠듦/밤 0 · earBanned 순수 판정 · SLEEP 발행 → 귀 OFF. 미완: 마이크 실기(스테레오 여부·EAR_SIGN·WIND_DOWN 자동 켬 권한 경로) · 미적 판단(인간)"
+evidence: "기존 브랜치의 사카드·마이크 정책 구현과 face-sheet assertions를 통합. sound transient→[CON-01b] curious 연결·mobile/root 테스트 통과. 새 face-sheet 브라우저 실행·마이크 실기·미적 판단은 미완"
 closed_by: []
 ---
 # [WO-01b-6] 소리 → 시선
@@ -40,7 +40,7 @@ closed_by: []
 - 디버그 버튼 4개(◀ 소리 · ● 정면 · 소리 ▶ · 귀). HUD·계기판에 `ear`/`gaze`/`mode` 채널 노출.
 - `sw.js` 프리캐시 +`face/ear.js` · BUILD **2026-08-22i**.
 
-## 검사 — `app/face-sheet.html` **38/38**
+## 검사 — 기존 브랜치 증거 + 현재 assertion
 신규 7: `소리 → 시선 사카드`(gx 2.95) · `시선 복귀`(0.01) · `모노 → 정면 응시`(gy −0.59) · `소리 체인 + 불응기`(연발 차단·상태 불변) · `졸림은 둔하게`(0.88) · `잠듦 시선 무시` · `⛔ R4 밤 시선 0`(소리 주입에도 기하 문자열 동일).
 
 ## 규범 검토

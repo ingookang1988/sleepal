@@ -5,6 +5,8 @@
 'use strict';
 import { smooth, clamp, palBus } from '../core.js';
 import { F, EYE } from './eyes.js';
+import { normalizeExpressionTrigger } from './expression-protocol.mjs';
+export { normalizeExpressionTrigger } from './expression-protocol.mjs';
 
 // [CON-01] 호흡 주기. 보드의 후광과 같은 숫자를 써야 몸과 얼굴이 한 몸이 된다.
 export const BREATH = { AWAKE:4.0, DROWSY:5.5, ASLEEP:6.5, NIGHT:0, MORNING:4.5 };
@@ -43,31 +45,51 @@ export const TAU_RELEASE = 0.4, RELEASE_T = 1.35;
 
 // ── 이산 표정 — [CON-01b] expr:trigger 소비부 [WO-01b-5] ───────
 //  연속 채널(glare)과 달리 *사건*이다: 봉투 하나가 타고 끝나면 기하는
-//  픽셀 단위로 원래대로 돌아온다. kind 어휘는 serve.js PAL_SYSTEM 의
-//  emotion enum(happy·curious·sad)을 그대로 쓴다 — 새 어휘를 만들면 결함.
+//  픽셀 단위로 원래대로 돌아온다. 놀이 감정은 serve.js PAL_SYSTEM 의
+//  enum(happy·curious·sad)을 재사용하고, 센서 반응은 startled·relieved 로 분리한다.
 //  [CON-01] 규칙 2 — 트리거는 상태 전이를 절대 유발하지 않는다.
-export const EMO = { kind:null, t:-1, tone:1 };
+export const EMO = { kind:null, t:-1, tone:1, source:null };
 const EMO_DEF = {
   happy:   { dur:1.9, atk:0.28, rel:0.70 },   // 아래꺼풀 ⌣ + 입꼬리
   curious: { dur:1.6, atk:0.18, rel:0.50 },   // 한쪽 눈 확대 + 입 'o'
   sad:     { dur:2.6, atk:0.45, rel:1.00 },   // 눈꼬리 바깥 처짐 + 입꼬리 내림
+  startled:{ dur:0.9, atk:0.06, rel:0.36 },   // 빛 급상승 — 짧은 수축 + 'o'
+  relieved:{ dur:1.8, atk:0.24, rel:0.75 },   // 빛 급하강 — 아래꺼풀 + 입꼬리
 };
 // 상태별 표정 게이트 — glare 의 GATE 와 별도다. 잠듦·밤은 0 (R4 이중 방어,
 // [CON-02] 규칙 2: 소비자도 각자 막는다).
 const EMO_GATE = { AWAKE:1, DROWSY:0.5, ASLEEP:0, NIGHT:0, MORNING:1 };
-const TONE = { soft:0.6, bright:1, drowsy:0.35 };   // babbleTone 문자열도 받는다
+function legacyPayload(kind, tone, source) {
+  return normalizeExpressionTrigger({
+    kind: kind,
+    tone: tone === undefined ? 1 : tone,
+    source: source || 'system',
+  });
+}
 
-export function exprTrigger(kind, tone) {
-  if (!EMO_DEF[kind] || !EMO_GATE[F.state]) return;
-  EMO.kind = kind;
+export function exprTrigger(kind, tone, source) {
+  const payload = typeof kind === 'object' ? normalizeExpressionTrigger(kind)
+                                            : legacyPayload(kind, tone, source);
+  if (!payload || !EMO_DEF[payload.kind] || !EMO_GATE[F.state]) return false;
+  EMO.kind = payload.kind;
   EMO.t = 0;
-  EMO.tone = typeof tone === 'string' ? (TONE[tone] || 1) : (tone === undefined ? 1 : clamp(tone, 0, 1));
+  EMO.tone = payload.tone;
+  EMO.source = payload.source;
+  return true;
+}
+
+export function emitExpression(kind, tone, source) {
+  const payload = typeof kind === 'object' ? normalizeExpressionTrigger(kind)
+                                            : legacyPayload(kind, tone, source);
+  if (!payload) return false;
+  palBus.dispatchEvent(new CustomEvent('expr:trigger', { detail: payload }));
+  return true;
 }
 // 버스 구독 — 발행은 T 파트(babble.js 등) 몫이고 여기는 소비뿐이다.
 // kind 'note' 는 fx 레이어 소유라 흘려보낸다(fx.js 가 따로 구독한다).
 palBus.addEventListener('expr:trigger', function (e) {
-  const d = e.detail || {};
-  if (d.kind !== 'note') exprTrigger(d.kind, d.tone);
+  const payload = normalizeExpressionTrigger(e.detail);
+  if (payload && payload.kind !== 'note') exprTrigger(payload);
 });
 
 // 봉투 — 오르고(atk) · 머물고 · 풀린다(rel). 음수 = 끝.
@@ -98,7 +120,7 @@ export function gazeTo(dir) {             // dir -1(왼) ~ +1(오른), 0 = 정�
 export function expression(t, dt) {
   if (F.state === 'NIGHT') {          // 밤에는 아무것도 하지 않는다 (R4)
     GL.now = 0; GL.flinch = -1; GL.relief = -1; GL.settle = 0; GL.release = 0;
-    EMO.kind = null; EMO.t = -1;      // 진행 중이던 이산 표정도 버린다
+    EMO.kind = null; EMO.t = -1; EMO.source = null; // 진행 중이던 이산 표정도 버린다
     GZ.x = 0; GZ.y = 0; GZ.tx = 0; GZ.ty = 0; GZ.hold = 0;   // 시선도
     return null;                      // 계산 자체를 돌리지 않는다
   }
@@ -113,13 +135,15 @@ export function expression(t, dt) {
     EMO.t += dt;
     const d = EMO_DEF[EMO.kind];
     const a0 = emoAmt(d, EMO.t);
-    if (a0 < 0) { EMO.kind = null; EMO.t = -1; }
+    if (a0 < 0) { EMO.kind = null; EMO.t = -1; EMO.source = null; }
     else {
       const a = a0 * EMO_GATE[F.state] * (0.55 + 0.45 * EMO.tone);
       eAmt = a;
       if (EMO.kind === 'happy') { eLow = 0.62 * a; eCurve = 1.8 * a; }
       else if (EMO.kind === 'curious') { eHL = 1 + 0.06 * a; eHR = 1 - 0.08 * a; eOpen = 0.22 * a; }
       else if (EMO.kind === 'sad') { eTilt = -5 * a; eLow = 0.12 * a; eCurve = -2.6 * a; }
+      else if (EMO.kind === 'startled') { eHL = 1 - 0.14 * a; eHR = 1 - 0.14 * a; eTilt = 2.5 * a; eOpen = 0.72 * a; }
+      else if (EMO.kind === 'relieved') { eHL = 1 + 0.02 * a; eHR = 1 + 0.02 * a; eLow = 0.34 * a; eCurve = 1.35 * a; }
     }
   }
   // 눈부심 — 비대칭 평활. 올라갈 때는 즉각, 내려올 때는 천천히.
@@ -163,7 +187,7 @@ export function expression(t, dt) {
     tiltE: eTilt,           // 감정 기울기 — glare tilt 에 *더해진다*. 음수 = 바깥 처짐
     mCurve: eCurve,         // 입꼬리 목표 가감 (mouth.js 가 소비)
     mOpen: eOpen,           // 입 벌림 목표 (mouth.js 가 소비)
-    emo: EMO.kind, emoAmt: eAmt,
+    emo: EMO.kind, emoAmt: eAmt, emoSource: EMO.source,
     gx: GZ.x, gy: GZ.y,     // 시선 — 두 눈이 함께 이동한다 [WO-01b-6]
   };
 }

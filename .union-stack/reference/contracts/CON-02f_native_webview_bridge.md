@@ -4,7 +4,7 @@ id: CON-02f
 title: RN 네이티브 ↔ PWA WebView 브리지 계약
 status: Draft
 tier: draft
-version: 0.3
+version: 0.4
 consumers: [PLAN-01b, PLAN-02f]
 ---
 
@@ -52,8 +52,11 @@ type BridgeEnvelope<T extends string, P> = {
 | `native/ready` | `{bridgeVersion: 1, platform: "android"\|"ios"}` | RN 브리지 사용 가능. 이 메시지를 받으면 Web Bluetooth를 시작하지 않는다 |
 | `ble/status` | `{state: "idle"\|"scanning"\|"connecting"\|"connected"\|"ended"\|"error", deviceName?: string, reason?: string}` | 연결 상태. 프로덕션 얼굴 위 텍스트 표시 금지 |
 | `ble/line` | `{line: string}` | 개행을 제거한 얼굴 소비 라인: `HELLO`, `LUX:*`, `STATE:*`, `SLEEPING` |
+| `expr/trigger` | [CON-01b] `ExpressionTrigger` | RN이 확정한 앱 사건(현재 `BTN:A:DOWN`)을 PWA `palBus` 표정으로 전달 |
 
 `ble/line`은 RN line buffer가 완성한 ASCII 한 줄만 전달한다. notify chunk를 그대로 전달하지 않는다. RN은 수신 순서를 보존하고, PWA는 `payload.line`을 기존 `handleLine()`에 넘긴다. `IMU:`·`MOVE:`와 알 수 없는 라인은 얼굴에 전달하지 않는다. `SLEEPING` 뒤 `ble/status.state="ended"`는 정상 종료이며 자동 재연결하지 않는다([CON-01] 규칙 4).
+
+`expr/trigger`는 [CON-01b]의 kind·tone·source 세 필드만 허용한다. WebView가 준비되기 전 사건은 RN이 최신 1건만 보관해 `web/ready` 직후 전달한다. 조도는 RN에서 감정으로 바꾸지 않고 `ble/line` 원문을 보내며, PWA `lux.js`가 동일 프로토콜의 `startled/relieved`를 발행한다.
 
 ## 생명주기 규칙
 
@@ -78,4 +81,4 @@ type BridgeEnvelope<T extends string, P> = {
 {"v":1,"type":"ble/line","seq":42,"at":1787360400400,"payload":{"line":"STATE:DROWSY"}}
 ```
 
-검사는 ① ready 전 라인 미전달 ② ready 후 최신 상태 재전달 ③ 여러 notify chunk의 라인 복원 ④ 잘못된 JSON 무시 ⑤ `SLEEPING` 정상 종료 ⑥ allowlist 밖 `ble/write` 거부를 포함한다.
+검사는 ① ready 전 라인 미전달 ② ready 후 최신 상태 재전달 ③ 여러 notify chunk의 라인 복원 ④ 잘못된 JSON 무시 ⑤ `SLEEPING` 정상 종료 ⑥ allowlist 밖 `ble/write` 거부 ⑦ ready 전 expression 최신 1건 재전달 ⑧ 잘못된 expression payload 무시를 포함한다.

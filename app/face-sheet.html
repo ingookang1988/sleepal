@@ -229,15 +229,23 @@ const runChecks = function () {
     S.GL.now = 0; S.GL.raw = 0; S.GL.flinch = -1; S.GL.relief = -1;
     S.GL.settle = 0; S.GL.release = 0; S.GL.flinchAt = -9; S.GL.reliefAt = -9;
     S.lux.recent.length = 0; S.lux.count = 0; S.lux.last = null; S.lux.hold = null;
+    S.EMO.kind = null; S.EMO.t = -1; S.EMO.source = null;
     S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.blinkEnv = null;
     const step = function (n) { for (let i = 0; i < n; i++) { clk += 16.667; S._step(clk); } };
     step(1);
     for (let i = 0; i < 14; i++) { S.feedLux(900); step(12); }
-    S.feedLux(9000); step(60);
+    S.feedLux(9000);
+    const startled = S.EMO.kind === 'startled' && S.EMO.source === 'lux';
+    step(60);
     const squint = S.F.hNow;
-    fall.forEach(function (v) { S.feedLux(v); step(12); });
+    let relieved = false;
+    fall.forEach(function (v) {
+      S.feedLux(v);
+      if (S.EMO.kind === 'relieved' && S.EMO.source === 'lux') relieved = true;
+      step(12);
+    });
     step(60);                                     // 하강 종료 후 1초
-    return { squint: squint, after1s: S.F.hNow };
+    return { squint: squint, after1s: S.F.hNow, startled: startled, relieved: relieved };
   };
   const sharp = runFall([900]);                            // -3.3 stop 한 방 → 안도
   const slow  = runFall([4500, 2200, 1100, 900, 900]);     // 매 표본 -1 stop → 미발화
@@ -249,6 +257,8 @@ const runChecks = function () {
                   (sharp.after1s / 45 * 100).toFixed(0) + '% (' + sharp.after1s.toFixed(1) + 'mm)'));
   lines.push(pass('    완만 하강은 느림',  slow.after1s < 45 * 0.85,
                   (slow.after1s / 45 * 100).toFixed(0) + '% — τ 2.5 유지'));
+  lines.push(pass('    조도 상승 → 놀람', sharp.startled, 'startled · source=lux'));
+  lines.push(pass('    조도 급락 → 안도', sharp.relieved, 'relieved · source=lux'));
 
   // ── 카메라 AE 램프 — 하강이 여러 표본에 번져도 안도가 뜬다 ──
   //  실기에서 "감기는 건 되는데 떠지는 건 안 된다"의 원인: AE 가 복귀를
@@ -275,7 +285,7 @@ const runChecks = function () {
   })();
 
   // ── 이산 표정·입·fx [WO-01b-5] ────────────────────────────
-  //  트리거는 [CON-02] 소비부(SP.exprTrigger)를 직접 때린다 — 결정적이어야
+  //  트리거는 [CON-01b] 소비부(SP.exprTrigger)를 직접 때린다 — 결정적이어야
   //  하므로 버스 대신 함수 경로. 버스 배선은 앱에서 육안으로 본다(6·7·8 키).
   (function () {
     const step = function (n) { for (let i = 0; i < n; i++) { clk += 16.667; S._step(clk); } };
@@ -286,7 +296,7 @@ const runChecks = function () {
       S.GL.settle = 0; S.GL.release = 0;
       S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.lidNow = S.F.lid.slice();
       S.F.stateAt = clk / 1000;                  // 호흡 위상을 가상 시계에 맞춘다
-      S.EMO.kind = null; S.EMO.t = -1;
+      S.EMO.kind = null; S.EMO.t = -1; S.EMO.source = null;
       for (const p of S.FX.alive) p.el.remove();
       S.FX.alive.length = 0; S.FX.music = false;
       step(2);
@@ -319,6 +329,25 @@ const runChecks = function () {
                     ang(el('tiltL').getAttribute('transform')).toFixed(2) + '°'));
     lines.push(pass('    트리거 상태 불변', S.F.state === 'AWAKE', '[CON-01] 규칙 2'));
 
+    // 환경 전용 표정 — 놀람은 짧은 'o', 안도는 아래꺼풀+입꼬리
+    reset('AWAKE');
+    S.exprTrigger('startled', 1, 'lux');
+    step(8);
+    lines.push(pass('    놀람 → 수축 + o', S.F.X.emo === 'startled' && S.F.X.mOpen > 0.25 && S.F.X.hMul[0] < 1,
+                    'open ' + S.F.X.mOpen.toFixed(2)));
+    reset('AWAKE');
+    S.exprTrigger('relieved', 1, 'lux');
+    step(20);
+    lines.push(pass('    안도 → 부드러운 미소', S.F.X.emo === 'relieved' && S.F.X.lowLid > 0.12 && S.F.X.mCurve > 0.4,
+                    'low ' + S.F.X.lowLid.toFixed(2)));
+
+    // 표준 payload 외 입력은 현재 표정을 덮지 않는다
+    const beforeInvalid = S.EMO.kind;
+    const rejected = S.emitExpression({ kind:'angry', tone:1, source:'lux' }) === false &&
+                     S.emitExpression({ kind:'happy', tone:1, source:'button', extra:true }) === false;
+    lines.push(pass('    잘못된 표정 payload 무시', rejected && S.EMO.kind === beforeInvalid,
+                    'kind·필드 allowlist'));
+
     // 입 — 보이되 눈 영역과 교차 0
     reset('AWAKE');
     step(6);
@@ -343,12 +372,14 @@ const runChecks = function () {
     // 잠듦 — 트리거는 무시되고 zzz 도상만 산다 · 눈 영역 밖(오른눈 오른쪽)
     reset('ASLEEP');
     S.exprTrigger('happy', 1);
+    S.emitExpression('note', 1, 'system');
     S.FX.nextZ = 0;
     step(30);
     const nz = S.FX.alive.filter(function (p) { return p.kind === 'z'; }).length;
+    const nn = S.FX.alive.filter(function (p) { return p.kind === 'note'; }).length;
     const fxb = nz ? el('fx').getBBox() : null;
     const eyeRb = el('eyeR').getBBox();
-    lines.push(pass('    잠듦 zzz · 트리거 무시', S.EMO.kind === null && nz >= 1 &&
+    lines.push(pass('    잠듦 zzz · 트리거 무시', S.EMO.kind === null && nz >= 1 && nn === 0 &&
                     fxb !== null && fxb.x >= eyeRb.x + eyeRb.width,
                     nz + '개 · x ' + (fxb ? fxb.x.toFixed(1) : '—')));
     S.setEyeState('NIGHT');
@@ -374,7 +405,7 @@ const runChecks = function () {
       S.GL.settle = 0; S.GL.release = 0;
       S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.lidNow = S.F.lid.slice();
       S.F.stateAt = clk / 1000;
-      S.EMO.kind = null; S.EMO.t = -1;
+      S.EMO.kind = null; S.EMO.t = -1; S.EMO.source = null;
       S.GZ.x = 0; S.GZ.y = 0; S.GZ.tx = 0; S.GZ.ty = 0; S.GZ.hold = 0;
       S.snd.base = 0; S.snd.fireAt = -9; S.snd.pend = null;
       step(2);
@@ -404,8 +435,9 @@ const runChecks = function () {
     const g1 = S.F.X.gx;
     S.feedSnd(0.6, -1);                          // 불응기 안 — 무시돼야 한다
     step(6);
-    lines.push(pass('    소리 체인 + 불응기', g1 > 1.5 && S.F.X.gx > 0 && S.F.state === 'AWAKE',
-                    'gx ' + g1.toFixed(2) + ' → ' + S.F.X.gx.toFixed(2) + ' · 상태 불변'));
+    lines.push(pass('    소리 체인 + 불응기', g1 > 1.5 && S.F.X.gx > 0 && S.F.state === 'AWAKE' &&
+                    S.EMO.kind === 'curious' && S.EMO.source === 'sound',
+                    'gx ' + g1.toFixed(2) + ' → ' + S.F.X.gx.toFixed(2) + ' · curious'));
 
     // 졸림 — 게이트 0.3 으로 둔하게만 따라간다
     reset('DROWSY');
