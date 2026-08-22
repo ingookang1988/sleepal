@@ -12,6 +12,7 @@ P1 기획·기록 → 공통 셸 구현까지 한 세션에 갔다. [PHASE-02]·
 - WO: [WO-02a-1] Closed → `sprint/archived/` · [WO-02a-2] Verifying · 02a-3~02e-1 Draft 7건
 - 코드: `app/` 8모듈 분할 + PWA 5파일(BUILD 22f) · `scripts/deploy.js`([ADR-116] 자동화) · `scripts/adopter-arm.js`+회귀 4건
 - 시연 시나리오 세션(2026-08-22, 인간 합의 반영): [PLAN-02] v0.3(시연 시나리오 v1 + 놀이 후보 — 거치/이탈 트리거·알람·시간당 기록·대화 일기) · [CON-03] v0.2(alarm·wake·diary·밤중 이벤트) · [WO-02d-3](알람) 신설 Draft · [WO-02d-1] 거치/이탈 행 추가 · `next.md` 재생성. 코드 변경 없음
+- **화면 목업**: `ref/mockups/sleepal-mockups.html` — 시연 시나리오 9화면(팰 앱 6 + 트래킹 앱 3), 단일 HTML. 색·눈 좌표는 `app/face/eyes.js` STATES 상속, 화면별 트리거·WO·규범 주석 포함. **표정 FE 진행 중인 에이전트가 이어서 업데이트할 예정**(소유 이관 — 이 세션은 더 안 건드린다). 미결 1건: PLAY 화면 하단 "듣는 중" 점 표시의 R3 저촉 여부(목업에 후보로만 표기)
 
 ## 3. Next task (single entry point)
 **하드웨어 수령으로 [WO-01a-1](툴체인·컴파일 검증)이 최우선이 됐다** — [CON-01]은 여전히 한 번도 보드 왕복이 없는 미검증 계약이고, H 파트(강인구 PO) 소유다. 이어서 보드 lux → `LUX:` 5Hz → 표정 체인 실검증.
