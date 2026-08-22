@@ -4,7 +4,7 @@ id: CON-02
 title: 런타임 모드 이벤트 계약 (모드 머신 → 표정·사운드·트래커)
 status: Draft
 tier: draft
-version: 0.2
+version: 0.1
 ---
 
 # [CON-02] 런타임 모드 이벤트
@@ -21,7 +21,6 @@ version: 0.2
 | `mode:change` | `{from, to, cause}` | mode.js | 4모드 전이. `cause`: `"lux+quiet5m" \| "command" \| "lux+noise5m"` |
 | `mode:progress` | `{to, elapsed, need}` | mode.js | 히스테리시스 진행(dev HUD 표시용, 프로덕션 UI 금지 — R6) |
 | `expr:trigger` | `{kind, tone}` | babble.js 등 | 표정 트리거(발화 동기 등). 연속 변조가 아니라 이산 사건만 |
-| `play:reaction` | `{emotion, expression, babbleTone, sleepIntent, caption?, fallback, latencyMs, text}` | play.js | 놀이 왕복 1회의 결과([CON-04] 반응 + 계측). `sleepIntent:true` 는 **모드 전환 요청**이다 — mode.js 가 구독해 `command` 트리거로 쓴다(모드를 되쓰는 게 아니라 요청을 소비. 규칙 1 유지). 표정·옹알이([WO-02b-2])도 여기서 받는다. v0.2 추가 — 소비자 mode.js·babble.js 는 미착수라 착수 시 페이로드 재합의 가능 |
 
 ## 규칙
 1. 모드는 `mode.js` 만 발행한다 — 소비자가 모드를 되쓰면 결함.

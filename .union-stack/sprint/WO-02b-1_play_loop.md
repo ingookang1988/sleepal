@@ -1,9 +1,9 @@
 ---
 id: WO-02b-1
 title: 놀이 왕복 v1 — 녹음→STT→LLM→반응 JSON
-status: Active
+status: Draft
 parent: PLAN-02
-evidence: "app/play.js 구현 + 로컬 목 상류 실측: 정상 왕복 반응 JSON·'나 이제 잘게'→sleepIntent:true palBus 발행·NIGHT 차단(R4)·키 없음 503→사전 반응 3종 폴백(R8)·/api/stt 200 — 폰 실기 왕복(마이크 녹음)·지연 실측 잔여"
+evidence: "none — 미착수 (완료 시: 폰 실기 1왕복 캡처 + 지연 실측)"
 closed_by: []
 ---
 # [WO-02b-1] 놀이 왕복 v1

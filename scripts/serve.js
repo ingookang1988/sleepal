@@ -27,6 +27,8 @@ const PORT = Number(process.env.PORT || process.argv[2]) || 5173;
 const HOST = process.env.PORT ? '0.0.0.0' : '127.0.0.1';   // 컨테이너에서는 외부 바인딩이 필요하다
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',   // face/expression-protocol.mjs — octet-stream 이면 모듈 로드가 통째로 죽는다
+
   '.css': 'text/css; charset=utf-8',   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',             '.png': 'image/png',
   '.jpg': 'image/jpeg',                '.pdf': 'application/pdf',

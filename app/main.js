@@ -15,8 +15,6 @@ import { _feedRaw, _reset, bleStatus, connect, DEVICE_PREFIX, handleLine, NUS,
          onDisconnect, onNotify, reconnect, RX, send, TX } from './ble.js';
 import { closeDev, EYE_SAFE, getDev, openDev, paintDebug, paintHud, setBuild,
          setDev, toggleDebug } from './hud.js';
-// H 파트 — 놀이 왕복 [WO-02b-1]. 반응은 palBus `play:reaction` 으로만 나간다([CON-02] v0.2).
-import { FALLBACK, initPlay, PLAY, sendText } from './play.js';
 
 // ── T 파트 등록 지점 ([PLAN-02] §경계 1 · [CON-02]) ─────────────
 //  mode.js / tracker.js / sound.js 는 여기서 import 되어 palBus 로 만난다 —
@@ -282,7 +280,6 @@ export function boot(build) {
   applyViewBox();
   paintRuler();
   setDev(getDev());       // 버튼 라벨 동기화. 기본 OFF — ?dev=1 이나 이전 토글이 있을 때만 ON
-  initPlay();             // 놀이 왕복 — 얼굴 길게 누름 / v 키 홀드 [WO-02b-1]
   requestAnimationFrame(frame);
 
   // 검증 훅 — 콘솔/헤드리스에서 호출한다 (R3 게이트 등)
@@ -310,8 +307,6 @@ export function boot(build) {
     get retries() { return bleStatus().retries; },
     // [CON-02] 버스 — T 파트 연결점(아직 발행자 없음)
     palBus: palBus,
-    // 놀이 왕복 [WO-02b-1] — 계측·검사용(sendText 는 STT 를 건너뛰는 텍스트 경로)
-    PLAY: PLAY, sendText: sendText, FALLBACK: FALLBACK,
     // 검사용 — 배관을 태우지 않고 라인 스트림만 흉내낸다
     _feedRaw: _feedRaw,
     // 검사용 — rAF 없이 루프를 결정적으로 밟는다(반응 곡선 측정)
