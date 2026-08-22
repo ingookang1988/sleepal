@@ -13,7 +13,7 @@ export const STATES = {
   DROWSY:  { bg:'#33200A', eye:'#F3E2C2', lid:0.55, dim:0.15, shut:false,
              blink:[2.5, 4.0], env:[0.50, 0.25, 0.40] },
   // shutOp — 목업 SLEEP 화면의 체감 0.18 을 dim 0.35 몫을 빼고 역산(0.28×0.65≈0.18).
-  // 자려는 사람 곁에서 감긴 눈이 밝게 남으면 그 자체가 광공해다([WO-01b-5]).
+  // 자려는 사람 곁에서 감긴 눈이 밝게 남으면 그 자체가 광공해다([WO-01b-7]).
   ASLEEP:  { bg:'#05070A', eye:'#6E7686', lid:1.00, dim:0.35, shut:true, shutOp:0.28,
              blink:null, env:null },
   NIGHT:   { bg:'#000000', eye:'#000000', lid:1.00, dim:0.60, shut:false,
@@ -26,7 +26,7 @@ export const ORDER = ['AWAKE', 'DROWSY', 'ASLEEP', 'NIGHT', 'MORNING'];
 // ── 얼굴 기하 (mm) — [DOM-01] §2 / [PLAN-01b] v0.3 ─────────────
 export const EYE = { w:45, h:45, cy:36.5, cx:[39, 119] };
 // 모서리 반경 상한. 목업(시연 시나리오 v1)의 눈은 원이 아니라 라운드 사각이다 —
-// 전체 높이에서 rx=12, 찡그려 높이가 24 아래로 내려가면 알약으로 수렴([WO-01b-5]).
+// 전체 높이에서 rx=12, 찡그려 높이가 24 아래로 내려가면 알약으로 수렴([WO-01b-7]).
 export const EYE_RX = 12;
 export const LID_H = 80;                     // 눈꺼풀 도형 높이(넉넉히)
 export const VB = { dx:0, dy:0, hmm:73 };    // viewBox 오프셋 — 루프가 읽는다
@@ -128,5 +128,17 @@ export function lidPath(cx, bottom) {
   const top = (bottom - LID_H).toFixed(2);
   const side = (bottom - 2).toFixed(2), ctrl = (bottom + 4).toFixed(2);
   return 'M ' + l + ' ' + top + ' H ' + r + ' V ' + side +
+         ' Q ' + c + ' ' + ctrl + ' ' + l + ' ' + side + ' Z';
+}
+
+// 아래꺼풀 — 위꺼풀의 거울. 윗변 가운데가 arch 만큼 *올라와* 눈 아래를
+// ⌣ 로 깎는다. 웃는 눈은 위가 아니라 아래에서 만들어진다([WO-01b-5]).
+// arch 는 올라온 양(0이면 평평)과 함께 준다 — 완전히 내려간 상태(top이
+// 눈 바닥 아래)에서는 arch 도 0 에 수렴시켜 눈에 1px 도 닿지 않게 한다.
+export function lowLidPath(cx, top, arch) {
+  const l = (cx - 30).toFixed(2), r = (cx + 30).toFixed(2), c = cx.toFixed(2);
+  const bottom = (top + LID_H).toFixed(2);
+  const side = (top + 2).toFixed(2), ctrl = (top + 2 - arch).toFixed(2);
+  return 'M ' + l + ' ' + bottom + ' H ' + r + ' V ' + side +
          ' Q ' + c + ' ' + ctrl + ' ' + l + ' ' + side + ' Z';
 }

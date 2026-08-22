@@ -6,7 +6,12 @@
 
 #define DEVICE_NAME "SLEEPPAL-PILLOW-01"
 
-const bool SEND_RAW_IMU = true;
+#ifndef SLEEPAL_SEND_RAW_IMU
+#define SLEEPAL_SEND_RAW_IMU 0
+#endif
+
+const bool SEND_RAW_IMU = SLEEPAL_SEND_RAW_IMU != 0;
+const uint8_t MAX_PERIPHERAL_CONNECTIONS = 2;
 const unsigned long IMU_SAMPLE_INTERVAL_MS = 20;
 const unsigned long IMU_NOTIFY_INTERVAL_MS = 100;
 const unsigned long LIGHT_SAMPLE_INTERVAL_MS = 20;
@@ -18,6 +23,7 @@ const uint16_t MOTION_WINDOW_SAMPLES = 50;
 const int LIGHT_DEADBAND = 8;
 const uint16_t LIGHT_BASELINE_SAMPLES = 100;
 const float LIGHT_EMA_ALPHA = 0.15f;
+const unsigned long BUTTON_DEBOUNCE_MS = 30;
 
 const float ACC_RMS_THRESHOLD_RAW = 250.0f;
 const float GYRO_RMS_THRESHOLD_RAW = 300.0f;
@@ -68,6 +74,17 @@ bool lightFilterInitialized = false;
 char rxBuffer[64];
 uint8_t rxLength = 0;
 
+struct DebouncedButton {
+  uint8_t pin;
+  const char* name;
+  bool stableState;
+  bool rawState;
+  unsigned long rawChangedMs;
+};
+
+DebouncedButton buttonA = {PIN_BUTTON1, "A", HIGH, HIGH, 0};
+DebouncedButton buttonB = {PIN_BUTTON2, "B", HIGH, HIGH, 0};
+
 void setLed(uint8_t pin, bool on) {
   digitalWrite(pin, on ? LED_STATE_ON : !LED_STATE_ON);
 }
@@ -81,8 +98,19 @@ void updateStatusLeds() {
 
 void sendLine(const char* line) {
   if (linked) {
-    bleuart.print(line);
-    bleuart.print('\n');
+    char packet[66];
+    const int length = snprintf(packet, sizeof(packet), "%s\n", line);
+    if (length > 0 && length < static_cast<int>(sizeof(packet))) {
+      uint16_t handles[MAX_PERIPHERAL_CONNECTIONS];
+      const uint8_t count = Bluefruit.getConnectedHandles(
+          handles,
+          MAX_PERIPHERAL_CONNECTIONS);
+      for (uint8_t i = 0; i < count; i++) {
+        if (bleuart.notifyEnabled(handles[i])) {
+          bleuart.write(handles[i], reinterpret_cast<const uint8_t*>(packet), length);
+        }
+      }
+    }
   }
   Serial.println(line);
 }
@@ -348,6 +376,12 @@ void sampleLightSensor() {
 }
 
 void handleCommand(char* line) {
+  if (strcmp(line, "FACE") == 0) {
+    sendLine("BTN:A:DOWN");
+    sendLine("BTN:A:UP");
+    Serial.println("FACE_TRIGGER_OK");
+    return;
+  }
   if (strcmp(line, "WAKE") == 0) {
     sendLine("HELLO");
     return;
@@ -371,29 +405,61 @@ void pumpBleRx() {
   }
 }
 
+void sampleButton(DebouncedButton& button) {
+  const unsigned long now = millis();
+  const bool raw = digitalRead(button.pin);
+
+  if (raw != button.rawState) {
+    button.rawState = raw;
+    button.rawChangedMs = now;
+  }
+
+  if (raw != button.stableState &&
+      now - button.rawChangedMs >= BUTTON_DEBOUNCE_MS) {
+    button.stableState = raw;
+    char line[24];
+    snprintf(
+        line,
+        sizeof(line),
+        "BTN:%s:%s",
+        button.name,
+        raw == LOW ? "DOWN" : "UP");
+    sendLine(line);
+  }
+}
+
 void connectCallback(uint16_t connectionHandle) {
   (void)connectionHandle;
-  linked = true;
+  const uint8_t connectionCount = Bluefruit.connected();
+  linked = connectionCount > 0;
   updateStatusLeds();
-  sendLine("HELLO");
-  if (lightBaseline >= 0) {
-    char baselineLine[24];
-    snprintf(baselineLine, sizeof(baselineLine), "LUX:BASE:%d", lightBaseline);
-    sendLine(baselineLine);
+  if (connectionCount == 1) {
+    sendLine("HELLO");
+    if (lightBaseline >= 0) {
+      char baselineLine[24];
+      snprintf(baselineLine, sizeof(baselineLine), "LUX:BASE:%d", lightBaseline);
+      sendLine(baselineLine);
+    }
+    if (lastLightSent >= 0) {
+      char luxLine[20];
+      snprintf(luxLine, sizeof(luxLine), "LUX:%d", lastLightSent);
+      sendLine(luxLine);
+    }
   }
-  if (lastLightSent >= 0) {
-    char luxLine[20];
-    snprintf(luxLine, sizeof(luxLine), "LUX:%d", lastLightSent);
-    sendLine(luxLine);
+  if (connectionCount < MAX_PERIPHERAL_CONNECTIONS) {
+    Bluefruit.Advertising.start(0);
   }
 }
 
 void disconnectCallback(uint16_t connectionHandle, uint8_t reason) {
   (void)connectionHandle;
   (void)reason;
-  linked = false;
+  linked = Bluefruit.connected() > 0;
   updateStatusLeds();
   Serial.println("BLE_DISCONNECTED");
+  if (Bluefruit.connected() < MAX_PERIPHERAL_CONNECTIONS) {
+    Bluefruit.Advertising.start(0);
+  }
 }
 
 void startAdvertising() {
@@ -416,6 +482,11 @@ void setup() {
     setLed(pin, false);
   }
 
+  pinMode(buttonA.pin, INPUT_PULLUP);
+  pinMode(buttonB.pin, INPUT_PULLUP);
+  buttonA.stableState = buttonA.rawState = digitalRead(buttonA.pin);
+  buttonB.stableState = buttonB.rawState = digitalRead(buttonB.pin);
+
   Wire.begin();
   Wire.setClock(400000);
   delay(100);
@@ -423,7 +494,7 @@ void setup() {
   imuReady = tryBeginImu();
   updateStatusLeds();
 
-  Bluefruit.begin();
+  Bluefruit.begin(MAX_PERIPHERAL_CONNECTIONS, 0);
   Bluefruit.setTxPower(4);
   Bluefruit.setName(DEVICE_NAME);
   Bluefruit.Periph.setConnectCallback(connectCallback);
@@ -440,6 +511,8 @@ void loop() {
   sampleImu();
   sampleLightSensor();
   pumpBleRx();
+  sampleButton(buttonA);
+  sampleButton(buttonB);
 
   const unsigned long now = millis();
   if (now - lastHeartbeatMs >= 1000) {

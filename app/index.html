@@ -100,7 +100,7 @@
      걸린다. 그래서 이 탭 하나가 반드시 있어야 하고, [WO-01b-3]
      오디오 잠금 해제도 같은 탭 하나로 겸한다. -->
 <section id="entryScreen" class="screen on">
-  <!-- 목업 1번 화면 — 자면서 기다리는 ∩형 눈. 얼굴 화면이 아니므로 R3 무관 [WO-01b-5] -->
+  <!-- 목업 1번 화면 — 자면서 기다리는 ∩형 눈. 얼굴 화면이 아니므로 R3 무관 [WO-01b-7] -->
   <svg viewBox="0 0 160 60" style="width:min(52%,240px)" aria-hidden="true">
     <path d="M42 34 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/>
     <path d="M96 34 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/>
@@ -128,15 +128,26 @@
       <mask id="mL" maskUnits="userSpaceOnUse" x="-40" y="-40" width="240" height="160">
         <rect x="-40" y="-40" width="240" height="160" fill="#fff"/>
         <path id="lidL" d="M 9 -66 H 69 V -68 Q 39 -62 9 -68 Z" fill="#000"/>
+        <!-- 아래꺼풀 [WO-01b-5] — 웃는 눈 ⌣ 은 아래에서 만들어진다. 평소엔 눈 아래에 숨어 있다 -->
+        <path id="lidL2" d="M 9 144 H 69 V 66 Q 39 66 9 66 Z" fill="#000"/>
       </mask>
       <mask id="mR" maskUnits="userSpaceOnUse" x="-40" y="-40" width="240" height="160">
         <rect x="-40" y="-40" width="240" height="160" fill="#fff"/>
         <path id="lidR" d="M 89 -66 H 149 V -68 Q 119 -62 89 -68 Z" fill="#000"/>
+        <path id="lidR2" d="M 89 144 H 149 V 66 Q 119 66 89 66 Z" fill="#000"/>
       </mask>
+      <!-- fx 도상 [WO-01b-5] — 문자 노드가 아니라 도형이다(R3 게이트: <text> 0 유지).
+           zzz 는 수면 기호, 음표는 음악 재생 표시. 색·위치는 fx.js 가 매 스폰마다 준다. -->
+      <path id="fxZ" d="M 0 0 H 4.2 L 0 4.2 H 4.2" fill="none" stroke-width="1.1"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <g id="fxN">
+        <ellipse cx="1.1" cy="-1.1" rx="1.6" ry="1.15" transform="rotate(-18 1.1 -1.1)"/>
+        <path d="M 2.55 -1.35 V -6.6 Q 4.3 -6.0 4.8 -4.5 Q 3.9 -5.3 2.55 -4.9 Z"/>
+      </g>
     </defs>
 
     <!-- 뜬 눈 — <circle> 이 아니라 <rect rx>. 찡그림을 원으로는 못 만든다.
-         rx=12 는 목업(시연 시나리오 v1)의 라운드 사각 눈이다 [WO-01b-5] -->
+         rx=12 는 목업(시연 시나리오 v1)의 라운드 사각 눈이다 [WO-01b-7] -->
     <g id="tiltL" transform="rotate(0 39 36.5)">
       <g mask="url(#mL)">
         <rect id="eyeL" class="eye" x="16.5" y="14" width="45" height="45" rx="12" fill="#EAEEF7"/>
@@ -155,6 +166,17 @@
       <path id="shutR" class="shut" d="M 100 44 q 19 10 38 0"
             fill="none" stroke="#6E7686" stroke-width="4" stroke-linecap="round" opacity="0"/>
     </g>
+
+    <!-- 입 [WO-01b-5] — 곡선(닫힘) + 타원(하품·"후—"). R1: 음소 형태 없음.
+         눈보다 얇고(3 vs 5) 옅게 — 감긴 눈 ⌣ 과 헷갈리지 않게. mouth.js 소유. -->
+    <g id="mouthG">
+      <path id="mouth" d="M 69 63.5 Q 79 66 89 63.5" fill="none"
+            stroke="#EAEEF7" stroke-width="3" stroke-linecap="round" opacity="0"/>
+      <ellipse id="mouthO" cx="79" cy="65" rx="2.2" ry="0" fill="#EAEEF7" opacity="0"/>
+    </g>
+
+    <!-- 떠다니는 도상 [WO-01b-5] — fx.js 가 <use> 를 넣고 뺀다. NIGHT 에서 비어 있다(R4) -->
+    <g id="fx"></g>
   </svg>
 </section>
 
@@ -209,6 +231,26 @@
     <button id="dbgHud">표정 HUD</button>
     <button id="dbgHold">기준선 고정</button>
   </div>
+  <!-- 이산 표정·fx 대역 [WO-01b-5] — 전부 [CON-01b] expr:trigger 경로로만 들어간다.
+       발화자(babble.js·sound.js)가 없는 동안의 수동 트리거. 누르면 얼굴로 돌아가
+       표정이 보인다(봉투가 2초 안에 끝나므로). 상태 전이는 유발하지 않는다. -->
+  <div class="rowbtn">
+    <button id="dbgHappy">기쁨</button>
+    <button id="dbgCurious">호기심</button>
+    <button id="dbgSad">서운함</button>
+    <button id="dbgNote">♪ 음표</button>
+    <button id="dbgMusic">♪ 음악</button>
+  </div>
+  <!-- 시선 대역 [WO-01b-6] — 합성 소리는 feedSnd() 로만, 마이크는 RMS 만 남기고
+       즉시 폐기(오디오는 기기를 떠나지 않는다). 상태 전이는 유발하지 않는다.
+       🎙 [ADR-121] 마이크 생애 = 수면 준비 세션 — SLEEP 모드·잠듦·밤에서는
+       어떤 경로로 켜졌든 강제 OFF. 이 버튼은 dev 수동 토글(첫 권한 부여 겸). -->
+  <div class="rowbtn">
+    <button id="dbgSndL">◀ 소리</button>
+    <button id="dbgSndC">● 정면</button>
+    <button id="dbgSndR">소리 ▶</button>
+    <button id="dbgEar">귀 (마이크)</button>
+  </div>
   <div class="rowbtn"><button class="primary" id="dbgClose">닫기</button></div>
   <!-- R7 — 카메라는 조도계로만 읽는다. 프레임은 32x24 평균 휘도 하나로
        줄여 즉시 버린다. 저장·전송하지 않고, 인체·자세를 보지 않는다. -->
@@ -246,7 +288,7 @@ import { boot } from './main.js';
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 앱의 전제다).
 // ⚠ 이 문자열은 반드시 index.html 에 남는다 — deploy.js 와 배포본 신선도
 //   검사가 *이 파일에서* grep 한다([ADR-116]). 모듈로 옮기지 말 것.
-const BUILD = '2026-08-22h';
+const BUILD = '2026-08-22m';
 
 // PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
 // 이전 버전 캐시를 지운다([WO-02a-1]). 등록 실패는 조용히 무시한다 —

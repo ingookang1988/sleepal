@@ -1,4 +1,8 @@
-import { isAllowedBoardWrite, parseNu40Line, shouldForwardToFace } from '../ble/protocol';
+import {
+  isAllowedBoardWrite,
+  parseNu40Line,
+  shouldForwardToFace,
+} from '../ble/protocol';
 
 describe('NU40 protocol', () => {
   it('parses contracted sensor lines', () => {
