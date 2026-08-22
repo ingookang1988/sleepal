@@ -19,7 +19,7 @@
 
 ## 3. Next task (single entry point)
 **[WO-02a-2](모듈 분할 — 병렬 게이트)** — [WO-02a-1]은 구현 완료·Verifying(실기 확인만 남음, 코드 BUILD 2026-08-22e). 이어서 [WO-02a-3](프록시). 파트 배분·병렬 규칙은 [PLAN-02] §분해와 파트 소유권.
-⚠ 배포는 로컬에서 [ADR-116] 스테이징 경로로 `railway up` 필요 — 원격 세션에는 railway CLI 가 없다. 배포 후 폰에서 [WO-02a-1] 실기 2종(설치·오프라인) 확인.
+⚠ 배포는 로컬에서 **`npm run deploy -- -p <projectId>`**(`scripts/deploy.js` — [ADR-116] 스테이징+BUILD 검증 자동화) — 원격 세션에는 railway CLI 가 없다. 배포 후 폰에서 [WO-02a-1] 실기 2종(설치·오프라인) 확인.
 몸통 계보는 [WO-01d-1](폰 실측)을 **인간이 보류 지시**(2026-08-22 대화) — 재개는 인간 신호로.
 
 ## 4. Open / cautions

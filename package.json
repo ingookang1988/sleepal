@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node scripts/serve.js",
     "serve": "node scripts/serve.js",
+    "deploy": "node scripts/deploy.js",
     "init": "node scripts/init.js",
     "lint": "node scripts/zfs-linter.js && node scripts/history-linter.js && node scripts/tool-linter.js && node scripts/tools-index.js && node scripts/blocks-index.js && node scripts/work-close.js --table && node scripts/smell-linter.js",
     "prereqs": "node scripts/check-prereqs.js",
