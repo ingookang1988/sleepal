@@ -44,7 +44,7 @@
 
 <h2>눈부심 — 각성</h2>
 <p class="note">
-  높이 45 → 17.1 · 모서리 = 높이/2 · 중심 Y 36.5 → 35.0 · <b>눈꼬리 안쪽 끝 7° 내림</b>.
+  높이 45 → 17.1 · 모서리 = min(12, 높이/2) · 중심 Y 36.5 → 35.0 · <b>눈꼬리 안쪽 끝 7° 내림</b>.
   기울기가 없으면 찡그림이 아니라 그냥 졸린 눈이다.
 </p>
 <div class="grid" id="glare"></div>
@@ -181,7 +181,9 @@ setTimeout(function () {
   lines.push('');
   lines.push(pass('    눈 높이 45 → 17.1', Math.abs(g0.h - 45) < 1 && Math.abs(g1.h - 17.1) < 1,
                   g0.h.toFixed(2) + ' → ' + g1.h.toFixed(2)));
-  lines.push(pass('    모서리 = 높이/2',   Math.abs(g1.rx - g1.h / 2) < 0.02, g1.rx.toFixed(2)));
+  // 라운드 사각 눈([WO-01b-5] 목업 정합): 뜬 눈 rx=12, 찡그리면 h/2 로 수렴
+  lines.push(pass('    모서리 min(12,h/2)', Math.abs(g0.rx - 12) < 0.02 && Math.abs(g1.rx - g1.h / 2) < 0.02,
+                  g0.rx.toFixed(2) + ' → ' + g1.rx.toFixed(2)));
   lines.push(pass('    중심 Y 36.5 → 35.0',
                   Math.abs((g1.y + g1.h / 2) - 35.0) < 0.3, (g1.y + g1.h / 2).toFixed(2)));
   lines.push(pass('    눈꼬리 ±7°',       Math.abs(ang(g1.tl) - 7) < 0.1 && Math.abs(ang(g1.tr) + 7) < 0.1,

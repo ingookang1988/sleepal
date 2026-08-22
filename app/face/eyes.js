@@ -12,7 +12,9 @@ export const STATES = {
              blink:[3.0, 6.0], env:[0.06, 0.00, 0.06] },
   DROWSY:  { bg:'#33200A', eye:'#F3E2C2', lid:0.55, dim:0.15, shut:false,
              blink:[2.5, 4.0], env:[0.50, 0.25, 0.40] },
-  ASLEEP:  { bg:'#05070A', eye:'#6E7686', lid:1.00, dim:0.35, shut:true,
+  // shutOp — 목업 SLEEP 화면의 체감 0.18 을 dim 0.35 몫을 빼고 역산(0.28×0.65≈0.18).
+  // 자려는 사람 곁에서 감긴 눈이 밝게 남으면 그 자체가 광공해다([WO-01b-5]).
+  ASLEEP:  { bg:'#05070A', eye:'#6E7686', lid:1.00, dim:0.35, shut:true, shutOp:0.28,
              blink:null, env:null },
   NIGHT:   { bg:'#000000', eye:'#000000', lid:1.00, dim:0.60, shut:false,
              blink:null, env:null },
@@ -21,8 +23,11 @@ export const STATES = {
 };
 export const ORDER = ['AWAKE', 'DROWSY', 'ASLEEP', 'NIGHT', 'MORNING'];
 
-// ── 얼굴 기하 (mm) — [DOM-01] §2 / [PLAN-01b] v0.2 ─────────────
+// ── 얼굴 기하 (mm) — [DOM-01] §2 / [PLAN-01b] v0.3 ─────────────
 export const EYE = { w:45, h:45, cy:36.5, cx:[39, 119] };
+// 모서리 반경 상한. 목업(시연 시나리오 v1)의 눈은 원이 아니라 라운드 사각이다 —
+// 전체 높이에서 rx=12, 찡그려 높이가 24 아래로 내려가면 알약으로 수렴([WO-01b-5]).
+export const EYE_RX = 12;
 export const LID_H = 80;                     // 눈꺼풀 도형 높이(넉넉히)
 export const VB = { dx:0, dy:0, hmm:73 };    // viewBox 오프셋 — 루프가 읽는다
 
@@ -89,7 +94,7 @@ export function setEyeState(name) {
   }
   for (const id of ['shutL', 'shutR']) {
     $(id).style.stroke = s.eye;
-    $(id).style.opacity = s.shut ? 1 : 0;
+    $(id).style.opacity = s.shut ? (s.shutOp || 1) : 0;
   }
   if (name === 'MORNING') stretch();
   log('state -> ' + name);

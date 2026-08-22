@@ -9,6 +9,7 @@
 | [WO-01b-2] | HTTPS 배포와 폰 실기 확인 | PLAN-01b | Active | 있음 |
 | [WO-01b-3] | 숨소리·하품 오디오와 백그라운드 재생 실측 | PLAN-01b | Draft | 해당없음 |
 | [WO-01b-4] | 표정 레이어 — 눈부심 찡그림과 미세 표정 | PLAN-01b | Active | 있음 |
+| [WO-01b-5] | 얼굴 목업 정합 — 스쿼클 눈 + 잠듦 감쇠 + 대기 화면 | PLAN-01b | Active | 있음 |
 | [WO-01c-1] | 케어 문장 5종 사전 작성 — R2 검수 통과 | PLAN-01c | Draft | 해당없음 |
 | [WO-01c-2] | quiet space 접합 인터페이스 확정 | PLAN-01c | Draft | 해당없음 |
 | [WO-01d-1] | 재료 확보와 실측 — 폰 외곽 + 화면 경계 | PLAN-01d | Draft | 해당없음 |

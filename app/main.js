@@ -3,7 +3,7 @@
 // tracker.js · sound.js / 셸 = 이 파일 · index.html · sw.js.
 'use strict';
 import { $, clamp, log, palBus, qs, rand, smooth } from './core.js';
-import { applyViewBox, blinkAmount, EYE, F, getScreenWmm, lidPath, ORDER, setEyeState,
+import { applyViewBox, blinkAmount, EYE, EYE_RX, F, getScreenWmm, lidPath, ORDER, setEyeState,
          setScreenWmm, show, STATES, VB } from './face/eyes.js';
 import { BREATH, expression, GATE, GL } from './face/expression.js';
 import { camOn, camStart, camStop, feedLux, lux, simStep } from './lux.js';
@@ -53,7 +53,8 @@ function frame(ts) {
   // ── 눈 기하 ─────────────────────────────────────────────
   const h  = X ? X.h  : EYE.h;
   const cy = X ? X.cy : EYE.cy;
-  const rx = Math.min(EYE.w, h) / 2;
+  // 라운드 사각 눈 — rx 상한 12(목업), 찡그려 낮아지면 h/2 가 이겨 알약이 된다
+  const rx = Math.min(EYE_RX, h / 2);
   const top = cy - h / 2;
   const ox = VB.dx + (X ? X.dx : 0), oy = VB.dy + (X ? X.dy : 0);
 

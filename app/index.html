@@ -100,8 +100,13 @@
      걸린다. 그래서 이 탭 하나가 반드시 있어야 하고, [WO-01b-3]
      오디오 잠금 해제도 같은 탭 하나로 겸한다. -->
 <section id="entryScreen" class="screen on">
-  <h2>팰이 눈을 뜰 준비가 되었습니다</h2>
-  <p>먼저 팰과 연결한 뒤 시작하세요.<br>시작하면 가로로 고정되고 화면이 꺼지지 않습니다.</p>
+  <!-- 목업 1번 화면 — 자면서 기다리는 ∩형 눈. 얼굴 화면이 아니므로 R3 무관 [WO-01b-5] -->
+  <svg viewBox="0 0 160 60" style="width:min(52%,240px)" aria-hidden="true">
+    <path d="M42 34 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/>
+    <path d="M96 34 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/>
+  </svg>
+  <h2>팰이 기다리고 있어요</h2>
+  <p>연결하고 시작하면 눈을 뜹니다.<br>시작하면 가로로 고정되고 화면이 꺼지지 않습니다.</p>
   <div class="rowbtn">
     <button id="bConnect"><span class="dot" id="dot"></span>팰과 연결</button>
     <button class="primary" id="bStart">시작</button>
@@ -130,24 +135,25 @@
       </mask>
     </defs>
 
-    <!-- 뜬 눈 — <circle> 이 아니라 <rect rx>. 찡그림을 원으로는 못 만든다 -->
+    <!-- 뜬 눈 — <circle> 이 아니라 <rect rx>. 찡그림을 원으로는 못 만든다.
+         rx=12 는 목업(시연 시나리오 v1)의 라운드 사각 눈이다 [WO-01b-5] -->
     <g id="tiltL" transform="rotate(0 39 36.5)">
       <g mask="url(#mL)">
-        <rect id="eyeL" class="eye" x="16.5" y="14" width="45" height="45" rx="22.5" fill="#EAEEF7"/>
+        <rect id="eyeL" class="eye" x="16.5" y="14" width="45" height="45" rx="12" fill="#EAEEF7"/>
       </g>
     </g>
     <g id="tiltR" transform="rotate(0 119 36.5)">
       <g mask="url(#mR)">
-        <rect id="eyeR" class="eye" x="96.5" y="14" width="45" height="45" rx="22.5" fill="#EAEEF7"/>
+        <rect id="eyeR" class="eye" x="96.5" y="14" width="45" height="45" rx="12" fill="#EAEEF7"/>
       </g>
     </g>
 
-    <!-- 감긴 눈 — 곡선 하나 -->
+    <!-- 감긴 눈 — 곡선 하나. 기하는 목업 SLEEP 화면(폭 38 · 굵기 4 · y 44) -->
     <g id="shutG">
-      <path id="shutL" class="shut" d="M 16.5 36.5 Q 39 47 61.5 36.5"
-            fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round" opacity="0"/>
-      <path id="shutR" class="shut" d="M 96.5 36.5 Q 119 47 141.5 36.5"
-            fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round" opacity="0"/>
+      <path id="shutL" class="shut" d="M 20 44 q 19 10 38 0"
+            fill="none" stroke="#6E7686" stroke-width="4" stroke-linecap="round" opacity="0"/>
+      <path id="shutR" class="shut" d="M 100 44 q 19 10 38 0"
+            fill="none" stroke="#6E7686" stroke-width="4" stroke-linecap="round" opacity="0"/>
     </g>
   </svg>
 </section>
@@ -240,7 +246,7 @@ import { boot } from './main.js';
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 앱의 전제다).
 // ⚠ 이 문자열은 반드시 index.html 에 남는다 — deploy.js 와 배포본 신선도
 //   검사가 *이 파일에서* grep 한다([ADR-116]). 모듈로 옮기지 말 것.
-const BUILD = '2026-08-22f';
+const BUILD = '2026-08-22g';
 
 // PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
 // 이전 버전 캐시를 지운다([WO-02a-1]). 등록 실패는 조용히 무시한다 —
