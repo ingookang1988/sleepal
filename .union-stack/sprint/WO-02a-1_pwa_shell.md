@@ -1,10 +1,10 @@
 ---
 id: WO-02a-1
 title: PWA 요건 — 매니페스트·서비스워커·아이콘
-status: Verifying
+status: Closed
 parent: PLAN-02
-evidence: "구현 완료(BUILD 2026-08-22e): manifest.json 유효 JSON · sw.js 구문 OK · 아이콘 3종(192/512/maskable, zero-dep PNG 인코더 생성) · 로컬 서빙 5종 200+MIME 정상 · face-sheet 게이트 22/22 유지(헤드리스 크롬) · /api/* 캐시 제외 · SW 캐시 키 = ?v=BUILD. 미완(인간·실기): 배포 후 폰 크롬 설치 배너 + 오프라인 로드 확인"
-closed_by: []
+evidence: "BUILD 2026-08-22e 배포·검증 완료: deploy.js --check-only ✓(배포본==로컬) · 폰 실기 — 앱 설치(standalone)·비행기 모드 얼굴 로드 인간 확인(PO, 2026-08-22) · face-sheet 22/22 유지 · manifest 유효·sw 구문 OK·서빙 5종 200"
+closed_by: [.union-stack/feature/live.md]
 ---
 # [WO-02a-1] PWA 요건
 

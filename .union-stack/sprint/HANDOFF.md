@@ -12,13 +12,13 @@
 - WO 9건 신설(전부 Draft): [WO-02a-1]~[WO-02a-3](공통 셸·선행) · [WO-02b-1] [WO-02b-2](놀이) · [WO-02c-1](사운드) · [WO-02d-1] [WO-02d-2](모드·트래커) · [WO-02e-1](React 뷰) — `next.md` 재생성
 - 계약 신설(draft): [CON-02](모드 이벤트) · [CON-03](기록 스키마) · [CON-04](프록시 API)
 - profile 축 가동: `human/team_sleepal.md`(팀 레지스트리 — PO=`ingookang1988` 총괄·H파트·기획·owner) 커밋 · 실프로필은 `user_ingookang.local.md`(gitignored — **각자 로컬 체크아웃에 저장**, 원격 컨테이너는 휘발)
-- 코드: [WO-02a-1] 구현 — `app/manifest.json` · `app/sw.js` · `app/icons/`(3종) · `index.html`(manifest 링크 + SW 등록, BUILD 2026-08-22e)
+- 코드: [WO-02a-1] 구현·배포·실기 확인(Closed) — PWA 셸 5파일 · [WO-02a-2] 모듈 분할(Verifying) — `app/core.js`(공용+palBus)·`main.js`(루프·배선)·`ble.js`·`lux.js`·`hud.js`·`face/{eyes,expression}.js`, index.html 은 부팅+BUILD 만(BUILD 2026-08-22f) · `scripts/deploy.js`(ADR-116 자동화)
 - HISTORY 2026-08-22 행(스택·방향 확정) · [ADR-302](재제안 차단 표식 → AGENTS.md 인덱스 반영)
 - [ADR-303]: CI `validate` 영구 적색 수정 — `scripts/adopter-arm.js`(+init.js export·회귀 테스트 4건). 채택 인스턴스에서 템플릿 전용 불변식을 건너뜀
 - 직전 세션분(로컬): [ADR-112]~[ADR-117](HUD·조도계 원인 수정·놓아줌) · 게이트 22/22 · [ADR-116] 배포 스테이징 경로
 
 ## 3. Next task (single entry point)
-**[WO-02a-2](모듈 분할 — 병렬 게이트)** — [WO-02a-1]은 구현 완료·Verifying(실기 확인만 남음, 코드 BUILD 2026-08-22e). 이어서 [WO-02a-3](프록시). 파트 배분·병렬 규칙은 [PLAN-02] §분해와 파트 소유권.
+**[WO-02a-3](zero-dep 프록시)** — 공통 셸 마지막. [WO-02a-1] **Closed**(폰 실기 확인 완료 → `feature/live.md`). [WO-02a-2] **Verifying**(분할 완료 BUILD 2026-08-22f · 22/22 유지 · 폰 스모크만 남음 — 확인되면 **02b~02e 병렬 착수 게이트 해제**). 파트 배분은 [PLAN-02] §분해와 파트 소유권.
 ⚠ 배포는 로컬에서 **`npm run deploy -- -p <projectId>`**(`scripts/deploy.js` — [ADR-116] 스테이징+BUILD 검증 자동화) — 원격 세션에는 railway CLI 가 없다. 배포 후 폰에서 [WO-02a-1] 실기 2종(설치·오프라인) 확인.
 몸통 계보는 [WO-01d-1](폰 실측)을 **인간이 보류 지시**(2026-08-22 대화) — 재개는 인간 신호로.
 
