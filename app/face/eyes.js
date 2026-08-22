@@ -35,9 +35,12 @@ export const F = {
   blinkT: -1,             // 진행 중인 깜빡임 경과(초). -1 = 없음
   blinkEnv: null,         // 이번 한 번만 쓸 봉투(움찔·안도가 넣는다)
   stateAt: 0,             // 상태 진입 시각 = [CON-01] 호흡 위상 0
+  mornStagger: false,     // 아침 개안 좌우 시간차 — 감은 채 진입했을 때만 [WO-01b-5]
   // ── 계측용 (렌더에 쓰이지 않는다) ──
   X: null,                // 마지막 프레임의 expression() 반환값. NIGHT 이면 null
   hNow: 0, cyNow: 0, blinkNow: 0, fps: 0, hudAt: 0,
+  blinkNow2: [0, 0],      // 좌우 시간차 깜빡임 실측 [WO-01b-5]
+  apNow: [45, 45],        // 지속 성분 가시 개구(mm) — 최소 개구 게이트가 읽는다
 };
 export const ASYM = 1.04; // 두 눈꺼풀 높이가 정확히 같으면 기계다
 
@@ -70,16 +73,22 @@ export function applyViewBox() {
 }
 
 // ── 상태 적용 ──────────────────────────────────────────────────
+let nightFade = null, mornTimer = null;   // 전환 연기 타이머 [WO-01b-5]
 export function setEyeState(name) {
   if (!STATES[name] || name === F.state) return;
   const s = STATES[name];
   F.state = name;
+  if (nightFade) { clearTimeout(nightFade); nightFade = null; }
+  if (mornTimer) { clearTimeout(mornTimer); mornTimer = null; }
   // 좌우 비대칭 — 반쯤 감긴 상태에서만 한쪽을 4% 더 내린다
   F.lid = (s.lid > 0 && s.lid < 1) ? [s.lid, Math.min(s.lid * ASYM, 1)] : [s.lid, s.lid];
   F.blinkT = -1;
   F.blinkEnv = null;
   F.stateAt = now();                    // [CON-01] 호흡 위상 0
   F.blinkAt = s.blink ? now() + rand(s.blink[0], s.blink[1]) : Infinity;
+  // 아침 개안 — 감은 채로 아침을 맞았을 때만 왼눈이 먼저 뜬다(좌우 시간차,
+  // [WO-02b-3] 고유성 장치). 뜬 채 들어오면 시간차를 걸 반쯤 감김이 없다.
+  F.mornStagger = name === 'MORNING' && F.lidNow[1] > 0.5;
 
   document.body.style.backgroundColor = s.bg;
   $('dim').style.opacity = s.dim;
@@ -87,11 +96,25 @@ export function setEyeState(name) {
     $(id).style.fill = s.eye;
     $(id).style.opacity = (s.shut || name === 'NIGHT') ? 0 : 1;
   }
+  // 밤 소등 연기 [WO-01b-5] — 잠든 눈(⌣)이 한 호흡(6.5초) 머문 뒤에 꺼진다.
+  // 상태가 뚝 끊기면 기계다. 색은 직전 상태의 것을 유지한다(NIGHT eye 는 #000
+  // 이라 덮어쓰면 잔영이 그 즉시 사라진다). R4 무관 — 시간 기반 퇴장 연기이지
+  // 환경 반응이 아니다(lux 주입 게이트는 그대로 통과한다).
   for (const id of ['shutL', 'shutR']) {
-    $(id).style.stroke = s.eye;
-    $(id).style.opacity = s.shut ? 1 : 0;
+    if (name !== 'NIGHT') $(id).style.stroke = s.eye;
+    $(id).style.opacity = (s.shut || name === 'NIGHT') ? 1 : 0;
   }
-  if (name === 'MORNING') stretch();
+  if (name === 'NIGHT') {
+    nightFade = setTimeout(function () {
+      if (F.state !== 'NIGHT') return;
+      for (const id of ['shutL', 'shutR']) $(id).style.opacity = 0;
+    }, 6500);                           // = BREATH.ASLEEP 한 주기
+  }
+  // 아침 연기 [WO-01b-5] — 개안(왼→오른)이 끝날 즈음 기지개. 눈도 못 떴는데
+  // 기지개부터 켜면 순서가 거꾸로다.
+  if (name === 'MORNING') mornTimer = setTimeout(function () {
+    if (F.state === 'MORNING') stretch();
+  }, 1100);
   log('state -> ' + name);
 }
 
@@ -127,7 +150,7 @@ export function lidPath(cx, bottom) {
 }
 
 // 아래꺼풀 — 위꺼풀의 거울. 윗변 가운데가 arch 만큼 *올라와* 눈 아래를
-// ⌣ 로 깎는다. 웃는 눈은 위가 아니라 아래에서 만들어진다([WO-01b-5]).
+// ⌣ 로 깎는다. 웃는 눈은 위가 아니라 아래에서 만들어진다([WO-01b-7]).
 // arch 는 올라온 양(0이면 평평)과 함께 준다 — 완전히 내려간 상태(top이
 // 눈 바닥 아래)에서는 arch 도 0 에 수렴시켜 눈에 1px 도 닿지 않게 한다.
 export function lowLidPath(cx, top, arch) {

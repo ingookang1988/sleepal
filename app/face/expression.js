@@ -41,7 +41,7 @@ export const TAU_UP = 0.15, TAU_DOWN = 2.5;
 //  눈꺼풀이 다시 열리는 그 순간에 찡그림도 이미 풀려 있어야 한다.
 export const TAU_RELEASE = 0.4, RELEASE_T = 1.35;
 
-// ── 이산 표정 — [CON-02] expr:trigger 소비부 [WO-01b-5] ─────────
+// ── 이산 표정 — [CON-02] expr:trigger 소비부 [WO-01b-7] ─────────
 //  연속 채널(glare)과 달리 *사건*이다: 봉투 하나가 타고 끝나면 기하는
 //  픽셀 단위로 원래대로 돌아온다. kind 어휘는 serve.js PAL_SYSTEM 의
 //  emotion enum(happy·curious·sad)을 그대로 쓴다 — 새 어휘를 만들면 결함.
@@ -122,6 +122,13 @@ export function expression(t, dt) {
       else if (EMO.kind === 'sad') { eTilt = -5 * a; eLow = 0.12 * a; eCurve = -2.6 * a; }
     }
   }
+  // 아침 포즈 [WO-01b-5] — AWAKE 와 흑백 정지 화면에서도 갈리는 상시 자세:
+  // 눈이 5% 크고 아래꺼풀이 잔잔한 ⌣(0.15)로 올라와 있다. "막 일어나 기분
+  // 좋은 눈". 색을 지워도([WO-02b-3] 흑백 시트) 형태가 다르다.
+  if (F.state === 'MORNING') {
+    eLow = Math.max(eLow, 0.15);
+    eHL *= 1.05; eHR *= 1.05;
+  }
   // 눈부심 — 비대칭 평활. 올라갈 때는 즉각, 내려올 때는 천천히.
   // 단, 안도가 연 창 안에서는 *놓아주는* 짧은 시상수를 쓴다 — 빛이 진 것에
   // 대한 반응으로 눈이 다시 떠져야 하기 때문이다. 창 밖의 이완은 예전 그대로다.
@@ -157,7 +164,7 @@ export function expression(t, dt) {
     breath: breathT,
     // 잠듦에서는 눈을 다시 뜨지 않는다 — 미세한 떨림만 남긴다
     tremor: (F.state === 'ASLEEP' ? Math.sin(t * 17) * 0.25 * GL.now : 0),
-    // ── 이산 표정 채널 [WO-01b-5] — 전부 0 이면 위와 픽셀 단위로 동일 ──
+    // ── 이산 표정 채널 [WO-01b-7] — 전부 0 이면 위와 픽셀 단위로 동일 ──
     lowLid: eLow,           // 아래꺼풀 올림 0~1 (웃는 눈 ⌣)
     hMul: [eHL, eHR],       // 좌우 독립 높이 배율 (호기심)
     tiltE: eTilt,           // 감정 기울기 — glare tilt 에 *더해진다*. 음수 = 바깥 처짐

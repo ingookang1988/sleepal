@@ -9,8 +9,9 @@
 | [WO-01b-2] | HTTPS 배포와 폰 실기 확인 | PLAN-01b | Active | 있음 |
 | [WO-01b-3] | 숨소리·하품 오디오와 백그라운드 재생 실측 | PLAN-01b | Draft | 해당없음 |
 | [WO-01b-4] | 표정 레이어 — 눈부심 찡그림과 미세 표정 | PLAN-01b | Active | 있음 |
-| [WO-01b-5] | 이산 표정·입·떠다니는 도상 — 트리거 수신부 + 아래꺼풀 + 입 + zzz/음표 | PLAN-01b | Verifying | 있음 |
+| [WO-01b-5] | 기본 FACE 5상태 개선 — 실루엣·전환·침실 휘도 | PLAN-01b | Verifying | 있음 |
 | [WO-01b-6] | 시선 — 소리 나는 쪽으로 눈이 이동한다 (귀 + 사카드) | PLAN-01b | Verifying | 있음 |
+| [WO-01b-7] | 이산 표정·입·떠다니는 도상 — 트리거 수신부 + 아래꺼풀 + 입 + zzz/음표 | PLAN-01b | Verifying | 있음 |
 | [WO-01c-1] | 케어 문장 5종 사전 작성 — R2 검수 통과 | PLAN-01c | Draft | 해당없음 |
 | [WO-01c-2] | quiet space 접합 인터페이스 확정 | PLAN-01c | Draft | 해당없음 |
 | [WO-01d-1] | 재료 확보와 실측 — 폰 외곽 + 화면 경계 | PLAN-01d | Draft | 해당없음 |
@@ -23,6 +24,7 @@
 | [WO-02a-3] | serve.js 프록시 — STT·LLM 키의 서버측 격리 | PLAN-02 | Verifying | 있음 |
 | [WO-02b-1] | 놀이 왕복 v1 — 녹음→STT→LLM→반응 JSON | PLAN-02 | Draft | 해당없음 |
 | [WO-02b-2] | 옹알이 절차 합성 + 표정 매핑 — 팰의 고유 발화 | PLAN-02 | Draft | 해당없음 |
+| [WO-02b-3] | FACE 디렉션 v1 — 가로 얼굴 문법·AI 제스처·전환 연기 | PLAN-02 | Verifying | 있음 |
 | [WO-02c-1] | 내장 수면 사운드 — 라이브러리·믹서·페이드 | PLAN-02 | Draft | 해당없음 |
 | [WO-02d-1] | 모드 상태 머신 — PLAY→WIND_DOWN→SLEEP→WAKE | PLAN-02 | Draft | 해당없음 |
 | [WO-02d-2] | 트래커 엔진 v1 — 마이크 분석 → 수면 이벤트 기록 | PLAN-02 | Draft | 해당없음 |

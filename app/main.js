@@ -23,6 +23,9 @@ import { closeDev, EYE_SAFE, getDev, openDev, paintDebug, paintHud, setBuild,
 //    import { initSound } from './sound.js';     initSound(palBus);
 
 // ── 단일 루프 — 라이브러리 0 ([PLAN-01b] 제약) ────────────────
+// [WO-02b-3] DROWSY×glare 최소 가시 개구(mm) — 눈이 사라지거나 화난 얼굴로만
+// 읽히면 안 된다. 지속 성분에만 걸리고 깜빡임은 예외(완전히 감긴다).
+const MIN_APERTURE = 5;
 let last = 0, rafOff = false;   // rafOff: 검사에서 루프를 손으로 밟을 때만 true
 function frame(ts) {
   const t = ts / 1000;
@@ -38,8 +41,10 @@ function frame(ts) {
   const X = expression(t, dt);
 
   // ── 깜빡임 ──────────────────────────────────────────────
+  //  좌우 시간차 60ms [WO-01b-5] — 오른눈이 늦게 감기고 늦게 뜬다.
+  //  [WO-02b-3]이 확정한 고유성 장치: 정확히 동시에 움직이는 눈은 기계다.
   if (s.blink && F.blinkT < 0 && t >= F.blinkAt) F.blinkT = 0;
-  let blink = 0;
+  let blinkL = 0, blinkR = 0;
   if (F.blinkT >= 0) {
     F.blinkT += dt;
     // 무거워지는 깜빡임 — 감기는 속도가 아니라 *뜨는* 속도를 늦춘다
@@ -47,11 +52,12 @@ function frame(ts) {
     if (!F.blinkEnv && F.state === 'DROWSY') {
       env = [env[0], env[1], 0.40 + Math.min((t - F.stateAt) / 30, 1) * 0.35];
     }
-    const a = blinkAmount(F.blinkT, env);
-    if (a < 0) {
+    const aL = blinkAmount(F.blinkT, env);
+    const aR = blinkAmount(Math.max(F.blinkT - 0.06, 0), env);
+    if (aL < 0 && aR < 0) {                     // 둘 다 끝나야 다음을 예약한다
       F.blinkT = -1; F.blinkEnv = null;
       F.blinkAt = s.blink ? t + rand(s.blink[0], s.blink[1]) : Infinity;
-    } else blink = a;
+    } else { blinkL = Math.max(aL, 0); blinkR = Math.max(aR, 0); }
   }
 
   // ── 눈 기하 ─────────────────────────────────────────────
@@ -63,10 +69,21 @@ function frame(ts) {
   const ox = VB.dx + (X ? X.dx + X.gx : 0), oy = VB.dy + (X ? X.dy + X.gy : 0);
 
   for (let i = 0; i < 2; i++) {
-    F.lidNow[i] = smooth(F.lidNow[i], F.lid[i], 0.9, dt);
-    const lid = clamp(Math.max(F.lidNow[i], blink) + (X ? X.settle * 0.05 : 0), 0, 1);
-    // 좌우 독립 높이 배율 — 호기심이 한쪽 눈만 키운다 [WO-01b-5]
-    const hi = h * (X ? X.hMul[i] : 1);
+    // 아침 개안 좌우 시간차 [WO-01b-5] — 감은 채 아침을 맞으면 오른눈은
+    // 0.45초 늦게 뜨기 시작한다. 왼눈 먼저 → 오른눈 → 기지개(eyes.js 타이머).
+    const lidTgt = (F.mornStagger && i === 1 && t - F.stateAt < 0.45) ? 1 : F.lid[i];
+    F.lidNow[i] = smooth(F.lidNow[i], lidTgt, 0.9, dt);
+    // 지속 성분(상태 눈꺼풀 + 안도 가라앉음)에만 최소 가시 개구를 건다 [WO-02b-3]:
+    // DROWSY×glare 에서 눈이 사라지면 안 된다. 깜빡임은 예외 — 완전히 감겨야 한다.
+    let sustain = clamp(F.lidNow[i] + (X ? X.settle * 0.05 : 0), 0, 1);
+    const hi0 = h * (X ? X.hMul[i] : 1);
+    if (F.state === 'DROWSY') sustain = Math.min(sustain, Math.max(0, 1 - MIN_APERTURE / hi0));
+    F.apNow[i] = hi0 * (1 - sustain);
+    const bI = i ? blinkR : blinkL;
+    F.blinkNow2[i] = bI;
+    const lid = Math.max(sustain, bI);
+    // 좌우 독립 높이 배율 — 호기심·아침 포즈가 눈을 키운다 [WO-01b-7][WO-01b-5]
+    const hi = hi0;
     const topI = cy - hi / 2;
     const eye = $(i ? 'eyeR' : 'eyeL');
     eye.setAttribute('y', topI.toFixed(2));
@@ -75,7 +92,7 @@ function frame(ts) {
     // 눈꺼풀은 *현재* 눈 높이를 따라간다 — 찡그린 눈에 맞춰 짧아진다
     $(i ? 'lidR' : 'lidL').setAttribute('d', lidPath(EYE.cx[i], topI + lid * hi));
     // 아래꺼풀 — 기쁨이 눈 아래를 ⌣ 로 깎는다. low=0 이면 눈 아래에 숨어 있고
-    // arch 도 0 에 수렴해 눈에 닿지 않는다 [WO-01b-5]
+    // arch 도 0 에 수렴해 눈에 닿지 않는다 [WO-01b-7]
     const low = X ? X.lowLid : 0;
     $(i ? 'lidR2' : 'lidL2').setAttribute('d',
       lowLidPath(EYE.cx[i], topI + hi + 5 - low * (hi * 0.6 + 5), 4.5 * low));
@@ -96,7 +113,7 @@ function frame(ts) {
   // ── 계측 — 이 프레임이 실제로 그린 값 ────────────────────
   //  expression() 의 반환값은 frame() 안에서 소비되고 사라진다.
   //  HUD·계기판이 읽을 수 있게 여기 남긴다. 렌더에는 영향이 없다.
-  F.X = X; F.hNow = h; F.cyNow = cy; F.blinkNow = blink;
+  F.X = X; F.hNow = h; F.cyNow = cy; F.blinkNow = blinkL;
   F.fps = dt > 0 ? smooth(F.fps || 60, 1 / dt, 0.5, dt) : F.fps;
   if (t - F.hudAt >= 0.1) { F.hudAt = t; paintHud(); }   // 10Hz — 프레임마다 그리면 레이아웃이 튄다
 
@@ -132,7 +149,7 @@ addEventListener('keydown', function (e) {
   if (i >= 0) setEyeState(ORDER[i]);
   else if (e.key === 'd') toggleDebug();
   else if (e.key === 'c') openCal();
-  // 이산 표정·fx [WO-01b-5] — 6 기쁨 · 7 호기심 · 8 서운함 · 9 음표 · 0 음악 토글.
+  // 이산 표정·fx [WO-01b-7] — 6 기쁨 · 7 호기심 · 8 서운함 · 9 음표 · 0 음악 토글.
   // 전부 [CON-02] 버스를 태운다 — 직접 호출하면 계약 경로가 검증되지 않는다.
   else if (e.key === '6') emitTrigger('happy');
   else if (e.key === '7') emitTrigger('curious');
@@ -289,7 +306,7 @@ export function boot(build) {
     lux: lux, applyViewBox: applyViewBox, show: show,
     connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
     GL: GL, GATE: GATE, BREATH: BREATH, expression: expression, VB: VB,
-    // [WO-01b-5] 이산 표정·입·fx — 시트 게이트가 읽는다
+    // [WO-01b-7] 이산 표정·입·fx — 시트 게이트가 읽는다
     EMO: EMO, exprTrigger: exprTrigger, FX: FX, fxNote: fxNote, setMusic: setMusic,
     // [WO-01b-6] 시선·귀 (+[ADR-121] 마이크 생애 정책)
     GZ: GZ, GAZE_MM: GAZE_MM, gazeTo: gazeTo, feedSnd: feedSnd, snd: snd,

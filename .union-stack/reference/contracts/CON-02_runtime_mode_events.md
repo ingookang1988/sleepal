@@ -22,7 +22,7 @@ version: 0.2
 | `mode:progress` | `{to, elapsed, need}` | mode.js | 히스테리시스 진행(dev HUD 표시용, 프로덕션 UI 금지 — R6) |
 | `expr:trigger` | `{kind, tone}` | babble.js 등 | 표정 트리거(발화 동기 등). 연속 변조가 아니라 이산 사건만 |
 
-### `expr:trigger` 어휘 — v0.2 ([WO-01b-5] 수신부 구현 시점, 발행자 미존재 상태의 잠정 합의)
+### `expr:trigger` 어휘 — v0.2 ([WO-01b-7] 수신부 구현 시점, 발행자 미존재 상태의 잠정 합의)
 - `kind`: `"happy" | "curious" | "sad"`(표정 — serve.js `PAL_SYSTEM` emotion enum 재사용, 새 어휘 금지) · `"note"`(음표 fx 1발 — 표정이 아니라 도상, `face/fx.js` 가 소비)
 - `tone`: `0~1` 수치 또는 babbleTone 문자열 `"soft"(0.6) | "bright"(1) | "drowsy"(0.35)` — 수신부가 깊이로 환산
 - 소비 구현: `face/expression.js`(happy·curious·sad) · `face/fx.js`(note). 발행자([WO-02b-2] babble.js · [WO-02c-1] sound.js) 착수 시 이 표를 기준으로 합의 확정(규칙 3).

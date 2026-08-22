@@ -1,0 +1,3 @@
+[mcp_servers.union-stack]
+command = "node"
+args = ["scripts/mcp-server.js"]

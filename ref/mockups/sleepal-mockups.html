@@ -78,7 +78,13 @@
   .face{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
   .face svg{width:88%;height:auto;display:block}
 
-  /* expression repertoire — [WO-01b-5] */
+  /* landscape pal frames — [WO-02b-3] 화면 경계: 팰 FACE 는 가로 158×73 */
+  .phone.land{padding:8px;border-radius:20px}
+  .scr.land{aspect-ratio:158/73;border-radius:14px}
+  .scr.land .notch{left:10px;top:50%;transform:translateY(-50%);width:5px;height:48px}
+  .scr.land .face svg{width:72%}
+
+  /* expression repertoire — [WO-01b-7] */
   .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px 14px}
   .ex{display:flex;flex-direction:column;gap:8px;min-width:0}
   .exscr{border:1px solid #2A3348;border-radius:14px;aspect-ratio:16/9.5;
@@ -153,12 +159,14 @@
 
 <div class="wrap">
 <header>
-  <div class="kicker">SleepPal · P1 시연 시나리오 v1.1</div>
+  <div class="kicker">SleepPal · P1 시연 시나리오 + FACE 디렉션 v1.2</div>
   <h1>슬립팰 화면 목업</h1>
   <p class="lede">거치 → 놀이 → 수면 → 기상의 하룻밤 전체를 덮는 <b>9개 화면</b>과
-  <b>팰 표정 레퍼토리</b>([WO-01b-5] 구현 완료 — 이산 표정 3종 · 입 · zzz · 음표).
-  색·눈 모양은 현행 팰 런타임의 상태 상수(<span style="font-family:var(--mono);font-size:12px">eyes.js STATES</span>)를 그대로 상속했다.
-  각 화면 아래 주석은 진입·이탈 트리거와 담당 WO — 이 보드는 그림이자 스펙이다.</p>
+  <b>FACE 디렉션 보드</b>([WO-02b-3] — 제스처 6종·전환 연기·합성 우선순위 · 구현은 [WO-01b-5][WO-01b-7]).
+  <b>화면 경계</b>: 팰 FACE(거치·PLAY·WIND_DOWN·SLEEP·WAKE)는 <b>가로 158×73</b>,
+  알람 설정·트래커·일기는 거치 전/이탈 후 <b>세로 앱</b>이다.
+  색·눈 좌표는 팰 런타임(<span style="font-family:var(--mono);font-size:12px">eyes.js STATES</span>) 실좌표 그대로 —
+  이 보드는 그림이자 스펙이다.</p>
 </header>
 
 <div class="flow">
@@ -177,88 +185,81 @@
 
     <!-- 1 대기 -->
     <div class="mock">
-      <div class="cap"><span class="chip mode">대기</span><span class="name">거치 대기</span></div>
-      <div class="phone"><div class="scr"><div class="notch"></div>
-        <div class="pad" style="align-items:center;justify-content:center;text-align:center;gap:18px">
-          <svg viewBox="0 0 160 60" style="width:52%"><path d="M42 34 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/><path d="M96 34 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/></svg>
-          <div>
-            <h3>팰이 기다리고 있어요</h3>
-            <p class="sub" style="margin-top:6px">거치대에 올리면 눈을 뜹니다</p>
-          </div>
-          <p class="sub"><span class="dot on"></span>보드 연결됨 · 조도 12 lux</p>
-          <div class="btn" style="width:70%">그냥 시작하기</div>
+      <div class="cap"><span class="chip mode">대기</span><span class="name">거치 대기 · 가로</span></div>
+      <div class="phone land"><div class="scr land"><div class="notch"></div>
+        <div class="pad" style="align-items:center;justify-content:center;text-align:center;gap:8px;padding:12px">
+          <svg viewBox="0 0 160 44" style="width:38%"><path d="M42 26 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/><path d="M96 26 q17 -12 34 0" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/></svg>
+          <h3 style="font-size:12px">팰이 기다리고 있어요</h3>
+          <p class="sub" style="font-size:9.5px"><span class="dot on" style="width:6px;height:6px"></span>보드 연결됨 · 거치대에 올리면 눈을 뜹니다</p>
         </div>
       </div></div>
       <ul class="notes">
-        <li>거치 감지: <b>충전 시작</b> 또는 <b>devicemotion 정지</b> — 실기에서 결정 <span class="id">[WO-02d-1]</span></li>
-        <li>수동 시작 버튼은 폴백 — 시연 안전장치</li>
+        <li class="norm">여기부터 가로 — 거치 순간 이미 몸통 안이다 <span class="id">[WO-02b-3]</span></li>
+        <li>거치 감지: <b>충전 시작</b> 또는 <b>NFC/devicemotion</b> — [ADR-401] · <span class="id">[WO-02d-1]</span></li>
+        <li>수동 시작 버튼은 세로 진입 화면(현행 entryScreen)에 유지 — 시연 안전장치</li>
       </ul>
     </div>
 
     <!-- 2 PLAY -->
     <div class="mock">
-      <div class="cap"><span class="chip mode">PLAY</span><span class="name">놀이 · 대화</span></div>
-      <div class="phone"><div class="scr" style="background:#0A0D14"><div class="notch"></div>
-        <div class="face"><svg viewBox="0 0 160 84">
-          <rect x="16.5" y="14" width="45" height="45" rx="12" fill="#EAEEF7"/>
-          <rect x="96.5" y="14" width="45" height="45" rx="12" fill="#EAEEF7"/>
-          <path d="M 69 68 Q 79 71.5 89 68" fill="none" stroke="#EAEEF7" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+      <div class="cap"><span class="chip mode">PLAY</span><span class="name">놀이 · 대화 · 가로</span></div>
+      <div class="phone land"><div class="scr land" style="background:#0A0D14"><div class="notch"></div>
+        <div class="face"><svg viewBox="0 0 158 73">
+          <rect x="16.5" y="14" width="45" height="45" rx="22.5" fill="#EAEEF7"/>
+          <rect x="96.5" y="14" width="45" height="45" rx="22.5" fill="#EAEEF7"/>
+          <path d="M 69 63.5 Q 79 67 89 63.5" fill="none" stroke="#EAEEF7" stroke-width="3" stroke-linecap="round" opacity=".85"/>
         </svg></div>
-        <div style="display:flex;justify-content:center;padding-bottom:26px">
-          <div style="width:9px;height:9px;border-radius:99px;background:var(--good);box-shadow:0 0 14px var(--good);opacity:.85"></div>
-        </div>
       </div></div>
       <ul class="notes">
         <li class="norm">얼굴에 문자·버튼 0 — 상호작용은 전부 <b>음성</b> (R3)</li>
-        <li>길게 터치 녹음 → STT → LLM → <b>옹알이+표정</b> 반응 <span class="id">[WO-02b-1]</span></li>
-        <li>표정 수신부는 <b>구현 완료</b> — <span class="id">expr:trigger</span> kind = <span class="id">happy·curious·sad</span>, 아래 레퍼토리 참조 <span class="id">[WO-01b-5]</span></li>
-        <li><b>입</b>이 생겼다 — 곡선+타원뿐, 음소(viseme) 없음 (R1). 10m 신호는 여전히 눈꺼풀</li>
-        <li>하단 점 = 듣는 중 표시 <b>후보</b> — R3 저촉 여부 인간 판단 필요</li>
-        <li>놀이: 양 세기 · 스무고개 · 오늘 하루 · 팰 재워주기… ([PLAN-02] §놀이 후보)</li>
+        <li class="norm"><b>녹색 듣기 점 제거</b> — 듣는 중은 UI 가 아니라 <b>LISTEN 제스처</b>(캐릭터 동작)로 <span class="id">[WO-02b-3]</span></li>
+        <li>길게 터치 녹음 → LISTEN → STT/LLM 대기 THINK → <b>옹알이+표정</b> → 복귀 <span class="id">[WO-02b-1]</span> <span class="id">[WO-02b-2]</span></li>
+        <li>표정 수신부 <b>구현 완료</b>(<span class="id">expr:trigger</span>) · 입 = 곡선+타원뿐, 음소 없음 (R1) <span class="id">[WO-01b-7]</span></li>
         <li>"나 이제 잘래" → <span class="id">sleepIntent</span> → SLEEP</li>
       </ul>
     </div>
 
     <!-- 3 WIND_DOWN -->
     <div class="mock">
-      <div class="cap"><span class="chip mode">WIND_DOWN</span><span class="name">수면 사운드</span></div>
-      <div class="phone"><div class="scr" style="background:#33200A"><div class="notch"></div>
-        <div class="face" style="flex:none;height:34%"><svg viewBox="0 0 160 74">
-          <rect x="16.5" y="26" width="45" height="26" rx="11" fill="#F3E2C2"/>
-          <rect x="96.5" y="26" width="45" height="26" rx="11" fill="#F3E2C2"/>
-          <path d="M 71 64 Q 79 65.6 87 64" fill="none" stroke="#F3E2C2" stroke-width="3" stroke-linecap="round" opacity=".6"/>
-        </svg></div>
-        <div class="sheet" style="margin-top:auto">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <h3 style="font-size:13px">수면 사운드</h3><span class="st8 mono" style="color:var(--faint);font-size:10px">타이머 30분</span>
+      <div class="cap"><span class="chip mode">WIND_DOWN</span><span class="name">수면 사운드 · 가로</span></div>
+      <div class="phone land"><div class="scr land" style="background:#33200A"><div class="notch"></div>
+        <div style="display:flex;height:100%;align-items:stretch">
+          <div class="face" style="flex:1"><svg viewBox="0 0 158 73" style="width:88%">
+            <rect x="16.5" y="26" width="45" height="21" rx="10.5" fill="#F3E2C2"/>
+            <rect x="96.5" y="26" width="45" height="21" rx="10.5" fill="#F3E2C2"/>
+            <path d="M 71 63.5 Q 79 65 87 63.5" fill="none" stroke="#F3E2C2" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+          </svg></div>
+          <div class="sheet" style="width:40%;margin:8px 8px 8px 0;border:1px solid var(--line);border-radius:11px;padding:9px 10px;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <h3 style="font-size:10px">수면 사운드</h3><span class="st8 mono" style="color:var(--faint);font-size:8px">30분</span>
+            </div>
+            <div class="srow onrow" style="padding:5px 8px;font-size:9px"><span>빗소리</span><span class="st8" style="font-size:8px">재생 중</span></div>
+            <div class="srow" style="padding:5px 8px;font-size:9px"><span>파도</span></div>
+            <div class="vol"><i></i><s></s></div>
           </div>
-          <div class="srow onrow"><span>빗소리</span><span class="st8">재생 중</span></div>
-          <div class="srow"><span>파도</span></div>
-          <div class="srow"><span>백색소음</span></div>
-          <div class="vol"><i></i><s></s></div>
         </div>
       </div></div>
       <ul class="notes">
         <li>사운드는 <b>앱 내장</b>(Web Audio) — 페이드·믹싱 자유 <span class="id">[WO-02c-1]</span></li>
         <li>유튜브 뮤직은 <b>공존</b> — 사용자가 자기 앱으로, 우리는 제어하지 않음</li>
         <li>패널은 얼굴과 분리된 레이어(탭으로 열고 닫음) — 얼굴 자체는 무문자 유지</li>
-        <li>팰은 DROWSY 상태로 — 먼저 졸기 시작하는 연출. <b>하품</b>이 주기적으로(14~22초) 돈다 <span class="id">[WO-01b-5]</span></li>
+        <li>팰은 DROWSY 상태로 — 먼저 졸기 시작하는 연출. <b>하품</b>이 주기적으로(14~22초) 돈다 <span class="id">[WO-01b-7]</span></li>
         <li>사운드 재생 중 <b>음표 fx</b> 는 <b>후보</b> — 발행 경로(<span class="id">expr:trigger kind:note</span>)는 준비됨, 빗소리류에도 띄울지는 인간 판단</li>
       </ul>
     </div>
 
     <!-- 4 SLEEP -->
     <div class="mock">
-      <div class="cap"><span class="chip mode">SLEEP</span><span class="name">수면 트래킹 중</span></div>
-      <div class="phone"><div class="scr" style="background:#000"><div class="notch"></div>
-        <div class="face"><svg viewBox="0 0 160 80" style="opacity:.18">
-          <path d="M20 44 q19 10 38 0" fill="none" stroke="#6E7686" stroke-width="4" stroke-linecap="round"/>
-          <path d="M100 44 q19 10 38 0" fill="none" stroke="#6E7686" stroke-width="4" stroke-linecap="round"/>
+      <div class="cap"><span class="chip mode">SLEEP</span><span class="name">수면 트래킹 중 · 가로</span></div>
+      <div class="phone land"><div class="scr land" style="background:#000"><div class="notch"></div>
+        <div class="face"><svg viewBox="0 0 158 73" style="opacity:.18">
+          <path d="M 16.5 36.5 Q 39 47 61.5 36.5" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/>
+          <path d="M 96.5 36.5 Q 119 47 141.5 36.5" fill="none" stroke="#6E7686" stroke-width="5" stroke-linecap="round"/>
         </svg></div>
       </div></div>
       <ul class="notes">
         <li class="norm">화면은 아무것도 하지 않는다 — 빛도 소리도 알림도 0 (R4)</li>
-        <li class="norm">zzz 도상도 <b>잠듦(ASLEEP)까지만</b> — 밤 진입 1프레임 안에 fx 전부 제거 <span class="id">[WO-01b-5]</span></li>
+        <li class="norm">zzz 도상도 <b>잠듦(ASLEEP)까지만</b> — 밤 진입 1프레임 안에 fx 전부 제거 <span class="id">[WO-01b-7]</span></li>
         <li>백그라운드: 분 단위 <b>조도·데시벨</b> 버킷 + 코골이·뒤척임 이벤트 <span class="id">[WO-02d-2]</span></li>
         <li><b>불 켜짐</b>(조도 임계 초과) → <span class="id">light_on</span> 이벤트 기록</li>
         <li>사용자 음성 / 거치 이탈 → 기상 간주 · 원음은 저장하지 않는다</li>
@@ -267,20 +268,22 @@
 
     <!-- 5 알람 울림 -->
     <div class="mock">
-      <div class="cap"><span class="chip mode">WAKE</span><span class="name">알람 · 깨우기</span></div>
-      <div class="phone"><div class="scr" style="background:#3B4664"><div class="notch"></div>
-        <div class="face"><svg viewBox="0 0 160 80">
+      <div class="cap"><span class="chip mode">WAKE</span><span class="name">알람 · 깨우기 · 가로</span></div>
+      <div class="phone land"><div class="scr land" style="background:#3B4664"><div class="notch"></div>
+        <div class="face"><svg viewBox="0 0 158 73">
           <g fill="none" stroke="#FFF6E6" opacity=".22">
-            <circle cx="80" cy="38" r="58" stroke-width="1.5"/><circle cx="80" cy="38" r="70" stroke-width="1"/>
+            <circle cx="79" cy="36.5" r="52" stroke-width="1.5"/><circle cx="79" cy="36.5" r="64" stroke-width="1"/>
           </g>
-          <rect x="16.5" y="12" width="45" height="48" rx="12" fill="#FFF6E6"/>
-          <rect x="96.5" y="12" width="45" height="48" rx="12" fill="#FFF6E6"/>
-          <path d="M 69 70 Q 79 74 89 70" fill="none" stroke="#FFF6E6" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+          <!-- 아침 포즈 [WO-01b-5] — 눈 +5% · 아래꺼풀 잔잔한 ⌣ 0.15. 흑백에서도 각성과 갈린다 -->
+          <path d="M 16.5 52 Q 16.5 12.9 39 12.9 Q 61.5 12.9 61.5 52 Q 39 46.5 16.5 52 Z" fill="#FFF6E6"/>
+          <path d="M 96.5 52 Q 96.5 12.9 119 12.9 Q 141.5 12.9 141.5 52 Q 119 46.5 96.5 52 Z" fill="#FFF6E6"/>
+          <path d="M 68.5 63.5 Q 79 67.5 89.5 63.5" fill="none" stroke="#FFF6E6" stroke-width="3" stroke-linecap="round" opacity=".85"/>
         </svg></div>
       </div></div>
       <ul class="notes">
         <li>등록된 알람만 울린다 — 등록 없으면 밤에 어떤 소리도 없음 <span class="id">[WO-02d-3]</span></li>
-        <li>울림 = MORNING 표정 + 사운드(내장 라이브러리 재사용). 진입 시 <b>기지개 + 하품 1회 + 미소</b> <span class="id">[WO-01b-5]</span></li>
+        <li>울림 = MORNING 시퀀스: <b>왼눈 먼저 → 오른눈(+0.45s) → 기지개 → 안정 포즈</b> + 하품 1회 <span class="id">[WO-01b-5]</span></li>
+        <li>안정 포즈 = 눈 +5% · 아래꺼풀 ⌣ 0.15 — <b>흑백에서도 AWAKE 와 구분</b>(시트 게이트) <span class="id">[WO-02b-3]</span></li>
         <li>스누즈 1회마다 <span class="id">alarm_ring</span> 기록 → <b>기상까지 걸린 시간</b>의 원자료</li>
         <li>해제: "나 지금 일어났어" 또는 <b>거치 이탈</b> · 알람 전 기상이면 자동 해제 + <span class="id">beforeAlarm</span></li>
       </ul>
@@ -306,50 +309,72 @@
   </div>
 </section>
 
-<!-- ═══════════════ 표정 레퍼토리 [WO-01b-5] ═══════════════ -->
+<!-- ═══════════════ FACE 디렉션 보드 [WO-02b-3] ═══════════════ -->
 <section>
-  <div class="sec-head"><h2>팰 표정 레퍼토리</h2>
-    <div class="sub">[WO-01b-5] 구현 완료 · 게이트 31/31 — 아래는 도해, 실물은 app/face-sheet.html · 키 6~0 으로 즉석 확인</div></div>
+  <div class="sec-head"><h2>FACE 디렉션 — 제스처 6종</h2>
+    <div class="sub">[WO-02b-3] 어휘 · 구현: CURIOUS·DELIGHT·CONCERN·YAWN 완료([WO-01b-7]) / LISTEN·THINK 는 [WO-02b-2] 범위 — 실물 검증 app/face-sheet.html 45/45</div></div>
   <div class="exgrid">
 
-    <!-- 기쁨 -->
+    <!-- LISTEN -->
+    <div class="ex">
+      <div class="exscr" style="background:#0A0D14"><svg viewBox="0 0 160 84">
+        <rect x="16.5" y="10" width="45" height="48" rx="22" fill="#EAEEF7"/>
+        <rect x="96.5" y="10" width="45" height="48" rx="22" fill="#EAEEF7"/>
+        <ellipse cx="79" cy="65" rx="2.8" ry="3.4" fill="#EAEEF7" opacity=".8"/>
+      </svg></div>
+      <div class="excap"><b>LISTEN</b><span class="k">듣는 동안 유지 · 미구현([WO-02b-2])</span><br>개시 0.15s: 두 눈 +7% + 정면 위 응시(gy −0.6) + 입 작은 'o'. 녹음 종료로 복귀 — 녹색 점의 대체물</div>
+    </div>
+
+    <!-- THINK -->
+    <div class="ex">
+      <div class="exscr" style="background:#0A0D14"><svg viewBox="0 0 160 84">
+        <g transform="translate(4 -4)">
+          <rect x="16.5" y="26" width="45" height="26" rx="12" fill="#EAEEF7"/>
+          <rect x="96.5" y="26" width="45" height="26" rx="12" fill="#EAEEF7"/>
+        </g>
+        <path d="M 71 64 Q 79 65.5 87 64" fill="none" stroke="#EAEEF7" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+      </svg></div>
+      <div class="excap"><b>THINK</b><span class="k">응답 도착까지 유지 · 미구현([WO-02b-2])</span><br>눈 40% 감김 + 시선 위-옆(gx +1.5, gy −0.8) + 느린 깜빡임. 오프라인 폴백에서도 로컬로 돈다(R8)</div>
+    </div>
+
+    <!-- DELIGHT -->
     <div class="ex">
       <div class="exscr" style="background:#0A0D14"><svg viewBox="0 0 160 84">
         <path d="M 16.5 38 Q 16.5 14 39 14 Q 61.5 14 61.5 38 Q 39 27 16.5 38 Z" fill="#EAEEF7"/>
         <path d="M 96.5 38 Q 96.5 14 119 14 Q 141.5 14 141.5 38 Q 119 27 96.5 38 Z" fill="#EAEEF7"/>
         <path d="M 68 62 Q 79 68 90 62" fill="none" stroke="#EAEEF7" stroke-width="3.2" stroke-linecap="round" opacity=".9"/>
       </svg></div>
-      <div class="excap"><b>기쁨</b><span class="k">happy · 1.9s</span><br>아래꺼풀이 올라와 ⌣ + 입꼬리. 웃는 눈은 아래에서 만들어진다</div>
+      <div class="excap"><b>DELIGHT</b><span class="k">happy · 1.9s ✅</span><br>피크 0.28s: 아래꺼풀 ⌣ 0.62 + 입꼬리. ASLEEP 과 정지 모양이 겹쳐도 <b>시간 문법</b>(스파이크 진입 vs 느린 정착)으로 갈린다</div>
     </div>
 
-    <!-- 호기심 -->
+    <!-- CURIOUS -->
     <div class="ex">
       <div class="exscr" style="background:#0A0D14"><svg viewBox="0 0 160 84">
         <rect x="16.5" y="11" width="45" height="48" rx="14" fill="#EAEEF7"/>
         <rect x="99" y="17" width="40" height="38" rx="13" fill="#EAEEF7"/>
         <ellipse cx="79" cy="64" rx="3.4" ry="4.6" fill="#EAEEF7" opacity=".85"/>
       </svg></div>
-      <div class="excap"><b>호기심</b><span class="k">curious · 1.6s</span><br>한쪽 눈 +6% · 반대 −8% + 작은 'o' 입</div>
+      <div class="excap"><b>CURIOUS</b><span class="k">curious · 1.6s ✅</span><br>피크 0.18s: 좌 +6% · 우 −8% + 작은 'o'. 복귀 0.5s</div>
     </div>
 
-    <!-- 서운함 -->
+    <!-- CONCERN -->
     <div class="ex">
       <div class="exscr" style="background:#0A0D14"><svg viewBox="0 0 160 84">
         <rect x="16.5" y="16" width="45" height="40" rx="13" fill="#EAEEF7" transform="rotate(-7 39 36)"/>
         <rect x="96.5" y="16" width="45" height="40" rx="13" fill="#EAEEF7" transform="rotate(7 119 36)"/>
         <path d="M 70 65 Q 79 61.5 88 65" fill="none" stroke="#EAEEF7" stroke-width="3" stroke-linecap="round" opacity=".8"/>
       </svg></div>
-      <div class="excap"><b>서운함</b><span class="k">sad · 2.6s</span><br>눈꼬리 <b>바깥</b> −5°(찡그림과 부호 반대) + 입꼬리 ↓. 삐짐 허용, 소멸 없음 (R5)</div>
+      <div class="excap"><b>CONCERN</b><span class="k">sad · 2.6s ✅</span><br>피크 0.45s: 눈꼬리 바깥 −5°(찡그림과 부호 반대) + 입꼬리 ↓. 삐짐 허용·소멸 없음 (R5)</div>
     </div>
 
-    <!-- 하품 -->
+    <!-- YAWN -->
     <div class="ex">
       <div class="exscr" style="background:#33200A"><svg viewBox="0 0 160 84">
         <rect x="16.5" y="24" width="45" height="26" rx="11" fill="#F3E2C2"/>
         <rect x="96.5" y="24" width="45" height="26" rx="11" fill="#F3E2C2"/>
         <ellipse cx="79" cy="65" rx="4.2" ry="6.2" fill="#F3E2C2" opacity=".9"/>
       </svg></div>
-      <div class="excap"><b>하품</b><span class="k">2.0s 봉투</span><br>졸림 14~22초 주기 · 아침 진입 1회. [WO-01b-3] 하품 오디오와 동기 접점</div>
+      <div class="excap"><b>YAWN</b><span class="k">2.0s 봉투 ✅</span><br>벌림 0.7 · 유지 0.5 · 다뭄 0.8. 졸림 14~22초 주기 · 아침 1회. [WO-01b-3] 오디오 동기 접점</div>
     </div>
 
     <!-- 잠듦 zzz -->
@@ -382,11 +407,14 @@
     </div>
   </div>
   <ul class="notes" style="margin-top:18px">
-    <li>트리거: <span class="id">[CON-02] v0.2</span> <span class="id">expr:trigger {kind, tone}</span> — kind 는 serve.js <span class="id">PAL_SYSTEM</span> emotion enum <b>재사용</b>(새 어휘 금지)</li>
-    <li>봉투가 끝나면 채널 전부 0 — 기하 산술적 원복 · <b>상태 전이 유발 0</b> ([CON-01] 규칙 2)</li>
-    <li class="norm">표정 게이트 — 각성 1 · 졸림 0.5 · 아침 1 · <b>잠듦/밤 0</b>. 밤에는 입·fx 도 계산 없이 제거 (R4 이중 방어)</li>
+    <li class="norm"><b>합성 우선순위(확정)</b> — <span class="id">NIGHT 하드 게이트 → 환경 반응(glare·시선) → AI 제스처(봉투) → 깜빡임 → 미세 표류</span>. 제스처는 기본 상태를 바꾸지 않고 끝나면 산술적으로 복귀 ([CON-01] 규칙 2)</li>
+    <li class="norm"><b>고유성 장치(확정)</b> — <b>좌우 시간차</b>: 깜빡임 우안 +60ms · 아침 개안 우안 +0.45s. 유지 자산: 눈꺼풀 곡선 아랫변(3mm) · 반쯤 상태 4% 비대칭</li>
+    <li class="norm"><b>DROWSY × glare 최소 가시 개구 = 5mm(확정)</b> — 지속 성분에만 걸리고 깜빡임은 완전히 감긴다. 실측 7.5~7.8mm(시트 게이트)</li>
+    <li><b>전환 연기(확정)</b> — AWAKE→DROWSY→ASLEEP: 무거워지는 비대칭 깜빡임+정착 · ASLEEP→NIGHT: 감은 눈 잔영 <b>한 호흡(6.5s) 뒤 소등</b> · NIGHT→MORNING: 왼눈 먼저 개안 시퀀스</li>
+    <li>트리거: <span class="id">[CON-02] v0.2</span> <span class="id">expr:trigger {kind, tone}</span> — 기존 kind(happy·curious·sad·note)는 serve.js enum 재사용. 6제스처 어휘로의 확장은 [WO-02b-2] 착수 시 합의</li>
+    <li class="norm">표정 게이트 — 각성 1 · 졸림 0.5 · 아침 1 · <b>잠듦/밤 0</b>. 밤에는 입·fx·시선도 계산 없이 제거 (R4 이중 방어)</li>
     <li>입은 곡선 1 + 타원 1 뿐 — 음소(viseme)를 만들 수 없는 구조 (R1) <span class="id">[ADR-118]</span></li>
-    <li>미적 판단(곡률·굵기·빈도) 인간 몫 — 색 튜닝은 [WO-01d-3] 트레이싱지 이후</li>
+    <li>흑백·10m 판독은 face-sheet 게이트(45/45)와 1/10 축소 행이 기계 증거 — 미적 판단(곡률·굵기·빈도)은 인간 몫, 색 튜닝은 [WO-01d-3] 트레이싱지 이후</li>
   </ul>
 </section>
 
@@ -493,9 +521,10 @@
 </section>
 
 <footer>
-  근거 문서 — <span class="id">[PLAN-02] v0.3</span> 시연 시나리오 · <span class="id">[CON-03] v0.2</span> 기록 스키마 ·
-  <span class="id">[WO-01b-5]</span> 표정·입·fx(구현 완료 · <span class="id">[ADR-118]</span> <span class="id">[ADR-119]</span> · <span class="id">[CON-02] v0.2</span> 트리거 어휘) ·
-  <span class="id">[WO-02b-1]</span> 놀이 <span class="id">[WO-02c-1]</span> 사운드 <span class="id">[WO-02d-1..3]</span> 모드·트래커·알람 <span class="id">[WO-02e-1]</span> 기록 화면.<br>
+  근거 문서 — <span class="id">[WO-02b-3]</span> FACE 디렉션 v1(이 보드가 그 산출물) · <span class="id">[WO-01b-5]</span> 기본 5상태 개선(구현 완료 · 시트 45/45) ·
+  <span class="id">[PLAN-02] v0.3</span> 시연 시나리오 · <span class="id">[CON-03] v0.2</span> 기록 스키마 ·
+  <span class="id">[WO-01b-7]</span> 표정·입·fx(구현 완료 · <span class="id">[ADR-118]</span> <span class="id">[ADR-119]</span> · <span class="id">[CON-02] v0.2</span> 트리거 어휘) ·
+  <span class="id">[WO-01b-6]</span> 시선 · <span class="id">[WO-02b-1]</span> 놀이 <span class="id">[WO-02b-2]</span> 옹알이(LISTEN·THINK 구현처) <span class="id">[WO-02c-1]</span> 사운드 <span class="id">[WO-02d-1..3]</span> 모드·트래커·알람 <span class="id">[WO-02e-1]</span> 기록 화면.<br>
   색·눈 좌표는 <span class="id">app/face/eyes.js STATES</span> 상속(AWAKE #0A0D14 · DROWSY #33200A · NIGHT #000 · MORNING #3B4664) ·
   입·아래꺼풀·도상 기하는 <span class="id">app/face/{mouth,fx}.js</span> · <span class="id">eyes.js lowLidPath</span>.
   규범: R1 음소 없는 입 · R3 얼굴 무문자 · R4 밤에는 아무것도 하지 않음 · R6 수면 채점 금지.

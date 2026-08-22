@@ -136,7 +136,7 @@ for (const g of [0, 1.0])
   cell(GROW3, 2.0, 'NIGHT', g, 'glare ' + g.toFixed(2) + ' — 반드시 같아야 한다');
 
 // ── 검사 — [WO-01b-1] 수용 기준 기계 확인 ─────────────────────
-//  고정 900ms 는 iframe 25개 × 모듈 10개에서 플레이키했다([WO-01b-5]에서 실측
+//  고정 900ms 는 iframe 25개 × 모듈 10개에서 플레이키했다([WO-01b-7]에서 실측
 //  17/25) — 전 프레임 준비를 폴링으로 기다린 뒤 1회 실행한다. 상한 15초.
 const runChecks = function () {
   const f = frames[0];
@@ -274,7 +274,7 @@ const runChecks = function () {
     } finally { P.now = o; }
   })();
 
-  // ── 이산 표정·입·fx [WO-01b-5] ────────────────────────────
+  // ── 이산 표정·입·fx [WO-01b-7] ────────────────────────────
   //  트리거는 [CON-02] 소비부(SP.exprTrigger)를 직접 때린다 — 결정적이어야
   //  하므로 버스 대신 함수 경로. 버스 배선은 앱에서 육안으로 본다(6·7·8 키).
   (function () {
@@ -429,6 +429,43 @@ const runChecks = function () {
     lines.push(pass('⛔ R4 밤 시선 0', S.GZ.x === 0 && S.GZ.hold === 0 &&
                     el('tiltL').getAttribute('transform') === tl0 && S.F.state === 'NIGHT',
                     '소리 주입에도 기하 동일'));
+
+    // ── 기본 얼굴 개선 [WO-01b-5] — 아침 포즈·개안 시간차·최소 개구·소등 연기 ──
+    // 아침 포즈 — AWAKE 와 흑백 정지 화면에서도 형태로 갈린다
+    reset('MORNING');
+    step(30);
+    const mLow = S.F.X.lowLid, mH = +el('eyeL').getAttribute('height');
+    lines.push(pass('    아침 포즈 흑백 구분', mLow >= 0.12 && mH > 45.8,
+                    'lowLid ' + mLow.toFixed(2) + ' · h ' + mH.toFixed(1) + ' (각성 45)'));
+    // 개안 좌우 시간차 — 감은 채 아침을 맞으면 왼눈이 먼저 뜬다
+    reset('ASLEEP');
+    step(120);                                   // lidNow → 1 수렴
+    S.setEyeState('MORNING');
+    S.F.stateAt = clk / 1000;
+    step(18);                                    // 0.3초 — 오른눈은 아직 지연 창 안
+    lines.push(pass('    아침 개안 왼눈 먼저', S.F.lidNow[0] < S.F.lidNow[1] - 0.05,
+                    'lid L ' + S.F.lidNow[0].toFixed(2) + ' / R ' + S.F.lidNow[1].toFixed(2)));
+    // DROWSY × 최대 glare — 최소 가시 개구 5mm ([WO-02b-3] 확정값)
+    reset('DROWSY');
+    S.GL.raw = 1; S.GL.now = 1;
+    step(60);
+    lines.push(pass('    졸림 최대 개구 ≥5mm', S.F.apNow[0] >= 4.9 && S.F.apNow[1] >= 4.9,
+                    S.F.apNow[0].toFixed(1) + ' / ' + S.F.apNow[1].toFixed(1) + ' mm'));
+    S.GL.raw = 0; S.GL.now = 0;
+    // 깜빡임 좌우 시간차 60ms — 고유성 장치
+    reset('AWAKE');
+    S.F.blinkT = 0.001;
+    step(3);                                     // 0.05초 — 감기는 중
+    lines.push(pass('    깜빡임 좌우 시간차', S.F.blinkNow2[0] > S.F.blinkNow2[1],
+                    'L ' + S.F.blinkNow2[0].toFixed(2) + ' > R ' + S.F.blinkNow2[1].toFixed(2)));
+    S.F.blinkT = -1; S.F.blinkAt = Infinity;
+    // 밤 소등 연기 — 잠든 눈이 한 호흡 머문 뒤 꺼진다(진입 직후엔 보인다)
+    reset('ASLEEP');
+    S.setEyeState('NIGHT');
+    step(2);
+    lines.push(pass('    밤 소등 연기(한 호흡)', el('shutL').style.opacity === '1' &&
+                    el('shutL').style.stroke !== 'rgb(0, 0, 0)',
+                    '진입 직후 잔영 유지 — 6.5초 뒤 소등'));
 
     // 🎙 마이크 생애 정책 [ADR-121] — 순수 판정: 트래킹(SLEEP·잠듦·밤)은 금지,
     //  수면 준비(WIND_DOWN)·모드 없음(dev)은 허용
