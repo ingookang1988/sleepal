@@ -12,10 +12,11 @@ export const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 export const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // 폰 → 보드 (write)
 export const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // 보드 → 폰 (notify)
 
-// ⚠ [CON-01] — 광고 이름은 팀 고유값이어야 한다. 스캐폴드 기본값이
-//   "TOYTHON-01" 이라 참가자 100명이 모이면 목록이 전부 TOYTHON 이 된다.
-//   현장에서 재배포 없이 좁히려면 ?dev=<이름> 을 붙인다. ?dev=* 는 전체 목록.
-export const DEVICE_PREFIX = qs.get('dev') || 'TOYTHON';
+// ⚠ [CON-01] — 광고 이름은 팀 고유값이어야 한다. 실물 펌웨어(NU40_Pillow_Node)가
+//   "SLEEPPAL-PILLOW-01" 로 광고하고 RN 클라이언트 기본 접두사도 SLEEPPAL 이다
+//   (feat/connection-and-sensor) — 기본값을 거기에 맞춘다. 해커톤 스캐폴드의
+//   TOYTHON 보드는 ?dev=TOYTHON 으로, 전체 목록은 ?dev=* 로 본다.
+export const DEVICE_PREFIX = qs.get('dev') || 'SLEEPPAL';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
