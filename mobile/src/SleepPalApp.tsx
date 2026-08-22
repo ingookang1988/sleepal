@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
+import { screenAfterBleSnapshot, startBleOnLaunch, StartupScreen } from './app/startup';
 import { BleSnapshot, Nu40BleClient } from './ble/Nu40BleClient';
 import { parseNu40Line, shouldForwardToFace } from './ble/protocol';
 import { RssiProximityEstimator } from './ble/proximity';
@@ -19,7 +20,7 @@ import { ExpressionTriggerPayload, expressionForBoardMessage } from './bridge/ex
 import { PWA_BRIDGE_SCRIPT } from './bridge/pwaBridgeScript';
 import { LightBucketRow, LightRepository } from './data/LightRepository';
 
-type Screen = 'connect' | 'standby' | 'face' | 'history';
+type Screen = StartupScreen;
 
 const PWA_URL = process.env.EXPO_PUBLIC_PWA_URL || 'https://face-production-7605.up.railway.app';
 const PWA_ORIGIN = new URL(PWA_URL).origin;
@@ -82,8 +83,7 @@ export default function SleepPalApp() {
     const unsubscribeSnapshot = ble.subscribe((snapshot) => {
       setBleSnapshot(snapshot);
       postToWeb('ble/status', statusPayload(snapshot));
-      if (snapshot.state === 'connected') setScreen((current) => (current === 'connect' ? 'standby' : current));
-      if (snapshot.state === 'ended') setScreen('standby');
+      setScreen((current) => screenAfterBleSnapshot(current, snapshot.state));
     });
 
     const unsubscribeLines = ble.subscribeLines((line, receivedAt) => {
@@ -113,6 +113,9 @@ export default function SleepPalApp() {
     });
 
     const appStateSubscription = AppState.addEventListener('change', () => void repository.flush());
+    // 구독을 모두 붙인 뒤 자동 scan/connect를 시작한다. connect() 자체가 멱등이라
+    // 개발 StrictMode의 중복 effect나 이미 연결된 상태에서도 중복 scan을 만들지 않는다.
+    void startBleOnLaunch(ble);
     return () => {
       unsubscribeSnapshot();
       unsubscribeLines();

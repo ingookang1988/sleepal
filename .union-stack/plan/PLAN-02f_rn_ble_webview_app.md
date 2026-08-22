@@ -5,7 +5,7 @@ title: RN 앱 — NU40 조도 BLE와 PWA WebView 호스트
 status: Draft
 tier: draft
 parent: PLAN-02
-version: 0.4
+version: 0.5
 ---
 
 # [PLAN-02f] RN 앱 — NU40 조도 BLE와 PWA WebView 호스트
@@ -20,9 +20,10 @@ version: 0.4
 - 조도 데이터는 WebView에 전달해 졸린 눈과 연속 표정에 사용한다.
 - RN은 조도 데이터를 SQLite에 집계하고 아침에 조도 환경 기록을 보여준다.
 - PWA와 RN은 서로 다른 개발자가 작업하므로 소스 폴더와 런타임 계약을 분리한다.
-- 초기 제품은 **전용 Android 폰 우선**이다. 일반 앱의 백그라운드 강제 화면 실행에 의존하지 않고, 앱을 전경의 검은 대기 화면으로 유지하다가 근접 확정 시 PWA 얼굴을 표시한다.
-- BLE RSSI는 앱 내부의 `VERY_NEAR 추정` 보조값으로만 사용한다. 정확한 10cm를 보장하지 않는다.
+- 초기 제품은 **전용 Android 폰 우선**이다. 앱을 켜면 전경에서 NU40을 자동 연결하고 바로 PWA 얼굴을 표시한다. 검은 대기는 정상 수면 종료 뒤에만 사용한다.
+- BLE RSSI는 개발 진단용 `VERY_NEAR 추정` 보조값이다. 얼굴 진입 게이트로 쓰거나 정확한 10cm를 보장하지 않는다.
 - BLE로 전달되는 센서 정보는 조도뿐이다. 소리 센서·원음·목소리·STT는 앱 범위에서 제외한다.
+- 앱 mount 시 BLE 구독을 먼저 등록한 뒤 `SLEEPPAL-*` scan/connect를 자동 시작한다. 연결 성공 시 대기 화면을 거치지 않고 PWA 얼굴을 연다. 연결 화면은 오류·권한 거부·Bluetooth OFF의 재시도 폴백이다.
 
 이는 [ADR-302]가 차단한 "팰 런타임의 전면 React 재작성"이 아니다. `app/`의 바닐라 PWA 런타임은 유지하고 네이티브 기능만 RN 호스트로 옮긴다. 최신 [PLAN-02]의 제품 수면 기록·대화 일기·알람은 [CON-03]을 유지하고, RN 수직 슬라이스의 조도 SQLite는 [CON-02f1]로 분리한다.
 
@@ -34,7 +35,7 @@ version: 0.4
 2. RN이 수신한 조도·상태 라인을 [CON-02f]로 WebView에 전달한다.
 3. WebView는 기존 `handleLine()`/`feedLux()` 경로를 재사용해 눈 상태와 표정을 바꾼다.
 4. RN이 조도를 분 단위로 SQLite에 집계하고 아침 조도 환경 기록을 만든다.
-5. RSSI `VERY_NEAR 추정`이 일정 시간 유지될 때 전경 대기 화면을 얼굴로 전환한다.
+5. 앱 mount에서 BLE를 자동 연결하고 `connected` snapshot 즉시 얼굴로 전환한다.
 6. 인터넷이 없어도 NU40 BLE → 얼굴 반응 → 조도 기록이 동작한다([ARCH-01] R8).
 
 ### 이번 초안의 비목표
@@ -103,13 +104,13 @@ PWA 공급 방식은 개발과 릴리스를 분리한다.
 3. PWA 어댑터는 `LUX:*`, `STATE:*`, `SLEEPING`, `HELLO`를 기존 `handleLine()`에 넣는다.
 4. 이산 눈 상태는 보드의 `STATE:`만 결정하고, `LUX:`는 연속 표정만 바꾼다([CON-01] 규칙 1·2).
 
-### 근접 → 얼굴 화면
+### 앱 시작·BLE 연결 → 얼굴 화면
 
-RSSI는 정확한 거리 센서가 아니라 1차 후보 필터다. 연결된 장치의 RSSI를 네이티브 층에서 읽고 최근 표본의 중앙값과 완만한 필터를 적용한다. 단일 강한 표본에는 반응하지 않고 `NEAR_CANDIDATE`가 2–3초 유지될 때만 물리 확인을 기다린다.
+RN은 snapshot·line 구독을 모두 등록한 뒤 `connect()`를 자동 호출한다. `connect()`는 scanning·connecting·connected 상태에서 멱등이므로 개발 StrictMode의 중복 effect도 새 scan을 만들지 않는다. `connected` snapshot은 현재 화면과 관계없이 `face`로 전환한다.
 
-새 근접 센서를 추가하지 않는다. 앱은 RSSI-only 결과를 `VERY_NEAR 추정`으로만 이름 붙이고 10cm를 보장하지 않는다. 초기 threshold와 유지 시간은 개발 진단 설정으로 두고 NU40·대상 폰·완성 케이스 조합에서 실측한다.
+RSSI 필터는 진단 화면에 남기되 얼굴 진입을 지연시키지 않는다. 권한 거부·Bluetooth OFF·scan timeout은 `error`로 연결 화면을 보여주고 사용자가 재시도할 수 있다.
 
-`PLAY/WIND_DOWN`에서만 검은 `STANDBY` → PWA 얼굴 전환을 허용한다. `SLEEP/NIGHT`에서는 RSSI가 강해져도 화면·알림·진동을 만들지 않는다([ARCH-01] R4).
+런타임이 `SLEEPING`을 받은 뒤에는 `ended`→검은 `STANDBY`로 유지한다. 이 상태에서 RSSI가 강해져도 화면·알림·진동을 만들지 않는다([ARCH-01] R4).
 
 앱이 다른 앱 뒤나 잠금 화면에 있으면 Android/iOS 정책상 강제 전면 실행을 제품 계약으로 삼지 않는다. 전용 Android 폰은 앱을 전경에 둔 채 검은 화면을 렌더해 이 제약을 피한다. 사용자가 앱을 이탈한 동안 네이티브 BLE 서비스는 기록만 유지하고, 얼굴은 다음 사용자 복귀 시 표시한다.
 
@@ -119,8 +120,8 @@ RN은 `LUX:<정수>` 수신 시각을 붙여 메모리의 현재 분 버킷에 `
 
 ## RN 화면
 
-1. **연결 화면** — 권한 요청, 고유 장치 선택, 연결 상태. 사용자 행동이 필요한 scan은 여기서만 시작한다.
-2. **검은 대기 화면** — 전용 Android 폰에서 앱을 전경으로 유지한다. `NEAR_CANDIDATE`만으로는 바뀌지 않고 물리 근접 확정 뒤에만 얼굴로 전환한다.
+1. **시작 연결 상태** — 앱이 자동 scan/connect한다. 권한 거부·Bluetooth OFF·timeout일 때만 연결 화면에 재시도 버튼을 보여준다.
+2. **검은 대기 화면** — 정상 수면 종료나 사용자의 명시적 얼굴 이탈 뒤에만 사용한다. 앱 시작의 기본 경유 화면이 아니다.
 3. **팰 얼굴** — 전체 화면 WebView. 프로덕션에서는 RSSI·거리·센서 수치와 디버그 문자를 노출하지 않는다([ARCH-01] R3·R6).
 4. **수면 기록 중** — [ARCH-01] R4에 따라 검은 화면을 유지하고 알림·진동을 만들지 않는다. 내부 수집 상태만 유지한다.
 5. **아침 일기** — 시간대별 조도 환경과 센서 gap을 사실로 보여준다. 점수·등급·전일 비교는 없다.
@@ -143,7 +144,7 @@ RN은 `LUX:<정수>` 수신 시각을 붙여 메모리의 현재 분 버킷에 `
 |---|---|---|
 | 0. 앱 계약 동결 | [CON-01] 읽기 + 보드 세션 샘플 NUS 로그 | NU40·조도 전용 확인, 앱에서 펌웨어 변경 0 |
 | 1. RN 기반 | `mobile/` Development Build | Android 실기 설치, BLE 권한 화면 진입 |
-| 2. BLE 생명선 | scan/connect/notify/write + line buffer | 보드 `HELLO` 및 기존 `LUX:` 15분 연속 수신, chunk 분할 테스트 통과 |
+| 2. BLE 생명선 | mount 자동 scan/connect + notify/write + line buffer | 앱 cold start→자동 연결→얼굴, 보드 `HELLO` 및 기존 `LUX:` 15분 연속 수신, chunk 분할 테스트 통과 |
 | 3. 근접 추정 | RSSI 필터 + 검은 대기 화면 | `VERY_NEAR 추정` 유지 조건 통과, SLEEP/NIGHT 화면 점등 0 |
 | 4. WebView 브리지 | [CON-02f] 양방향 어댑터 | 불을 가리면 3초 안에 눈 반응, Web Bluetooth 호출 0 |
 | 5. 조도 저장 | [CON-02f1] SQLite migration + repository | 재실행 후 분 버킷 보존, 5Hz 원본 row 0 |

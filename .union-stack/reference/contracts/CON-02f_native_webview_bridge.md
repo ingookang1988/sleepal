@@ -4,7 +4,7 @@ id: CON-02f
 title: RN 네이티브 ↔ PWA WebView 브리지 계약
 status: Draft
 tier: draft
-version: 0.4
+version: 0.5
 consumers: [PLAN-01b, PLAN-02f]
 ---
 
@@ -40,7 +40,7 @@ type BridgeEnvelope<T extends string, P> = {
 | type | payload | 의미 |
 |---|---|---|
 | `web/ready` | `{bridgeVersion: 1}` | PWA listener 준비 완료. RN이 현재 상태를 재전달한다 |
-| `ble/connect` | `{}` | 사용자 동작으로 scan/연결 요청. 이미 연결 중이면 멱등 처리 |
+| `ble/connect` | `{}` | 자동 연결 실패 뒤 Web/PWA가 요청하는 재시도. 이미 연결 중이면 멱등 처리 |
 | `ble/write` | `{line: string}` | [CON-01] 폰→보드 한 줄. 개행은 RN이 붙인다 |
 
 `ble/write.line`은 ASCII, 빈 문자열 금지, 최대 63바이트다. RN은 [CON-01]에 없는 명령을 릴리스 빌드에서 거부한다. 현재 허용값은 `LED:<0-255>`, `TILT:<-90..90>`, `SHAKE`, `WAKE`이며 디버그 전용 명령은 개발 진단 화면에서만 노출한다.
@@ -60,11 +60,12 @@ type BridgeEnvelope<T extends string, P> = {
 
 ## 생명주기 규칙
 
-1. **BLE 소유자는 RN 하나다.** `native/ready`가 있는 WebView에서 `navigator.bluetooth` 호출은 계약 위반이다.
+1. **BLE 소유자는 RN 하나다.** RN은 snapshot·line 구독을 등록한 뒤 앱 mount에서 scan/connect를 자동 시작한다. `native/ready`가 있는 WebView에서 `navigator.bluetooth` 호출은 계약 위반이다.
 2. WebView reload마다 `web/ready` handshake를 다시 한다. RN은 BLE를 끊지 않고 마지막 상태만 재전달한다.
 3. 앱 재시작은 새 bridge session이다. `seq` 연속성을 기대하지 않는다.
 4. PWA가 없는 동안에도 RN의 조도 분 버킷 기록은 계속될 수 있다. 브리지는 UI 전달 경로이지 저장 경로가 아니다.
 5. RN은 `ble/line`이나 5Hz 조도 원본을 DB에 무제한 저장하지 않는다. 네이티브 조도 집계는 [CON-02f1]을 따른다.
+6. `connected` snapshot은 RN 화면을 즉시 얼굴 WebView로 전환한다. `ended`는 검은 대기, `error`는 재시도 연결 화면으로 전환한다.
 
 ## 보안 규칙
 
