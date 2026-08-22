@@ -1,7 +1,7 @@
 // scripts/adopter-arm.test.js
 // 순수 함수(픽스처 생성 · 성공 바 판정) 단위. 팔 전체 실행은 비싸므로 CI 스텝이 소유한다.
 // 실행: node scripts/adopter-arm.test.js
-const { dataShape, rawMarkers, noJsReachable, crashed, ZONES, ROWS_PER_ZONE, HISTORY_ENTRIES } = require('./adopter-arm');
+const { dataShape, rawMarkers, noJsReachable, crashed, upstreamAdrBar, ZONES, ROWS_PER_ZONE, HISTORY_ENTRIES } = require('./adopter-arm');
 const { parseLiveRows } = require('./dashboard');
 const { parseEntries } = require('./history-linter');
 
@@ -59,6 +59,14 @@ check('시그널은 크래시', crashed({ code: null, stderr: '', signal: 'SIGSE
 check('status 없음은 크래시', crashed({ code: -1, stderr: '', signal: null }));
 // 회귀: execFileSync 래퍼 문구를 stderr 로 섞으면 모든 비영 종료가 크래시로 오판됐다(실측).
 check('"Command failed" 래퍼 문구에 속지 않는다', !crashed({ code: 1, stderr: '', signal: null }));
+
+// --- upstreamAdrBar: 템플릿 전용 불변식을 채택 인스턴스에 들이대지 않는다([ADR-303]) ---
+// 상류 형상(IDENTITY_example 있음 → init 이 실제로 리셋): 잔존은 그대로 결함이다.
+check('상류: 잔존 0 이면 통과', upstreamAdrBar({ before: 24, after: 0, adopted: false }).ok);
+check('상류: 잔존이 있으면 실패([ADR-36]① 회귀 보존)', !upstreamAdrBar({ before: 24, after: 24, adopted: false }).ok);
+// 채택 인스턴스(init no-op): 원장은 자기 결정 기록 — 건수와 무관하게 판정 대상이 아니다.
+check('채택: 자기 ADR 이 있어도 통과', upstreamAdrBar({ before: 28, after: 28, adopted: true }).ok);
+check('채택: 건너뜀 사유를 남긴다', /채택 인스턴스/.test(upstreamAdrBar({ before: 28, after: 28, adopted: true }).detail));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

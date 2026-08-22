@@ -10,6 +10,7 @@
 ## 2. Changed locations (ID list)
 - 신설: [PHASE-02] · [PLAN-02] (둘 다 `tier: draft`)
 - HISTORY 2026-08-22 행(스택·방향 확정) · [ADR-302](재제안 차단 표식 → AGENTS.md 인덱스 반영)
+- [ADR-303]: CI `validate` 영구 적색 수정 — `scripts/adopter-arm.js`(+init.js export·회귀 테스트 4건). 채택 인스턴스에서 템플릿 전용 불변식을 건너뜀
 - 직전 세션분(로컬): [ADR-112]~[ADR-117](HUD·조도계 원인 수정·놓아줌) · 게이트 22/22 · [ADR-116] 배포 스테이징 경로
 
 ## 3. Next task (single entry point)
@@ -26,5 +27,5 @@
 - git: 이 세션은 원격( `claude/handoff-dev-context-a8ad12-ow7iu3` ) — 로컬 main 과 병합 필요
 
 ## 5. Verification status
-- 이 세션: `zfs-linter` · `history-linter` · `permission-guard` · `blocks-index` 전부 통과. 코드 무변경이라 앱 게이트는 직전 상태 유지(얼굴 22/22 · [ADR-117])
+- 이 세션: `zfs-linter` · `history-linter` · `permission-guard` · `blocks-index` · `npm test` 35/35 · `adopter-arm` 두 형상 전부 통과([ADR-303] 수정 후 — base 는 이 수정 머지 전까지 적색). 앱 게이트는 직전 상태 유지(얼굴 22/22 · [ADR-117])
 - 실기 검증 전부 미완(폰 크롬 · 보드 · BLE 왕복 · 발열) — P0 이월
