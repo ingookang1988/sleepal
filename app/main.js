@@ -3,9 +3,12 @@
 // tracker.js · sound.js / 셸 = 이 파일 · index.html · sw.js.
 'use strict';
 import { $, clamp, log, palBus, qs, rand, smooth } from './core.js';
-import { applyViewBox, blinkAmount, EYE, F, getScreenWmm, lidPath, ORDER, setEyeState,
-         setScreenWmm, show, STATES, VB } from './face/eyes.js';
-import { BREATH, expression, GATE, GL } from './face/expression.js';
+import { applyViewBox, blinkAmount, EYE, F, getScreenWmm, lidPath, lowLidPath, ORDER,
+         setEyeState, setScreenWmm, show, STATES, VB } from './face/eyes.js';
+import { BREATH, EMO, expression, exprTrigger, GATE, GAZE_MM, gazeTo, GL, GZ } from './face/expression.js';
+import { tickMouth } from './face/mouth.js';
+import { FX, fxNote, setMusic, tickFx } from './face/fx.js';
+import { earBanned, earOn, earStart, earStop, feedSnd, snd, tickEar } from './face/ear.js';
 import { camOn, camStart, camStop, feedLux, lux, simStep } from './lux.js';
 import { _feedRaw, _reset, bleStatus, connect, DEVICE_PREFIX, handleLine, NUS,
          onDisconnect, onNotify, reconnect, RX, send, TX } from './ble.js';
@@ -31,6 +34,7 @@ function frame(ts) {
   const dt = last ? clamp(t - last, 0, 0.1) : 0.016;
   last = t;
   const s = STATES[F.state];
+  tickEar(t, dt);                 // 귀 — 시선 목표(GZ)를 갱신한다. R4 는 스스로 지킨다
   const X = expression(t, dt);
 
   // ── 깜빡임 ──────────────────────────────────────────────
@@ -55,23 +59,36 @@ function frame(ts) {
   const cy = X ? X.cy : EYE.cy;
   const rx = Math.min(EYE.w, h) / 2;
   const top = cy - h / 2;
-  const ox = VB.dx + (X ? X.dx : 0), oy = VB.dy + (X ? X.dy : 0);
+  // 시선(gx·gy)은 표류와 합성된다 — 두 눈이 함께 이동해야 "본다"로 읽힌다
+  const ox = VB.dx + (X ? X.dx + X.gx : 0), oy = VB.dy + (X ? X.dy + X.gy : 0);
 
   for (let i = 0; i < 2; i++) {
     F.lidNow[i] = smooth(F.lidNow[i], F.lid[i], 0.9, dt);
     const lid = clamp(Math.max(F.lidNow[i], blink) + (X ? X.settle * 0.05 : 0), 0, 1);
+    // 좌우 독립 높이 배율 — 호기심이 한쪽 눈만 키운다 [WO-01b-5]
+    const hi = h * (X ? X.hMul[i] : 1);
+    const topI = cy - hi / 2;
     const eye = $(i ? 'eyeR' : 'eyeL');
-    eye.setAttribute('y', top.toFixed(2));
-    eye.setAttribute('height', h.toFixed(2));
-    eye.setAttribute('rx', rx.toFixed(2));
+    eye.setAttribute('y', topI.toFixed(2));
+    eye.setAttribute('height', hi.toFixed(2));
+    eye.setAttribute('rx', (Math.min(EYE.w, hi) / 2).toFixed(2));
     // 눈꺼풀은 *현재* 눈 높이를 따라간다 — 찡그린 눈에 맞춰 짧아진다
-    $(i ? 'lidR' : 'lidL').setAttribute('d', lidPath(EYE.cx[i], top + lid * h));
-    // 기울기: 왼눈 +θ, 오른눈 −θ → 두 안쪽 끝이 내려간다
-    const th = (X ? X.tilt : 0) * (i ? -1 : 1);
+    $(i ? 'lidR' : 'lidL').setAttribute('d', lidPath(EYE.cx[i], topI + lid * hi));
+    // 아래꺼풀 — 기쁨이 눈 아래를 ⌣ 로 깎는다. low=0 이면 눈 아래에 숨어 있고
+    // arch 도 0 에 수렴해 눈에 닿지 않는다 [WO-01b-5]
+    const low = X ? X.lowLid : 0;
+    $(i ? 'lidR2' : 'lidL2').setAttribute('d',
+      lowLidPath(EYE.cx[i], topI + hi + 5 - low * (hi * 0.6 + 5), 4.5 * low));
+    // 기울기: 왼눈 +θ, 오른눈 −θ → 두 안쪽 끝이 내려간다.
+    // 감정 기울기(tiltE)는 부호가 반대라 바깥 끝이 내려간다(서운함)
+    const th = (X ? X.tilt + X.tiltE : 0) * (i ? -1 : 1);
     $(i ? 'tiltR' : 'tiltL').setAttribute('transform',
       'translate(' + ox.toFixed(2) + ' ' + oy.toFixed(2) + ') rotate(' +
       th.toFixed(2) + ' ' + EYE.cx[i] + ' ' + cy.toFixed(2) + ')');
   }
+  // 입·fx — 각자 R4 를 스스로 집행한다(NIGHT 이면 숨김/제거)
+  tickMouth(t, dt, X);
+  tickFx(t, dt);
   // 감긴 눈은 호흡으로 오르내리고, 빛이 들면 떨린다
   const sy = VB.dy + (X ? X.breath * 0.3 + X.tremor : 0);
   $('shutG').setAttribute('transform', 'translate(' + VB.dx.toFixed(2) + ' ' + sy.toFixed(2) + ')');
@@ -115,7 +132,22 @@ addEventListener('keydown', function (e) {
   if (i >= 0) setEyeState(ORDER[i]);
   else if (e.key === 'd') toggleDebug();
   else if (e.key === 'c') openCal();
+  // 이산 표정·fx [WO-01b-5] — 6 기쁨 · 7 호기심 · 8 서운함 · 9 음표 · 0 음악 토글.
+  // 전부 [CON-02] 버스를 태운다 — 직접 호출하면 계약 경로가 검증되지 않는다.
+  else if (e.key === '6') emitTrigger('happy');
+  else if (e.key === '7') emitTrigger('curious');
+  else if (e.key === '8') emitTrigger('sad');
+  else if (e.key === '9') emitTrigger('note');
+  else if (e.key === '0') { setMusic(!FX.music); log('음악 fx ' + (FX.music ? 'ON' : 'OFF')); }
+  // 시선 [WO-01b-6] — , 왼쪽 소리 · . 오른쪽 소리 · / 정면 소리 · m 마이크 토글
+  else if (e.key === ',') feedSnd(0.6, -1);
+  else if (e.key === '.') feedSnd(0.6, 1);
+  else if (e.key === '/') feedSnd(0.6, 0);
+  else if (e.key === 'm') { earOn() ? earStop() : earStart(); }
 });
+function emitTrigger(kind, tone) {
+  palBus.dispatchEvent(new CustomEvent('expr:trigger', { detail: { kind: kind, tone: tone } }));
+}
 $('faceScreen').addEventListener('touchstart', function (e) {
   if (e.touches.length === 2) setEyeState(ORDER[(ORDER.indexOf(F.state) + 1) % ORDER.length]);
   else if (e.touches.length === 3) toggleDebug();
@@ -129,6 +161,39 @@ $('dbgConnect').onclick = function () {
 $('dbgLedOn').onclick  = function () { send('LED:255'); };
 $('dbgLedOff').onclick = function () { send('LED:0'); };
 $('dbgWake').onclick   = function () { send('WAKE'); };
+
+// 이산 표정 버튼 — 디버그 화면은 얼굴을 *대체*하므로(R3) 얼굴로 돌아간 뒤
+// 트리거를 쏜다. 봉투가 2초 안에 끝나기 때문에 이 순서가 아니면 안 보인다.
+function fireAndShow(kind) {
+  closeDev();
+  setTimeout(function () { emitTrigger(kind); }, 250);
+}
+$('dbgHappy').onclick   = function () { fireAndShow('happy'); };
+$('dbgCurious').onclick = function () { fireAndShow('curious'); };
+$('dbgSad').onclick     = function () { fireAndShow('sad'); };
+$('dbgNote').onclick    = function () { fireAndShow('note'); };
+$('dbgMusic').onclick   = function () {
+  setMusic(!FX.music);
+  $('dbgMusic').textContent = FX.music ? '♪ 음악 끄기' : '♪ 음악';
+  if (FX.music) closeDev();
+};
+
+// 시선 대역 [WO-01b-6] — 합성 소리(feedSnd)와 마이크. 상태 전이는 없다.
+function soundAndShow(bal) {
+  closeDev();
+  setTimeout(function () { feedSnd(0.6, bal); }, 250);
+}
+$('dbgSndL').onclick = function () { soundAndShow(-1); };
+$('dbgSndC').onclick = function () { soundAndShow(0); };
+$('dbgSndR').onclick = function () { soundAndShow(1); };
+$('dbgEar').onclick  = function () {
+  // earStart 는 비동기(권한 대화상자) — 라벨은 결과가 난 뒤에 맞춘다
+  const p = earOn() ? (earStop(), Promise.resolve()) : earStart();
+  Promise.resolve(p).then(function () {
+    $('dbgEar').textContent = earOn() ? '귀 끄기' : '귀 (마이크)';
+    paintDebug();
+  });
+};
 
 // ═══ 조도 대역 — 보드 없이 표정을 보기 위한 것 ═══════════════
 //  셋 다 feedLux() 또는 GL.raw 로만 들어간다. 상태 전이는 어느 경로로도
@@ -224,6 +289,12 @@ export function boot(build) {
     lux: lux, applyViewBox: applyViewBox, show: show,
     connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
     GL: GL, GATE: GATE, BREATH: BREATH, expression: expression, VB: VB,
+    // [WO-01b-5] 이산 표정·입·fx — 시트 게이트가 읽는다
+    EMO: EMO, exprTrigger: exprTrigger, FX: FX, fxNote: fxNote, setMusic: setMusic,
+    // [WO-01b-6] 시선·귀 (+[ADR-121] 마이크 생애 정책)
+    GZ: GZ, GAZE_MM: GAZE_MM, gazeTo: gazeTo, feedSnd: feedSnd, snd: snd,
+    earStart: earStart, earStop: earStop, earBanned: earBanned,
+    get earOn() { return earOn(); },
     // 계측 — HUD 검사가 읽는다
     paintHud: paintHud, setDev: setDev, EYE_SAFE: EYE_SAFE,
     get devMode() { return getDev(); },
