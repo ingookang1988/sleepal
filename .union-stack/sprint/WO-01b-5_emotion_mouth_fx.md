@@ -3,7 +3,7 @@ id: WO-01b-5
 title: 이산 표정·입·떠다니는 도상 — 트리거 수신부 + 아래꺼풀 + 입 + zzz/음표
 status: Verifying
 parent: PLAN-01b
-evidence: "기존 표정 브랜치 face-sheet 증거를 가져오고 [CON-01b] 순수 payload 테스트·mobile 21/21·tsc를 통과. 현재 face-sheet 37개 assertion의 브라우저 실행과 미적 판단은 미완"
+evidence: "기존 표정 브랜치 face-sheet 증거를 가져오고 [CON-01b] 순수 payload 테스트·표정 커밋 기준 mobile 17/17·tsc를 통과. 현재 face-sheet 37개 assertion의 브라우저 실행과 미적 판단은 미완"
 closed_by: []
 ---
 # [WO-01b-5] 이산 표정·입·fx
