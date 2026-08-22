@@ -225,7 +225,7 @@ setTimeout(function () {
   const runFall = function (fall) {
     S.show('faceScreen'); S.setEyeState('AWAKE');
     S.GL.now = 0; S.GL.raw = 0; S.GL.flinch = -1; S.GL.relief = -1;
-    S.GL.settle = 0; S.GL.release = 0;
+    S.GL.settle = 0; S.GL.release = 0; S.GL.flinchAt = -9; S.GL.reliefAt = -9;
     S.lux.recent.length = 0; S.lux.count = 0; S.lux.last = null; S.lux.hold = null;
     S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.blinkEnv = null;
     const step = function (n) { for (let i = 0; i < n; i++) { clk += 16.667; S._step(clk); } };
@@ -247,6 +247,30 @@ setTimeout(function () {
                   (sharp.after1s / 45 * 100).toFixed(0) + '% (' + sharp.after1s.toFixed(1) + 'mm)'));
   lines.push(pass('    완만 하강은 느림',  slow.after1s < 45 * 0.85,
                   (slow.after1s / 45 * 100).toFixed(0) + '% — τ 2.5 유지'));
+
+  // ── 카메라 AE 램프 — 하강이 여러 표본에 번져도 안도가 뜬다 ──
+  //  실기에서 "감기는 건 되는데 떠지는 건 안 된다"의 원인: AE 가 복귀를
+  //  ~1초에 뭉개 한 표본 비교로는 안도가 영영 안 떴다. 1초 창 감지([ADR-117])
+  //  를 가상 시계로 검사한다 — 위 runFall 은 압축 시간이라 창이 안 생긴다.
+  (function () {
+    const P = hw.performance, o = P.now.bind(P);
+    let vt = o(); P.now = function () { return vt; };
+    try {
+      S.show('faceScreen'); S.setEyeState('AWAKE');
+      S.GL.now = 0; S.GL.raw = 0; S.GL.flinch = -1; S.GL.relief = -1;
+      S.GL.settle = 0; S.GL.release = 0; S.GL.flinchAt = -9; S.GL.reliefAt = -9;
+      S.lux.recent.length = 0; S.lux.count = 0; S.lux.last = null; S.lux.hold = null;
+      S.F.blinkAt = Infinity; S.F.blinkT = -1; S.F.blinkEnv = null;
+      let ck = 12e7;
+      const feed = function (v) { vt += 200; S.feedLux(v); for (let i = 0; i < 12; i++) { ck += 16.667; S._step(ck); } };
+      for (let i = 0; i < 10; i++) feed(9000);
+      let fired = false;
+      [4500, 2200, 1100, 700, 500].forEach(function (v) { feed(v); if (S.GL.relief >= 0 || S.GL.release > 0) fired = true; });
+      for (let i = 0; i < 60; i++) { ck += 16.667; S._step(ck); }
+      lines.push(pass('    AE 램프 하강도 안도', fired && S.F.hNow >= 45 * 0.9,
+                      (fired ? '발화' : '미발화') + ' · 1초 뒤 ' + (S.F.hNow / 45 * 100).toFixed(0) + '%'));
+    } finally { P.now = o; }
+  })();
 
   drive(hf, STATES[0], 0);                       // 시트 그림을 원래대로 되돌린다
 

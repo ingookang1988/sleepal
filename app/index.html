@@ -234,7 +234,7 @@
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 파일의 전제다).
 // 왜 있나 — 배포 후 폰에서 "지금 보는 게 새 빌드가 맞나"를 확인할 방법이
 // 없어서 한 번 크게 헤맸다. dev 화면과 HUD 에 그대로 뜬다.
-const BUILD = '2026-08-22c';
+const BUILD = '2026-08-22d';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -284,6 +284,10 @@ const GL = {
   relief:-1,    // 안도 경과(초)
   settle:0,     // 안도 뒤 가라앉음 0~1
   release:0,    // 놓아주는 창 남은 시간(초). 0 = 평소의 느린 이완
+  // 불응기 2초는 **유형별**이다([ADR-117]) — 움찔이 안도를 막으면 "불 켰다
+  // 바로 끈" 실제 시나리오에서 안도가 죽는다(검증 중 실측). 잡음 연발만 막는다.
+  flinchAt:-9,  // 마지막 움찔 발화 시각
+  reliefAt:-9,  // 마지막 안도 발화 시각
 };
 // 비대칭 시상수 — 이 두 숫자가 이 레이어의 핵심이다.
 // 대칭이면 슬라이더로 보이고, 비대칭이어야 *반응*으로 보인다.
@@ -643,18 +647,31 @@ function feedLux(v) {
   lux.baseUsed = base;                // HUD·계기판이 읽는다 — base 가 보여야 raw 0 이 설명된다
   if (base !== null) GL.raw = clamp(Math.log((v + 1) / (base + 1)) / Math.log(16), 0, 1);
 
-  // 트랜지언트 — 한 샘플 안의 급변만 본다(5Hz 이므로 200ms 창)
+  // 트랜지언트 — 상승은 한 샘플, 하강은 **1초 창**으로 본다.
+  //  하강을 한 샘플 비교로 잡으면 카메라에서 안도가 영영 안 뜬다 — AE 가
+  //  복귀를 ~1초(5표본)에 뭉개서 표본당 낙폭이 항상 문턱 아래로 내려간다.
+  //  상승은 그대로 둔다: 스파이크는 AE 가 물기 *전*이라 한 샘플에 온전히 실린다.
+  //  가드 둘([ADR-117]):
+  //   · 저조도 가드 — 두 값 모두 16 lux 미만이면 무시. 어두운 카메라의 양자화
+  //     잡음은 log 스케일에서 수 stop 짜리 유령 급변을 만든다(실측 30초에 16발).
+  //   · 불응기 2초 — 같은 하강이 창을 지나는 동안 안도가 연발하지 않는다.
   if (prev !== null) {
     const stops = Math.log((v + 1) / (prev + 1)) / Math.LN2;
-    if (stops >= 2) {                       // 움찔 — 하드 블링크 0.09초
-      GL.flinch = 0; F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0;
+    // 1초 전 표본(창 안에서 가장 오래된 0.95초 이상 지난 것)
+    let ref = prev;
+    for (let i = lux.recent.length - 1; i >= 0; i--)
+      if (t - lux.recent[i].t >= 0.95) { ref = lux.recent[i].v; break; }
+    const wStops = Math.log((v + 1) / (ref + 1)) / Math.LN2;
+    if (stops >= 2 && Math.max(v, prev) >= 16 && t - GL.flinchAt >= 2.0) {
+      GL.flinch = 0; GL.flinchAt = t;      // 움찔 — 하드 블링크 0.09초
+      F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0;
       log('움찔 (+' + stops.toFixed(1) + ' stop)');
-    } else if (stops <= -2) {               // 안도 — 느린 부드러운 깜빡임 1회
-      // 깜빡임과 같은 길이로 *놓아주는* 창을 연다. 눈꺼풀이 다시 열릴 때
+    } else if (wStops <= -2 && Math.max(v, ref) >= 16 && t - GL.reliefAt >= 2.0) {
+      // 안도. 깜빡임과 같은 길이로 *놓아주는* 창을 연다 — 눈꺼풀이 다시 열릴 때
       // 찡그림도 함께 풀려야 "빛이 져서 다시 떴다"로 읽힌다.
-      GL.relief = 0; GL.release = RELEASE_T;
+      GL.relief = 0; GL.release = RELEASE_T; GL.reliefAt = t;
       F.blinkEnv = [0.45, 0.15, 0.75]; F.blinkT = 0;
-      log('안도 (' + stops.toFixed(1) + ' stop)');
+      log('안도 (' + wStops.toFixed(1) + ' stop/1s)');
     }
   }
   // ⚠ 여기서 setEyeState 를 부르지 않는다 — [CON-01] 규칙 2.
