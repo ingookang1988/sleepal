@@ -72,3 +72,19 @@ Railway. 프로젝트 `sleepal` / env `production` / 서비스 `face`.
 ### 남은 것 (인간·실기)
 - [ ] **실제 폰 크롬** — 전체화면·회전잠금·Wake Lock·스캔 다이얼로그
 - [ ] 보드가 없어 **왕복은 미검증**. [CON-01] 첫 실기 검증은 [PLAN-01a] 작업 2(12:20)
+
+## ⚠ 배포 실무 발견 — worktree 에서 `railway up` 을 치지 말 것 (2026-08-22)
+
+**증상:** `railway up` 이 Indexing→Uploading→SUCCESS 까지 가는데 서빙 내용이 안 바뀐다. 세 번 반복.
+
+**원인:** 이 세션은 git worktree(`.claude/worktrees/...`)에서 돌았고, worktree 의 `.git` 은 본체를 가리키는 *파일*이다. `railway up` 이 cwd 가 아니라 **git 저장소 루트(`C:/Project/sleepal` = main 체크아웃)를 업로드했다.** 배포본 문자수 34185 = main 의 HEAD `app/index.html` 정확히 일치로 확정. cwd 에 만든 미추적 마커 파일이 404 로 남는 것도 같은 원인.
+
+**해법:** 배포 필요 파일만 스크래치 디렉터리에 복사해 그 안에서 `railway up -p <프로젝트ID> -s face -e production` (깨끗한 디렉터리라 링크가 없으므로 플래그로 명시). 이번 배포가 이 경로로 나갔다.
+
+**교훈:** 배포본에 `BUILD` 표시를 넣었다 — "지금 폰이 보는 게 새 빌드인가"를 dev 화면 `build` 줄에서 바로 확인한다. 이게 없어서 세 번 배포를 헛돌았다.
+
+## 재배포 (2026-08-22, BUILD 2026-08-22c)
+표정 HUD · 기준선 고정 · dt 클램프 · 놓아줌([ADR-112]~[ADR-115])이 반영된 빌드.
+- `GET /` 200 · `BUILD '2026-08-22c'` · TAU_RELEASE·hud·dbgHold·EYE_SAFE·dt클램프 전부 존재 확인
+- `/face-sheet.html` 200 · 신규 게이트 7종(HUD 4 + 놓아줌 3) 포함 확인
+- **실기(폰 크롬) 확인은 여전히 인간 몫** — 이 WO 의 원래 미완 항목 그대로
