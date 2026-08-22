@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <title>SleepPal</title>
 <style>
   /* ── 좌표계는 mm ─────────────────────────────────────────────
@@ -234,7 +236,14 @@
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 파일의 전제다).
 // 왜 있나 — 배포 후 폰에서 "지금 보는 게 새 빌드가 맞나"를 확인할 방법이
 // 없어서 한 번 크게 헤맸다. dev 화면과 HUD 에 그대로 뜬다.
-const BUILD = '2026-08-22d';
+const BUILD = '2026-08-22e';
+
+// PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
+// 이전 버전 캐시를 지운다([WO-02a-1] · [ADR-116] BUILD 연동). 등록 실패는
+// 조용히 무시한다 — file://·비보안 컨텍스트에서 얼굴은 그대로 떠야 한다.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js?v=' + BUILD).catch(() => {});
+}
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);

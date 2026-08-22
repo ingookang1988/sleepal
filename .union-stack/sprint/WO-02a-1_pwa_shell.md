@@ -1,9 +1,9 @@
 ---
 id: WO-02a-1
 title: PWA 요건 — 매니페스트·서비스워커·아이콘
-status: Draft
+status: Verifying
 parent: PLAN-02
-evidence: "none — 미착수 (완료 시: 폰 크롬 설치 배너 캡처 + Lighthouse PWA 통과)"
+evidence: "구현 완료(BUILD 2026-08-22e): manifest.json 유효 JSON · sw.js 구문 OK · 아이콘 3종(192/512/maskable, zero-dep PNG 인코더 생성) · 로컬 서빙 5종 200+MIME 정상 · face-sheet 게이트 22/22 유지(헤드리스 크롬) · /api/* 캐시 제외 · SW 캐시 키 = ?v=BUILD. 미완(인간·실기): 배포 후 폰 크롬 설치 배너 + 오프라인 로드 확인"
 closed_by: []
 ---
 # [WO-02a-1] PWA 요건
@@ -14,11 +14,12 @@ closed_by: []
 폰 크롬에서 "홈 화면에 추가" → 전체화면 standalone 으로 팰이 뜬다.
 
 ## 수용 기준
-- [ ] `app/manifest.json` — name/short_name(SleepPal) · `display: standalone` · `orientation: landscape` · 배경/테마색은 얼굴 배경과 동일 · 아이콘 192/512(마스커블 포함)
-- [ ] `app/sw.js` — 앱 셸 프리캐시(오프라인에서 얼굴이 뜬다). **`/api/*`는 캐시하지 않는다**([CON-04] 소비 경로)
-- [ ] 캐시 무효화가 [ADR-116]의 `BUILD` 문자열과 연동 — 배포마다 캐시 키가 바뀐다(낡은 셸 서빙 방지)
-- [ ] `index.html`에 `<link rel="manifest">` + SW 등록. 등록 실패는 조용히 무시(비-HTTPS 로컬)
-- [ ] 기존 게이트 무손상 — `face-sheet` 22/22 유지
+- [x] `app/manifest.json` — name/short_name(SleepPal) · `display: standalone` · `orientation: landscape` · 배경 `#0A0D14`(얼굴과 동일) · 아이콘 192/512 + maskable
+- [x] `app/sw.js` — 셸 프리캐시 + 내비게이션 network-first(온라인=새 빌드, 오프라인=캐시 얼굴). **`/api/*` 관여 안 함**([CON-04])
+- [x] 캐시 무효화 = `sw.js?v=BUILD` 등록 — SW URL 이 배포마다 바뀌고 activate 가 이전 `sleepal-*` 캐시 삭제
+- [x] `<link rel="manifest">` + SW 등록(`.catch(()=>{})` — 비보안 컨텍스트 무시)
+- [x] 기존 게이트 무손상 — `face-sheet` 22/22 유지(헤드리스 확인)
+- [ ] **실기**: 배포 후 폰 크롬 "홈 화면에 추가" → standalone 실행 · 비행기 모드 얼굴 로드
 
 ## 증거
 폰 크롬 설치 → standalone 실행 캡처 · 비행기 모드에서 얼굴 로드 확인 · 재배포 후 새 BUILD 문자열이 즉시 보임.
