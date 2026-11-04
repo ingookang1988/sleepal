@@ -16,9 +16,10 @@
 
 ## 4. Open / cautions
 - **인간 결정 대기 ①** 상류 전용 스크립트 로컬 사본 18개(`adopter-arm`·`check-prereqs`·`eval*`·`hook-replay`·`scenario-rubric`·`token-accounting`·`e6-workspace`)는 동결 상태 — 삭제하려면 카드 6장([TOOL-08][TOOL-15][TOOL-18][TOOL-19][TOOL-20][TOOL-26])과 `package.json` 스크립트도 함께 정리해야 한다. `adopter-arm.js`는 [ADR-303] 로컬 포크(상류와 다름)로 CI 체인에서 여전히 돈다.
+- **상류 제안 대기** `scripts/weakening-guard.js`·`.test.js` 로컬 포크([ADR-306] — 자기 파일 제외). 상류에 같은 수정을 제안하고, 받아들여지면 `--apply --force scripts/weakening-guard.js` 로 포크 해제.
 - **인간 검토 대기 ②** review 5건 미반영: `_GUIDE.md`(plan/analytics·project/roadmap·proposals·sprint·verification) — 상류 diff 는 `node scripts/template-update.js` 보고로 재확인. 검토 후 `--ack-review`.
 - 상류 API(`api.github.com`)가 이 환경에서 403 — `template-update`는 로컬 클론을 서빙하는 fetch shim 으로 돌렸다(스크래치, 미커밋). 네트워크가 되는 환경에서는 그대로 `node scripts/template-update.js` 사용.
-- `harness.yml`이 docker compose 를 호출하므로 **다음 CI 런이 첫 실검증**이다. `ci.js`는 `adapter.json checks[suite]` 영수증을 `receipts.md`에 쓰고 래퍼가 커밋한다.
+- `harness.yml`이 docker compose 를 호출한다. PR #9 첫 CI 런에서 컨테이너 빌드·체인 실행은 정상이었고 weakening-guard 오탐만 [ADR-306]으로 해소. `ci.js`는 `adapter.json checks[suite]` 영수증을 `receipts.md`에 쓰고 래퍼가 커밋한다.
 - 회고 트리거 due(정체 WO 24·GC 가능 PLAN 1 — `node scripts/retro.js --proposal`). 회고 제안 — 정체 WO 24 ≥ 5.
 - 이전 세션 주의사항은 유효: `IMU:`/`MOVE:`는 RN 범위 밖, [CON-03]↔[CON-02f1] 동기화 미정의, PWA 번들 내장 후속.
 

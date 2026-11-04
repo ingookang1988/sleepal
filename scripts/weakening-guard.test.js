@@ -84,5 +84,15 @@ try {
   check('CLI(--diff): 무관한 diff → exit 0', r3.status === 0);
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 
+// --- 자기언급 오염 2: 가드 자신·그 테스트의 첫 배송(전 줄 추가)은 예외로 세지 않는다(어답터 첫 PR 실측 — sleepal [ADR-306]) ---
+{
+  const selfDiff = "diff --git a/scripts/weakening-guard.js b/scripts/weakening-guard.js\nnew file mode 100644\nindex 0..1\n--- /dev/null\n+++ b/scripts/weakening-guard.js\n@@ -0,0 +1,3 @@\n+// 예외 = skip/only · eslint-disable · @ts-ignore\n+const SKIP_RE = /\\b(it|test)\\.(skip|only)\\b/;\n+const EXCEPTION_RE = /eslint-disable|@ts-ignore/;\n"
+    + "diff --git a/scripts/weakening-guard.test.js b/scripts/weakening-guard.test.js\nnew file mode 100644\nindex 0..1\n--- /dev/null\n+++ b/scripts/weakening-guard.test.js\n@@ -0,0 +1,2 @@\n+const DIFF = [\n+  \"+test.skip('slow', () => {\", '+// eslint-disable-next-line', '+// @ts-ignore KF-7',\n";
+  const self = analyze(parseUnifiedDiff(selfDiff));
+  check('자기 파일(가드·테스트)의 마커 정의·픽스처는 예외로 세지 않는다', self.exceptions.net === 0 && self.signals.length === 0);
+  const other = analyze(parseUnifiedDiff(selfDiff.replace(/scripts\/weakening-guard(\.test)?\.js/g, 'scripts/other.js')));
+  check('같은 내용이 다른 파일이면 여전히 센다(제외는 경로로만)', other.exceptions.net > 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

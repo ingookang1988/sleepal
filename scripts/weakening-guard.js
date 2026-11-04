@@ -98,6 +98,12 @@ function numericChanges(f) {
   return out;
 }
 
+// 자기언급 오염 2([ADR-19]의 파일 단위): 이 가드 자신과 그 테스트는 마커를 **정의·픽스처로** 담는다(SKIP_RE·EXCEPTION_RE 리터럴,
+// 설명 주석, 픽스처 diff). 어답터가 template-update 로 이 파일을 처음 받는 PR 에서는 base 에 파일이 없어 전 줄이 "추가"가 되고,
+// 예외 +6 으로 자기 자신을 REJECT 한다(sleepal 실측 2026-11-04, [ADR-306] — 상류는 생성 이후 diff 에 이 파일이 다시 들어올 일이
+// 없어 겪지 않는다). 따옴표 휴리스틱은 정규식 리터럴·주석을 거르지 못하므로 **경로로** 제외한다 — 다른 파일의 같은 마커는 그대로 센다.
+const SELF_RE = /(^|\/)weakening-guard(\.test)?\.js$/;
+
 /**
  * 신호 추출(순수). 반환: { signals: [{kind, question, detail}], exceptions: {added, removed, net, where: []} }
  */
@@ -105,6 +111,7 @@ function analyze(files) {
   const signals = [];
   const exceptions = { added: 0, removed: 0, net: 0, where: [] };
   for (const f of files) {
+    if (SELF_RE.test(f.path)) continue;
     const isTest = TEST_FILE_RE.test(f.path);
     if (f.status === 'D' && isTest) signals.push({ kind: 'test-deleted', question: `테스트 파일이 삭제됐다: ${f.path} — 대체 검사가 있는가, 아니면 범위가 줄었는가?`, detail: f.path });
     const skipAdded = count(f.added, SKIP_RE), skipRemoved = count(f.removed, SKIP_RE);

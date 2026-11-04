@@ -114,17 +114,17 @@
     "scripts/init.js": "b38a5ec29099ae5551d58bcbbc4d5a766de192da"
   },
   "lastCheck": {
-    "at": "2026-11-04T23:46:17.798Z",
+    "at": "2026-11-04T23:54:33.146Z",
     "ref": "main",
     "localVer": "6.0.0",
     "upstreamVer": "6.0.0",
     "updates": false,
     "auto": 0,
-    "sync": 0,
+    "sync": 2,
     "review": 7,
     "reviewNew": 0,
     "held": 0,
-    "forked": 0,
+    "forked": 2,
     "unknown": 0,
     "migrations": 0
   },
