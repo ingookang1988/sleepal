@@ -3,7 +3,7 @@
 // ZFS 네이밍 규약을 강제하는 Fail-close 게이트. CI 최상단에 배치 권장.
 // 실행: node scripts/zfs-linter.js [--contract]
 const path = require('path');
-const { ZFS_REGEX, isValidDomain, isValidName, VALID_DOMAINS } = require('./zfs_util');
+const { ZFS_REGEX, isValidDomain, isValidName, VALID_DOMAINS, parse } = require('./zfs_util');
 const { walkFiles } = require('./fs_walk');
 const { withContract } = require('./gate-contract');
 const { load: loadAdapter } = require('./adapter');
@@ -12,8 +12,8 @@ const { load: loadAdapter } = require('./adapter');
 const CONTRACT = {
   gate: 'ZFS Naming Gate (zfs-linter)',
   input: '.union-stack/ 대상 디렉터리의 .md 파일명(면제 목록 제외)',
-  predicate: '[DOMAIN]-[LUHMANN_ID]_[slug].md 형식 · 허용 도메인 · Luhmann ID의 l/o 금지',
-  scope: '파일명만 본다 — 내용·frontmatter·참조 무결성(ref-linter 소관)·파일 간 결합은 보지 않음. 면제 목록은 고정분 + 어답터 설정(adapter.json zfsIgnored)의 합집합',
+  predicate: '[DOMAIN]-[LUHMANN_ID]_[slug].md 형식 · 허용 도메인 · Luhmann ID의 l/o 금지 · 같은 도메인·같은 ID 파일은 1개([PRO-27] ⑤)',
+  scope: '파일명만 본다 — 내용·frontmatter·참조 무결성(ref-linter 소관)·파일 간 결합은 보지 않음. 중복은 도메인+ID 키로만(같은 번호·다른 도메인은 독립 채번이라 중복 아님). 면제 목록은 고정분 + 어답터 설정(adapter.json zfsIgnored)의 합집합',
   outcomes: ['PASS', 'REJECT'],
   failure_mode: '위반 파일 목록 출력 후 REJECT(차단)',
 };
@@ -30,7 +30,7 @@ const TARGET_DIRS = [
 const IGNORED = new Set([
   'README.md', '_GUIDE.md', 'DESIGN_RATIONALE.md',
   'next.md', 'prev.md', 'live.md', 'target.md', 'hold.md',
-  'state.md', 'evidence.md', 'gap.md', 'HANDOFF.md', 'HISTORY.md',
+  'state.md', 'evidence.md', 'receipts.md', 'gap.md', 'HANDOFF.md', 'HISTORY.md',
 ]);
 const IGNORED_SUFFIX = ['_GUIDE.md'];
 
@@ -45,15 +45,34 @@ function ignoredSet(root) {
   return { names: new Set([...IGNORED, ...cfg.zfsIgnored]), warnings: cfg.warnings };
 }
 
+/**
+ * ID 유일성(순수) — 같은 도메인·같은 ID 의 파일이 2개 이상이면 중복([PRO-27] ⑤). 디렉터리가 달라도(archived 사본 등)
+ * 같은 ID 면 중복이다. 같은 번호·다른 도메인(PLAN-36 · PRO-36)은 **중복이 아니다** — 하류 레거시 독립 채번이 그 형상이다.
+ * 하류 실측: 한 어답터에 같은 도메인·같은 ID 파일 2쌍이 있었고 상류 린터는 검사하지 않았다(SURVEY-02). 모든 ID 산술이 깨진다.
+ */
+// @test-asset ID 유일성 검사 :: findDuplicateIds(rels) — 도메인+ID 키로 묶어 ≥2 인 그룹만 반환(zfs-linter.test 가 고정)
+function findDuplicateIds(rels) {
+  const groups = new Map();
+  for (const rel of rels) {
+    const p = parse(rel.split('/').pop());
+    if (!p) continue;
+    const key = `${p.domain}-${p.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(rel);
+  }
+  return [...groups].filter(([, files]) => files.length > 1).map(([key, files]) => ({ key, files }));
+}
+
 /** 위반 목록을 반환하는 순수-ish 함수(출력·exit 없음). MCP/CLI 공유. */
 function lint(root = path.resolve(__dirname, '..')) {
   const violations = [];
+  const valid = [];
   const { names } = ignoredSet(root);
   const scan = relDir => walkFiles(root, relDir, rel => {
     const entry = rel.split('/').pop();
     if (!entry.endsWith('.md')) return;
     if (names.has(entry) || IGNORED_SUFFIX.some(s => entry.endsWith(s))) return;
-    if (isValidName(entry)) return;
+    if (isValidName(entry)) { valid.push(rel); return; }
     const m = entry.match(ZFS_REGEX);
     let hint = null;
     if (m && !isValidDomain(m[1])) hint = `'${m[1]}'은 허용 도메인이 아님. 허용: ${[...VALID_DOMAINS].join(' ')}`;
@@ -64,6 +83,12 @@ function lint(root = path.resolve(__dirname, '..')) {
     violations.push({ file: rel, hint });
   });
   TARGET_DIRS.forEach(scan);
+  for (const d of findDuplicateIds(valid)) {
+    violations.push({
+      file: d.files[0],
+      hint: `중복 ID ${d.key} — 같은 도메인·같은 ID 파일 ${d.files.length}개: ${d.files.join(' · ')}. ID 는 유일해야 한다([PRO-27] ⑤) — 하나를 다음 번호로 옮기거나 사본을 지워라.`,
+    });
+  }
   return violations;
 }
 
@@ -84,6 +109,6 @@ function run() {
   return 0;
 }
 
-module.exports = { lint, run, ignoredSet, CONTRACT, TARGET_DIRS, IGNORED, IGNORED_SUFFIX };
+module.exports = { lint, findDuplicateIds, run, ignoredSet, CONTRACT, TARGET_DIRS, IGNORED, IGNORED_SUFFIX };
 
 if (require.main === module) process.exit(withContract(CONTRACT, run)());

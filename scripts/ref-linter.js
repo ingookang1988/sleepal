@@ -24,7 +24,9 @@ const { walkFiles } = require('./fs_walk');
 const ledger = require('./ledger');
 
 // 끝의 (\??)로 forward 마커를 포착: `[PLAN-09z]`=일반, `[PLAN-09z?]`=의도된 forward.
-const REF_RE = /\[([A-Z]{2,6})-([0-9][0-9a-z-]*)(\??)\]/g;
+// 머리의 (up:)? 는 상류 참조 네임스페이스([PRO-27] ①): `[up:PRO-27]` 은 어답터가 상류 문서를 가리키는
+// **외부 참조**라 로컬 색인에서 해소하지 않는다(미해소로 세지 않고 INFO 로 계수만).
+const REF_RE = /\[(up:)?([A-Z]{2,6})-([0-9][0-9a-z-]*)(\??)\]/g;
 
 // 행 정본 저장소([ADR-24]) — ADR은 archive_ledger의 *행*, GRANT는 GRANTS의 *행*이라 파일 색인에
 // 영원히 없다. 참조 대상이 실존하므로 known set에 편입한다(제외가 아니라 편입 — 제외하면
@@ -48,43 +50,58 @@ function rowAnchors(text, re) {
   return out;
 }
 
-/** 텍스트에서 참조 추출(순수). forward=true 면 의도된 미래참조(게이트 면제). */
+/** 텍스트에서 참조 추출(순수). forward=true 면 의도된 미래참조(게이트 면제). external=true 면 상류 참조(up:). */
 function extractRefs(text) {
   const out = [];
   let m;
   REF_RE.lastIndex = 0;
   while ((m = REF_RE.exec(text)) !== null) {
-    out.push({ domain: m[1], id: m[2], raw: `${m[1]}-${m[2]}`, forward: m[3] === '?' });
+    out.push({ domain: m[2], id: m[3], raw: `${m[2]}-${m[3]}`, forward: m[4] === '?', external: m[1] === 'up:' });
   }
   return out;
 }
 
-/** knownSet(`DOMAIN-id`)에 없고 forward도 아닌 참조만(중복 제거, 순수). */
+/**
+ * 배포 접두(순수, 멱등) — 상류 문서를 어답터로 옮길 때 모든 브래킷 ID 참조에 `up:` 을 붙인다([PRO-27] ①).
+ * 이미 붙은 것은 그대로, ID 꼴이 아닌 브래킷(`[TODO]`·링크)은 건드리지 않는다. CLI: scripts/upstream-prefix.js
+ */
+function prefixUpstreamRefs(text) {
+  return String(text || '').replace(/\[(up:)?([A-Z]{2,6}-[0-9][0-9a-z-]*\??)\]/g, '[up:$2]');
+}
+
+/** knownSet(`DOMAIN-id`)에 없고 forward·external 도 아닌 참조만(중복 제거, 순수). */
 function findBroken(refs, knownSet) {
   const seen = new Set();
   return refs.filter(r => {
-    if (r.forward || knownSet.has(r.raw) || seen.has(r.raw)) return false;
+    if (r.forward || r.external || knownSet.has(r.raw) || seen.has(r.raw)) return false;
     seen.add(r.raw);
     return true;
   });
 }
 
 // gateOnly=true면 정화-면제 파일(_GUIDE·방법론·더미)은 건너뛴다(게이팅 대상만 수집).
-function gather(root = path.resolve(__dirname, '..'), gateOnly = false) {
+// 반환: { broken: [{file, ref}], external: 상류 참조(up:) 건수 } — external 은 판정 재료가 아니라 INFO 다.
+function gatherAll(root = path.resolve(__dirname, '..'), gateOnly = false) {
   const known = new Set(buildIndex(root).map(d => `${d.domain}-${d.id}`));
   for (const s of ROW_STORES) {
     for (const id of rowAnchors(s.read(root), s.re)) known.add(id);
   }
   const broken = [];
+  let external = 0;
   walkFiles(root, '.union-stack', rel => {
     if (!rel.endsWith('.md')) return;
     let content = '';
     try { content = fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return; }
     if (gateOnly && isSanitized(rel, content)) return; // 예시/가이드/방법론은 게이트 면제
-    for (const r of findBroken(extractRefs(content), known)) broken.push({ file: rel, ref: r.raw });
+    const refs = extractRefs(content);
+    external += refs.filter(r => r.external).length;
+    for (const r of findBroken(refs, known)) broken.push({ file: rel, ref: r.raw });
   });
-  return broken;
+  return { broken, external };
 }
+
+/** 미해소 목록만(기존 호출부 호환). */
+function gather(root, gateOnly = false) { return gatherAll(root, gateOnly).broken; }
 
 /** 게이팅 대상(실 콘텐츠 + 미마킹)만. --strict가 사용. */
 function gatherGating(root) { return gather(root, true); }
@@ -102,7 +119,8 @@ function run(root) {
     console.log('참조 게이트 통과(strict): 실 콘텐츠에 미마킹 깨진 참조 없음.');
     return 0;
   }
-  const broken = gather(root);
+  const { broken, external } = gatherAll(root);
+  if (external) console.log(`[참조] INFO: 상류 참조(up:) ${external}건 — 로컬 색인에서 해소하지 않는 외부 참조([PRO-27] ①).`);
   if (broken.length) {
     console.error(`\n[참조] 미해소 브래킷 ID ${broken.length}건 (advisory):`);
     broken.slice(0, 50).forEach(b => console.error(`  ? ${b.ref}  ← ${b.file}`));
@@ -113,6 +131,6 @@ function run(root) {
   return 0;
 }
 
-module.exports = { extractRefs, findBroken, rowAnchors, ROW_STORES, gather, gatherGating, run };
+module.exports = { extractRefs, findBroken, rowAnchors, ROW_STORES, gather, gatherAll, gatherGating, prefixUpstreamRefs, run };
 
 if (require.main === module) process.exit(run());

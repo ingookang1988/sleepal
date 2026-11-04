@@ -32,7 +32,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { copyTree } = require('./fs_walk');
 const { read: readLedger } = require('./ledger');
-const { IDENTITY_SRC } = require('./init');
+const IDENTITY_SRC = '.union-stack/project/IDENTITY_example.md'; // 로컬 포크([ADR-303]) — 상류 init.js 는 더 이상 export 하지 않는다
 
 const ROOT = path.resolve(__dirname, '..');
 

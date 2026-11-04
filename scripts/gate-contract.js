@@ -27,6 +27,7 @@ function toShellExit(code) { return isBlocking(code) ? 1 : 0; }
 const REQUIRED_FIELDS = ['gate', 'input', 'predicate', 'scope', 'outcomes'];
 
 /** 계약 선언 누락 필드 목록(순수) — 테스트가 게이트별 계약 완전성을 잡는다. */
+// @test-asset 게이트 계약 검증 :: validateContract(CONTRACT) · withContract(run) — 새 게이트는 [PRO-11] 계약 선언 필수(gate-contract.test 가 일괄 검사)
 function validateContract(c) {
   return REQUIRED_FIELDS.filter(f => !c || c[f] == null || c[f] === '' || (Array.isArray(c[f]) && !c[f].length));
 }

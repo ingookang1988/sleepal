@@ -65,6 +65,19 @@ check('worktable: 제목 이스케이프', !ws.includes('<b>x</b>') && ws.includ
 const wm = worktableSection([{ id: null, file: 'sprint/broken.md', malformed: true, closed_by: [] }]);
 check('worktable: malformed 경고', wm.includes('frontmatter 없는 WO 1건'));
 
+// 제목·증거는 평면의 자유 산문이다 — 코드 스팬·볼드가 원문 마커로 새면 안 된다([ADR-35] 계열).
+// 실측: 어답터의 evidence 가 `--allow-no-git`·**병합은 PO 판단** 같은 문장을 담아 마커 8개가 샜다.
+const wp = worktableSection([{
+  id: '05-3', title: '`상류` 기여', parent: 'PLAN-05', status: 'Verifying',
+  evidence: '**병합은 PO 판단** — `template-update --apply` 로 복원', closed_by: [], malformed: false,
+}]);
+check('worktable: 증거의 코드 스팬·볼드가 렌더된다', wp.includes('<code>') && wp.includes('<b>'));
+check('worktable: 증거에 원문 마커가 남지 않는다',
+  !/\*\*|`/.test(wp.slice(wp.indexOf('<table')).replace(/title="[^"]*"/g, '').replace(/<[^>]*>/g, '')));
+check('worktable: 제목도 같은 처리', wp.includes('<code>상류</code>'));
+// 식별자 칼럼(부모·상태)은 산문이 아니다 — esc 유지.
+check('worktable: 부모·상태는 그대로', wp.includes('<td>PLAN-05</td>') && wp.includes('<td>Verifying</td>'));
+
 // sizeSection — 헤드룸: 초과·근접·정상 3단계, 빈 입력은 조각 없음
 check('size: 빈 입력 → 조각 없음', sizeSection([], 30) === '');
 const ss = sizeSection([
@@ -178,6 +191,15 @@ const spFix = {
   archived: 3,
 };
 const sp = sprintView(spFix, '2026-08-19');
+// 어답터 C 실측: work-close CLARIFY 문구 자체가 `none — 이유` 백틱을 담아, 활성 WO 150 에서 마커 160 이 본문에 남았다 — 이슈·참고 문구도 인라인 산문으로 렌더.
+const spMsg = sprintView({ ...spFix, wos: [{ ...spFix.wos[0], closure: { issues: [{ code: 'no-evidence', outcome: 'CLARIFY', msg: '증거가 비었다 — `none — 이유` 로 **명시**하라' }], info: ['부모 `전이` 후보'] } }] }, '2026-08-19');
+check('sprint: 닫힘 이슈·참고 문구의 코드 스팬·볼드가 렌더된다', spMsg.includes('<code>none — 이유</code>') && spMsg.includes('<b>명시</b>') && spMsg.includes('<code>전이</code>'), true);
+check('sprint: 이슈·참고 문구에 원문 마커가 남지 않는다', !/`|\*\*/.test(spMsg.replace(/title="[^"]*"/g, '').replace(/<[^>]*>/g, '')), true);
+// 제목도 평면 산문이다 — 코드 스팬·볼드가 원문 마커로 새면 안 된다(실측: WO 제목의 `sections` 가 대시보드 본문에 백틱으로 남음).
+const spTitle = sprintView({ ...spFix, wos: [{ ...spFix.wos[0], title: 'adapter.json `sections` **별칭** 맵' }] }, '2026-08-19');
+check('sprint: 제목의 코드 스팬·볼드가 렌더된다', spTitle.includes('<code>sections</code>') && spTitle.includes('<b>별칭</b>'));
+check('sprint: 제목에 원문 마커가 남지 않는다', !/`|\*\*/.test(spTitle.replace(/title="[^"]*"/g, '').replace(/<[^>]*>/g, '')));
+check('sprint: 제목 HTML 은 여전히 이스케이프', sprintView(spFix, '2026-08-19').includes('열린 것&lt;b&gt;x&lt;/b&gt;'));
 check('sprint: 타일 — 충족/활성 비율', sp.includes('1/2') && sp.includes('종료 의례 통과 가능'));
 check('sprint: 잠금 타일', sp.includes('Verifying 🔒'));
 check('sprint: 아카이브 계수', sp.includes('>3<'));
@@ -337,6 +359,18 @@ const prodFix = {
 prodFix.current = prodFix.phases[1];
 prodFix.latest = prodFix.phases[1];
 const pv = productView(prodFix, '2026-08-20');
+// 어답터 실측: live.md 셀 안의 코드 스팬에 '|' 가 있어 표 파이프로 갈라지면 백틱이 홀수로 남는다 — 렌더 전에 닫아 원문 마커 0.
+const pvDang = productView({ ...prodFix, live: [{ feature: 'a', ref: '[PLAN-02a]', status: '[WO-1] `text', example: false }] }, '2026-08-20');
+check('product: live 셀의 짝 없는 마커도 원문으로 새지 않는다', !/`|\*\*/.test(pvDang.replace(/title="[^"]*"/g, '').replace(/<[^>]*>/g, '')) && pvDang.includes('<code>text</code>'));
+// 어답터 실측: PLAN status 가 "Active (2026-07-08 승인 — … **rev1.5 …**)" 같은 산문이면 집계 알약·행 메모에 원문 마커가 샌다 → 첫 토큰으로 묶고 전문은 title.
+const pvProse = productView({ ...prodFix, plans: [
+  { domain: 'PLAN', id: '02', slug: 'payment', status: 'Active (2026-07-08 승인 — **rev1.5** `게이트` 통과)' },
+  { domain: 'PLAN', id: '03', slug: 'auth', status: 'Active' },
+] }, '2026-08-20');
+const pvText = pvProse.replace(/title="[^"]*"/g, '').replace(/<[^>]*>/g, '');
+check('product: 산문 PLAN status 는 첫 토큰으로 집계(Active 2)', /<span class="pill">Active<b>2<\/b><\/span>/.test(pvProse));
+check('product: 보이는 본문에 원문 마커 0', !/\*\*|`/.test(pvText));
+check('product: 상태 전문은 title 속성에', /title="Active \(2026-07-08 승인 — \*\*rev1\.5\*\* `게이트` 통과\)"/.test(pvProse));
 check('product: 타일 4개', (pv.match(/class="tile"/g) || []).length === 4);
 check('product: 현재 단계 타일', pv.includes('PHASE-02') && pv.includes('현재 단계'));
 check('product: 로드맵 진행 = exit 충족/전체', pv.includes('2/3'));
@@ -497,6 +531,23 @@ check('합성: 새 축은 나브·라디오·CSS 규칙을 함께 얻는다',
 check('합성: 어답터 섹션은 기본 축을 건드리지 않는다',
   withSecs.replace(/\n<section class="card" id="(kpi|ops)">[\s\S]*?<\/section>/g, '')
     .includes('data-view="overview"'));
+
+// --- [WO-29a-6] 어답터 이탈(신규) 카드 — 상류 전용(원자료 없으면 카드 없음, 어답터 회귀 0) ---
+{
+  const { censusSection } = require('./dashboard');
+  check('censusSection(null) → 빈 문자열', censusSection(null) === '');
+  const round = { date: '2026-10-19', rows: [
+    { label: 'A', delta: { first: false, new: ['sync:applicable'], persist: ['gate:naming gate'], resolved: [] } },
+    { label: 'B' },
+    { label: 'C', delta: { first: false, new: [], persist: [], resolved: ['rule:blocks-missing'] } }] };
+  const cs = censusSection(round);
+  check('카드: 제목 · 회차 날짜 · 레이블별 신규 키 · 지속/해소 수', cs.includes('id="adopters"') && cs.includes('2026-10-19') && cs.includes('sync:applicable') && /지속 1/.test(cs) && /해소 1/.test(cs));
+  check('카드: 델타 없는 레이블은 "델타 없음"', /B[\s\S]*델타 없음/.test(cs));
+  check('카드: 신규 합계 · HANDOFF 한 줄 명령', /신규 1/.test(cs) && cs.includes('--handoff'));
+  check('카드: 이스케이프', !censusSection({ date: 'd', rows: [{ label: '<x>', delta: { first: false, new: ['<k>'], persist: [], resolved: [] } }] }).includes('<k>'));
+  check('render: data.census 없으면 카드 없음(어답터)', !render({ ...data, census: null }, { title: 't' }).includes('id="adopters"'));
+  check('render: data.census 있으면 개요에 카드', render({ ...data, census: round }, { title: 't' }).includes('id="adopters"'));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

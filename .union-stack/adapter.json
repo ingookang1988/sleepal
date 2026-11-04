@@ -1,0 +1,18 @@
+{
+  "sections": {
+    "목표": ["목표"],
+    "수용 기준": ["수용 기준", "검사"],
+    "증거": ["증거"]
+  },
+  "checks": [
+    {
+      "name": "suite",
+      "cmd": "node --test \"scripts/*.test.js\"",
+      "blocking": true,
+      "kind": "동작",
+      "cost": "push",
+      "runs_on": ["pre-push", "ci"],
+      "covers": "하네스 스크립트 단위 스위트(루트 npm test — 체인 tests 단계와 동일 명령, 영수증 발행용)"
+    }
+  ]
+}

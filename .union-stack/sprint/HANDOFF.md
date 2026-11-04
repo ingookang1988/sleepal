@@ -5,24 +5,23 @@
 # Handoff → next session
 
 ## 1. Summary
-NU40·조도 전용 RN 앱 [WO-02f-1]을 Galaxy S22에 설치해 수직 슬라이스 실기까지 완료하고 Closed→아카이브했다. `SLEEPPAL-PILLOW-01` NUS notify, `LUX:2344`, RSSI -66, USB reverse 로컬 PWA 얼굴, SQLite 14:36~14:38 조도 버킷 3개를 확인했고 `feature/live.md`에 Live로 반영했다.
+하네스를 상류 union-stack `main@20e054f`에 동기화했다([ADR-305]). sync 67파일(`ci.js` 게이트 체인·컨테이너·`ship-manifest`·`scaffold`·`weakening-guard`·`receipts`), `harness.yml`은 컨테이너 래퍼, `adapter.json` 신설, 배송 도구 카드 9장([TOOL-27]~[TOOL-36], census 제외) 추가. 다음 작업 진입점으로 [WO-02f-2]를 scaffold로 발행했다(Draft). 제품 코드(`app/`·`mobile/`·펌웨어)는 변경 0.
 
 ## 2. Changed locations (ID list)
-- [PLAN-02] v0.3 · [CON-03] v0.2 · [PLAN-02f] v0.4 · [CON-02f] v0.3 · [CON-02f1] v0.1 · [WO-02f-1] Closed→archived
-- `mobile/` · `feature/live.md` · `sprint/next.md` · `sprint/HANDOFF.md`
+- [ADR-305] 원장 append · [WO-02f-2] 신설(Draft) · [TOOL-27][TOOL-28][TOOL-29][TOOL-31][TOOL-32][TOOL-33][TOOL-34][TOOL-35][TOOL-36] 카드 신설
+- `scripts/`(sync 67) · `.github/workflows/harness.yml` · `docker-compose.harness.yml` · `ci/Dockerfile` · `.union-stack/adapter.json` · `.union-stack/template-sync.json`(앵커) · `verification/raw/receipts.md`(시드) · `package.json`(`ci`·`ci:docker`) · `AGENTS.md`(`PHASE-*` 1줄 + 도구 인덱스 재생성) · `sprint/next.md`(라벨 포함 재생성) · `CHANGELOG.md`·`MIGRATION.md`
 
 ## 3. Next task (single entry point)
-**[PLAN-02f] 단계 7 밤샘 검증** — 30분 예비 런으로 `LUX:` 수신율·`gapMs`·배터리·발열과 `SLEEPING` 정상 종료를 먼저 확인한 뒤 8시간 런으로 확장한다. 새 WO를 02f-2로 만들고 시작할 것.
+**[WO-02f-2]** — 밤샘 검증. 실기(NU40 + Galaxy S22)가 필요하므로 클라우드 세션은 계측 로깅·진단 화면 준비까지. 착수 시 status 를 Active 로.
 
 ## 4. Open / cautions
-- 동시 보드 세션이 [CON-01] v0.3에 `IMU:`/`MOVE:`를 추가했지만 RN의 [CON-02f1] 범위는 조도 전용이다. 현재 앱은 둘을 unknown으로 무시하고 얼굴/DB에 전달하지 않는다.
-- 최신 main의 [CON-03] 제품 기록과 RN 조도 SQLite [CON-02f1]은 별도 계약이다. 동기화는 정의되지 않았고 암묵적으로 합치지 않는다.
-- RSSI는 `VERY_NEAR 추정`뿐이며 10cm를 보장하지 않는다. 백그라운드 강제 화면 실행도 범위 밖이다.
-- PWA는 현재 HTTPS URL을 WebView로 읽는다. 릴리스 R8을 위한 번들 내장/오프라인 패키징은 후속이다.
-- 폰 인터넷이 꺼져 Railway PWA가 실패해 `.env.local`의 `http://127.0.0.1:5173` + ADB reverse로 실기했다. Metro와 `scripts/serve.js`가 현재 실행 중이며 USB 연결이 끊기면 이 로컬 PWA도 끊긴다.
-- `npm audit --omit=dev`: Expo CLI/config 전이 의존성 moderate 10건. expo-doctor 권장 버전은 모두 일치하고 비파괴 수정 경로가 없어 강제 downgrade하지 않았다.
+- **인간 결정 대기 ①** 상류 전용 스크립트 로컬 사본 18개(`adopter-arm`·`check-prereqs`·`eval*`·`hook-replay`·`scenario-rubric`·`token-accounting`·`e6-workspace`)는 동결 상태 — 삭제하려면 카드 6장([TOOL-08][TOOL-15][TOOL-18][TOOL-19][TOOL-20][TOOL-26])과 `package.json` 스크립트도 함께 정리해야 한다. `adopter-arm.js`는 [ADR-303] 로컬 포크(상류와 다름)로 CI 체인에서 여전히 돈다.
+- **인간 검토 대기 ②** review 5건 미반영: `_GUIDE.md`(plan/analytics·project/roadmap·proposals·sprint·verification) — 상류 diff 는 `node scripts/template-update.js` 보고로 재확인. 검토 후 `--ack-review`.
+- 상류 API(`api.github.com`)가 이 환경에서 403 — `template-update`는 로컬 클론을 서빙하는 fetch shim 으로 돌렸다(스크래치, 미커밋). 네트워크가 되는 환경에서는 그대로 `node scripts/template-update.js` 사용.
+- `harness.yml`이 docker compose 를 호출하므로 **다음 CI 런이 첫 실검증**이다. `ci.js`는 `adapter.json checks[suite]` 영수증을 `receipts.md`에 쓰고 래퍼가 커밋한다.
+- 회고 트리거 due(정체 WO 24·GC 가능 PLAN 1 — `node scripts/retro.js --proposal`). 회고 제안 — 정체 WO 24 ≥ 5.
+- 이전 세션 주의사항은 유효: `IMU:`/`MOVE:`는 RN 범위 밖, [CON-03]↔[CON-02f1] 동기화 미정의, PWA 번들 내장 후속.
 
 ## 5. Verification status
-- mobile: Jest 13/13 · `tsc` · expo-doctor 21/21 · Gradle `assembleDebug` 489 tasks · Galaxy S22 설치/실행 · NUS GATT/notify/RSSI/LUX/SQLite/PWA 얼굴 실기 통과.
-- APK: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` 171MB(재생성 산출물).
-- root: npm test 35/35 · lint · health 전 게이트 통과. 미검증: 5Hz 유실률, `SLEEPING` System OFF, 30분/8시간 지속성, PWA 번들 내장.
+- root: `npm test` 52/52 · `npm run lint` 통과 · `node scripts/health.js` 전 게이트 통과 · `node scripts/ci.js --no-receipts` 전 단계 PASS(handoff-linter CLARIFY 는 본 문서 §3 으로 해소 예정).
+- 미검증: docker 컨테이너 체인(이 환경에 docker 없음) · mobile Jest(node_modules 미설치, 핸드오프 직전 값 13/13) · `--apply` 후 상류 재조회(shim 기준 드리프트 0).

@@ -105,6 +105,18 @@ check('레벨 1 제목은 항목이 아니다', parseHeadingEntries('# 2026-01-0
 check('날짜 없는 헤딩은 항목이 아니다', parseHeadingEntries('### 그냥 절\n본문').length, 0);
 check('(예시) 헤딩은 example 표시', parseHeadingEntries('### 2026-01-01 — (예시) 더미\n- 근거: x')[0].example, true);
 
+// --- #7 회귀: 라벨 추출은 값의 첫 글자부터 손대지 않는다 ---
+// 여는 마커를 먹으면 짝이 한 칸 밀려 prose() 강조가 반대 토큰에 걸린다(하류 실측 4건 —
+// 식별자가 평문이 되고 화살표·마침표가 코드로 감싸지는, 원문 노출보다 나쁜 조용한 오표시).
+check('#7: 값의 여는 백틱 보존',
+  parseHeadingEntries('### 2026-01-01 — 제목\n\n**Impact**: `A` → `B`.\n')[0].note, '`A` → `B`.');
+check('#7: 값의 여는 ** 보존',
+  parseHeadingEntries('### 2026-01-01 — 제목\n\n- 근거: **X** 때문.\n')[0].reason, '**X** 때문.');
+check('#7: 라벨 닫는 장식이 콜론 뒤로 넘어온 형태만 벗긴다',
+  parseHeadingEntries('### 2026-01-01 — 제목\n\n- **근거:** **X** 때문.\n')[0].reason, '**X** 때문.');
+check('#7: 값의 닫는 마커도 값이다(꼬리 strip 금지)',
+  parseHeadingEntries('### 2026-01-01 — 제목\n\n**Impact**: `A` → `B`\n')[0].note, '`A` → `B`');
+
 // --- 통합: 현재 레포 HISTORY.md → 통과(exit 0) ---
 check('현재 레포 통과', run(), 0);
 

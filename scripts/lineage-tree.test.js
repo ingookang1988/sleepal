@@ -3,7 +3,9 @@
 // 회귀로 고정하는 것 — fetch-eval의 101노드 적대 평면(status·tier 부재, 혼동 형제 포함)이
 // 무가정 렌더되는가. v1.1: 트리/카탈로그 분리 · 검증 팔레트 빈도 배정 · 상태 필터 도출.
 const { assignColors, forest, rows, filterHtml, render, SLOTS, NEUTRAL } = require('./lineage-tree');
-const { syntheticPlane } = require('./fetch-eval');
+// fetch-eval 은 상류 전용([TOOL-34]) — 어답터 트리에는 없다. 조건부 require: 부재면 적대 평면 검사만 건너뛴다(무조건 require 는 ship-manifest 가 CLARIFY).
+let syntheticPlane = null;
+try { ({ syntheticPlane } = require('./fetch-eval')); } catch { syntheticPlane = null; }
 const { buildIndex } = require('./zfs_index');
 
 let pass = 0, fail = 0;
@@ -44,7 +46,7 @@ const term = forest([{ domain: 'PLAN', id: '01a', file: 'P' }, { domain: 'WO', i
 check('단말 -N 자식 판정', term.length === 1 && term[0].kids.length === 1 && term[0].kids[0].id === '01a-1');
 
 // filterHtml — 어휘를 데이터에서 도출, status 전무 평면엔 필터 없음(무가정)
-check('status 전무 → 필터 없음', filterHtml(syntheticPlane(0)) === '');
+if (syntheticPlane) check('status 전무 → 필터 없음', filterHtml(syntheticPlane(0)) === '');
 const fh = filterHtml([
   { domain: 'A', id: '1', file: 'a', status: 'Active' },
   { domain: 'A', id: '2', file: 'b', status: 'Active' },
@@ -53,15 +55,32 @@ const fh = filterHtml([
 ]);
 check('필터: 실존 status 도출 + 빈도순', fh.indexOf('Active') < fh.indexOf('Draft'));
 check('필터: status 없는 문서는 (없음) 버킷', fh.includes('(없음)'));
+// 어답터 실측: 산문 status("Done (2026-01-01, **원인**)" 류 60종)가 필터 라벨로 원문 누설 → 첫 토큰으로 묶고 마커 0.
+const fp = filterHtml([
+  { domain: 'A', id: '1', file: 'a', status: 'Done (2026-01-01) — **진짜 원인** 정정' },
+  { domain: 'A', id: '2', file: 'b', status: 'Done (2026-02-02) `rev1.1` 반영' },
+  { domain: 'A', id: '3', file: 'c', status: 'Active' },
+]);
+check('필터: 산문 status 는 첫 토큰으로 묶인다(Done 2)', /data-st="Done">\s*Done <span class="fn">2<\/span>/.test(fp) && (fp.match(/<label/g) || []).length === 2);
+check('필터: 라벨에 원문 마커 0', !/\*\*|`/.test(fp));
+check('statusHead: 괄호·대시 직결도 첫 토큰', require('./lineage-tree').statusHead('Diagnosed(정정) — x') === 'Diagnosed' && require('./lineage-tree').statusHead('Done—x') === 'Done', true);
+check('문서 data-st 도 첫 토큰(필터와 같은 키)', /data-st="Done"/.test(render([{ domain: 'A', id: '1', file: 'a', status: 'Done (2026-01-01) — **x**' }], { title: 't' })));
+// 문서 행의 상태 표시도 산문이면 샌다 — 보이는 텍스트는 첫 토큰, 전문은 title 속성(대시보드 '원문 마커 0' 회귀의 두 번째 지점).
+const prose = render([{ domain: 'A', id: '1', file: 'a', slug: 's', status: 'Reflected — ARCH `rev1.1` 반영 **완료**' }], { title: 't' });
+const visible = prose.slice(prose.indexOf('<main>') >= 0 ? prose.indexOf('<main>') : 0).replace(/title="[^"]*"/g, '').replace(/<[^>]*>/g, '');
+check('문서 행: 보이는 상태는 첫 토큰 · 원문 마커 0', !/\*\*|`/.test(visible) && /Reflected/.test(visible));
+check('문서 행: 상태 전문은 title 속성에', /title="Reflected — ARCH `rev1.1` 반영 \*\*완료\*\*"/.test(prose));
 
 // render — 성패 판정: 101노드 적대 평면(status·tier 없음, 도메인 5종) 무가정 렌더
-const synth = syntheticPlane(30);
-check('적대 평면 101노드', synth.length === 101);
-const html = render(synth, { title: 'adversarial' });
-check('적대 평면: 전 문서 등장', synth.every(d => html.includes(d.file)));
-check('적대 평면: undefined/null 누출 0', !html.includes('undefined') && !html.includes('null'));
-check('적대 평면: 필터 행 없음(status 전무)', !html.includes('class="flt"'));
-check('적대 평면: 자기완결(외부 참조 0)', html.startsWith('<!doctype html>') && !/src=|href=/.test(html));
+if (syntheticPlane) {
+  const synth = syntheticPlane(30);
+  check('적대 평면 101노드', synth.length === 101);
+  const html = render(synth, { title: 'adversarial' });
+  check('적대 평면: 전 문서 등장', synth.every(d => html.includes(d.file)));
+  check('적대 평면: undefined/null 누출 0', !html.includes('undefined') && !html.includes('null'));
+  check('적대 평면: 필터 행 없음(status 전무)', !html.includes('class="flt"'));
+  check('적대 평면: 자기완결(외부 참조 0)', html.startsWith('<!doctype html>') && !/src=|href=/.test(html));
+} else console.log('(fetch-eval 없음: 어답터 — 적대 평면 검사 건너뜀)');
 
 // render — 실평면 스모크
 const realIdx = buildIndex();

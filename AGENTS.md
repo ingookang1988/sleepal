@@ -76,7 +76,7 @@ Given a task like `WO-01a1-2`:
 
 1. Parse the ID → derive ancestors: `01a1` → `01a` → `01`.
 2. Globally scan for the same lineage across domains and load into working memory:
-   `PLAN-*`, `FLOW-*`, `CON-*` sharing those IDs.
+   `PHASE-*`, `PLAN-*`, `FLOW-*`, `CON-*` sharing those IDs.
 3. **Check `.union-stack/reference/lessons/LSN-*` of the same lineage** — past repeated failures, injected as pre-warnings.
 4. Only after grasping both **space** (parent context) and **time** (past pitfalls), begin.
 
@@ -164,4 +164,13 @@ this file only pins the deterministic core. The detail lives in the structure.
 - **[TOOL-24]** lineage-tree (계보 트리 렌더러) — 평면 전체를 루만 계보 포레스트로 그려 자기완결 HTML 1장으로 낸다. 큰/낯선 평면에서의 (`scripts/lineage-tree.js`)
 - **[TOOL-25]** dashboard (평면 대시보드 — 관측 표면 합성) — 관측 표면을 자기완결 HTML 1장으로 **합성**한다. **개요는 전체 대시보드 그대로**이고(요약 카드·계보 (`scripts/dashboard.js`)
 - **[TOOL-26]** 어답터 팔 (같은 게이트를 다른 형상에서 한 번 더) — 사본을 만들어 **형상을 바꾼 뒤 기존 도구를 그대로 돌린다**([PRO-17]). 새 게이트가 아니라 같은 (`scripts/adopter-arm.js`)
+- **[TOOL-27]** 게이트 체인 + 컨테이너 (CI 제공자 비의존 정본) — 게이트의 **순서와 차단 정책**을 워크플로 YAML 에서 꺼내 스크립트 1벌로 만들고, 컨테이너가 그것을 (`scripts/ci.js`)
+- **[TOOL-28]** test-catalog (테스트 호출 자산 카탈로그의 생성 뷰) — `scripts/*.js` 의 `@test-asset` 정의 지점 태그를 모아 `[up:CON-00]` 마커 블록에 컴파일한다 — 수기 카탈로그의 부패(§5.6 "낡은 카탈로그는 중복을 유발한다")를 추출=동기화로 막는다([up:PRO-21] 2단계). (`scripts/test-catalog.js`)
+- **[TOOL-29]** frontmatter-backfill (status: 없는 WO·PRO 백필 — dry-run 기본, 적용은 어답터) — `status:` frontmatter 가 없는 WO·PRO 문서를 나열하고 추정값(본문 표식 → 종결 디렉터리 → 비움)과 출처를 병기한다([up:PRO-27] ②). (`scripts/frontmatter-backfill.js`)
+- **[TOOL-31]** weakening-guard (약화 표면화 질문 + 예외 목록 증가 red) — 범위 diff 에서 **검사를 약하게 만드는 변경**을 찾아 질문 한 줄씩 낸다([up:PRO-22] §3 단계 3 — CLARIFY, 차단 아님): 테스트 파일 삭제 · skip/only 추가 · (`scripts/weakening-guard.js`)
+- **[TOOL-32]** retro (회고 트리거 — 지표 7 관측 · 회차 기록 초안) — 회고가 필요한지를 **파일과 git 날짜만으로** 잰다([up:PRO-25] ① v0.2): 발행 증분(직전 회고 기록 스냅샷 대비) · 보관 부채 · 정체 WO(비종결 + 마지막 커밋 ≥30일) · (`scripts/retro.js`)
+- **[TOOL-33]** label (파생 라벨 — ID 단독 자리에 slug 토큰 · 선택적 mnemonic override) — ID 만 단독으로 나오는 자리(`sprint/next.md` 작업대 · MCP `list_docs`)에 사람이 읽을 라벨을 붙인다 — `[WO-27a-1 · prereq_upstream]`([up:PRO-26] ④ v0.2). (`scripts/label.js`)
+- **[TOOL-34]** ship-manifest (배송 화이트리스트 — @ship 태그에서 생성) — 어답터에 가는 스크립트를 **상류가 열거**한다([up:PRO-24] ①(c) · §9 ①). 수기 목록이 아니라 정의 지점 태그(`// @ship upstream-only` · `// @ship optional`)에서 (`scripts/ship-manifest.js`)
+- **[TOOL-35]** union-stack-kit (손 이식 어답터의 사후 입장권 — 의존 0 단일 파일) — `template-update` 도 정합 앵커도 없는 어답터(손으로 이식한 레포)에 **갱신 통로**를 연다([up:PRO-24] ①(a) · §9 ①). 의존 0 단일 파일을 한 줄로 받아 실행하면 (`scripts/union-stack-kit.js`)
+- **[TOOL-36]** scaffold (WO 뼈대 생성기 — 다음 번호 제안 + parent 실존 확인 + 필수 3절) — 새 WO 를 **한 줄로** 찍는다([up:PRO-28] ④). 직전 WO 복사 + 손 수정이 변종 헤딩(한 의미에 3~5 표기)·중복 ID·빈 status 의 발생원이었다(회신 2곳 · 센서스 3회차) — (`scripts/scaffold.js`)
 <!-- tools-index:end -->

@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { OUTCOME, withContract } = require('./gate-contract');
-const { estimateTokens, BUDGETS } = require('./context-budget');
+const { estimateTokens, budgetsFor, BUDGETS } = require('./context-budget');
 
 const HANDOFF_PATH = '.union-stack/sprint/HANDOFF.md';
 
@@ -22,8 +22,8 @@ const HANDOFF_PATH = '.union-stack/sprint/HANDOFF.md';
 const CONTRACT = {
   gate: 'Handoff Gate (handoff-linter)',
   input: '.union-stack/sprint/HANDOFF.md 전문',
-  predicate: `5부 존재 + 빈 부의 '— 해당 없음' 명시 + 토큰 예산 ${BUDGETS.handoff} tok 이내`,
-  scope: '구조·크기만 본다 — 항목의 라우팅 적합성(§3 트리)·ID 포인터의 유효성·내용 품질은 보지 않음',
+  predicate: `5부 존재 + 빈 부의 '— 해당 없음' 명시 + 토큰 예산 ${BUDGETS.handoff} tok 이내 + §3 다음 작업의 WO 진입점([PRO-19])`,
+  scope: '구조·크기만 본다 — 항목의 라우팅 적합성(§3 트리)·ID 포인터의 유효성(WO 존재는 미확인)·내용 품질은 보지 않음',
   outcomes: ['PASS', 'CLARIFY'],
   failure_mode: 'REJECT 없음 — 어떤 판정도 커밋·세션 종료를 막지 않는다([PRO-13] §5). CLARIFY로 표면화만',
 };
@@ -78,12 +78,12 @@ function partBody(text, key) {
 }
 
 /** 순수 분석: 본문 → {findings, tokens, budget}. findings는 전부 CLARIFY급. */
-function analyze(text) {
+function analyze(text, budget = BUDGETS.handoff, { upstream = null, census = null } = {}) {
   const findings = [];
   const tokens = estimateTokens(text);
-  if (tokens > BUDGETS.handoff) {
+  if (tokens > budget) {
     findings.push({ rule: 'budget', msg:
-      `예산 초과 ${tokens}/${BUDGETS.handoff} tok — 자르지 말고 [PRO-13] §3 트리로 라우팅하라(결정→ledger, 반복 함정→lessons, 재도출 가능→버림)` });
+      `예산 초과 ${tokens}/${budget} tok — 자르지 말고 [PRO-13] §3 트리로 라우팅하라(결정→ledger, 반복 함정→lessons, 재도출 가능→버림)` });
   }
   const assigned = assignParts(parseSections(text));
   for (const p of PARTS) {
@@ -97,16 +97,64 @@ function analyze(text) {
       findings.push({ rule: 'part-empty', msg: `"${p.label}" 부가 비어 있음 — 미기입인지 해당없음인지 구별 불가. '— 해당 없음' 명시 권장` });
     }
   }
-  return { findings, tokens, budget: BUDGETS.handoff };
+  // §3 진입점([PRO-19] ③): 다음 작업은 WO ID(브래킷) 또는 명시적 '— 해당 없음'이어야 한다.
+  // prose 이월은 [PRO-13] §4-4 의 승격 경로(HANDOFF 체류 → WO 고정)를 타야 한다 — [WO-10a-1]이 선례.
+  // 실측 병인: prose 진입점이 5세션을 침묵으로 이월하며 "3세션 생존 = 오라우팅" 기준을 넘겼다.
+  const nextSec = assigned.next;
+  if (nextSec) {
+    const body = nextSec.body.join('\n').trim();
+    if (body && !/—\s*해당\s*없음/.test(body) && !/\[WO-[0-9][0-9a-z-]*\]/.test(body)) {
+      findings.push({ rule: 'next-entrypoint', msg:
+        '다음 작업이 WO 를 가리키지 않는다 — 이월 중인 prose 라면 WO 로 승격해 진입점을 [WO-*] 로 적어라([PRO-13] §4-4 · [PRO-19])' });
+    }
+  }
+  // 하류 제안 고리([PRO-29] ①(c)): 상류 업데이트가 있다(health upstream 캐시)는데 다음 세션 진입점(§3)·미해결(§4)에 그 말이 없으면
+  // 제안이 사람에게 닿지 않은 채 세션이 끝난다. 적용하라는 게 아니라 "사람에게 보였는가"를 묻는다 — 보류도 언급이면 충분하다.
+  if (upstream && upstream.updates) {
+    const carry = [assigned.next, assigned.open].filter(Boolean).map(s => s.body.join('\n')).join('\n');
+    if (!UPSTREAM_MENTION.test(carry)) {
+      findings.push({ rule: 'upstream-unrelayed', msg:
+        `상류 업데이트 있음(${upstream.localVer || '?'} → ${upstream.upstreamVer || '?'}) — §3 또는 §4 에 언급이 없다. \`node scripts/template-update.js --proposal\` 을 사람에게 보이고 결정(적용·보류)을 적어라([PRO-29] ①)` });
+    }
+  }
+  // 상류 이탈 알림([PRO-29] ②(d)): 최신 census 회차에 신규 이탈이 있는데 §3·§4 에 언급이 없으면 — 상류 세션이 그것을 사람에게 넘기지 않은 채 끝난다.
+  if (census && newCountOf(census) > 0) {
+    const carry = [assigned.next, assigned.open].filter(Boolean).map(s => s.body.join('\n')).join('\n');
+    if (!CENSUS_MENTION.test(carry)) {
+      findings.push({ rule: 'adopter-deviation-unrelayed', msg:
+        `어답터 이탈 신규 ${newCountOf(census)}건(census ${census.date}) — §3 또는 §4 에 언급이 없다. \`node scripts/adopter-census.js --handoff\` 한 줄을 §4 에 붙이고 조치는 사람에게([PRO-29] ②)` });
+    }
+  }
+  return { findings, tokens, budget };
+}
+const CENSUS_MENTION = /어답터 이탈|adopter-census|census/i;
+const newCountOf = round => round.rows.reduce((n, r) => n + (r.delta ? r.delta.new.length : 0), 0);
+const UPSTREAM_MENTION = /template-update|--proposal|업데이트 제안|상류 업데이트|upstream/i;
+
+/** 최신 census 회차 — 상류 자신만(어답터 = null). census_round 가 없으면(구 배송) null. */
+function readCensus(root) {
+  try {
+    if (!require('./adapter').isTemplateRepo(root)) return null;
+    return require('./census_round').latestRound(root);
+  } catch { return null; }
+}
+
+/** 상류 확인 캐시(template-sync.json lastCheck) — 네트워크 0. 상류 자신·캐시 없음·template-update 부재 = null(침묵). */
+function readUpstream(root) {
+  try {
+    if (require('./adapter').isTemplateRepo(root)) return null;
+    return require('./template-update').readLastCheck(root);
+  } catch { return null; }
 }
 
 function run(argv = process.argv.slice(2)) {
-  const p = path.join(path.resolve(__dirname, '..'), HANDOFF_PATH);
+  const root = path.resolve(__dirname, '..');
+  const p = path.join(root, HANDOFF_PATH);
   if (!fs.existsSync(p)) {
     console.log('HANDOFF 린터: HANDOFF.md 없음 — 건너뜀(신규 프로젝트 보호).');
     return OUTCOME.PASS;
   }
-  const r = analyze(fs.readFileSync(p, 'utf8'));
+  const r = analyze(fs.readFileSync(p, 'utf8'), budgetsFor(root).handoff, { upstream: readUpstream(root), census: readCensus(root) }); // adapter.json budgets.handoff 가 있으면 그 값([ADR-29])
   if (argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return r.findings.length ? OUTCOME.CLARIFY : OUTCOME.PASS; }
   if (r.findings.length) {
     console.error(`\n[HANDOFF 린터] CLARIFY — 표면화만, 차단하지 않는다([PRO-13]):`);
@@ -118,6 +166,6 @@ function run(argv = process.argv.slice(2)) {
   return OUTCOME.PASS;
 }
 
-module.exports = { analyze, parseSections, assignParts, partBody, run, CONTRACT, PARTS, HANDOFF_PATH };
+module.exports = { readUpstream, readCensus, UPSTREAM_MENTION, CENSUS_MENTION, analyze, parseSections, assignParts, partBody, run, CONTRACT, PARTS, HANDOFF_PATH };
 
 if (require.main === module) process.exit(withContract(CONTRACT, run)());

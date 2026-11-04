@@ -39,7 +39,9 @@ check('LF 파일은 LF 유지', /begin[^\n]*-->\n- \*\*\[TOOL-01\]/.test(injecte
 
 // --- 실레포 통합 ---
 const cards = gather();
-check('실레포 카드 파싱(전부 필수 필드 보유)', cards.length >= 1 && cards.every(x => x.id && x.impl));
+// 카드 수·필드 완전성은 상류 트리의 상태 — 어답터 카드의 결손은 어답터 몫([ADR-30]).
+if (require('./adapter').isTemplateRepo()) check('실레포 카드 파싱(전부 필수 필드 보유)', cards.length >= 1 && cards.every(x => x.id && x.impl));
+else check('어답터: 카드 파싱은 배열로 끝난다', Array.isArray(cards));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

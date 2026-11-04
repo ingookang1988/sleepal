@@ -1,0 +1,45 @@
+# union-stack 게이트 — 컨테이너가 정본. [TOOL-27]
+#
+# ⚠ 파일명이 `docker-compose.yml` 이 아니고 Dockerfile 이 `ci/` 아래인 것은 **의도다**.
+#   어답터 레포의 루트에는 대개 **자기 앱의** Dockerfile·compose 가 이미 있다(실측: 한
+#   어답터의 루트 Dockerfile 은 Railway 배포용 멀티스테이지 빌드였다). 하네스가 그 이름을
+#   쓰면 동기화가 남의 배포를 덮어쓴다 — 이름으로 충돌을 원천 차단한다([ADR-46]).
+#   빌드 컨텍스트를 `ci/` 로 좁힌 것도 같은 이유다(레포 루트를 컨텍스트로 보내지 않는다).
+#
+# 워크플로(.github/workflows/*.yml)는 이 서비스를 부르는 **얇은 래퍼**다. 어답터는 워크플로를
+# 지우고 여기만 써도 같은 게이트를 얻는다 — Actions 분당 과금(private 레포)에 묶이지 않는다.
+#
+#   docker compose -f docker-compose.harness.yml run --rm harness              # 전체 체인(로컬에서 CI 와 같은 판정)
+#   docker compose -f docker-compose.harness.yml run --rm harness --range A..B # permission-guard 범위 지정
+#
+# ⚠ 서비스마다 `entrypoint` 에 **스크립트까지** 박는다(`command` 아님). `docker compose run`
+#   의 추가 인자는 `command` 를 *교체*하고 `entrypoint` 뒤에는 *이어붙기* 때문이다 —
+#   command 에 두면 `--range` 가 스크립트 경로를 밀어내 `node --range` 가 된다(실측: CI 에서
+#   `node: bad option: --range`. 로컬 검증이 인자 없이만 돌아 놓쳤다 — [ADR-45]).
+#   docker compose -f docker-compose.harness.yml run --rm adopter-arm          # 어답터 팔만([PRO-17])
+#   docker compose -f docker-compose.harness.yml run --rm leakage              # 누설 가드(공개 템플릿 전용)
+#   docker compose -f docker-compose.harness.yml run --rm health
+
+x-runner: &runner
+  build: ./ci
+  image: union-stack-harness:local
+  volumes:
+    - .:/repo
+  working_dir: /repo
+
+services:
+  harness:
+    <<: *runner
+    entrypoint: ["node", "scripts/ci.js"]
+
+  adopter-arm:
+    <<: *runner
+    entrypoint: ["node", "scripts/adopter-arm.js"]
+
+  leakage:
+    <<: *runner
+    entrypoint: ["node", "scripts/leakage-guard.js"]
+
+  health:
+    <<: *runner
+    entrypoint: ["node", "scripts/health.js"]

@@ -29,7 +29,9 @@
     "blocks": "node scripts/blocks-index.js",
     "close": "node scripts/work-close.js",
     "tree": "node scripts/lineage-tree.js",
-    "dash": "node scripts/dashboard.js"
+    "dash": "node scripts/dashboard.js",
+    "ci": "node scripts/ci.js",
+    "ci:docker": "docker compose -f docker-compose.harness.yml run --rm harness"
   },
   "license": "MIT"
 }

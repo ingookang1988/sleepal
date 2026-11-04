@@ -1,12 +1,13 @@
 name: Harness Checks
+
+# ⚠ 이 워크플로는 **얇은 래퍼다.** 게이트 순서·차단 정책은 `scripts/ci.js` 가 소유하고
+# 컨테이너가 그것을 돌린다([TOOL-27]). 여기 남은 것은 **CI 제공자에 고유한 배선**뿐이다:
+# 체크아웃 · diff 범위 계산 · 증거 커밋 권한. 이 파일을 통째로 지워도 게이트는 산다 —
+# `docker compose -f docker-compose.harness.yml run --rm harness` 가 같은 판정을 낸다(어답터는:
+# private 레포에서 Actions 는 분당 과금이지만 컨테이너는 어디서든 무료다).
 on:
   push:
   pull_request:
-  # 클론 후, 본인 테스트 파이프라인이 끝난 뒤 하네스 검사를 다시 돌리고 싶다면
-  # 아래를 켜고 workflows 값을 실제 워크플로 이름으로 교체하세요(이 템플릿엔 없음).
-  # workflow_run:
-  #   workflows: ["<your pipeline name>"]
-  #   types: [completed]
 
 jobs:
   validate:
@@ -16,45 +17,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 } # permission-guard 의 diff 범위가 이전 커밋을 보려면 전체 히스토리 필요
-      - uses: actions/setup-node@v5
-        with: { node-version: '22' }
-      - name: ZFS naming linter (Fail-close gate)
-        run: node scripts/zfs-linter.js
-      - name: HISTORY reason gate (Fail-close; no-op if HISTORY absent)
-        run: node scripts/history-linter.js
-      - name: Permission guard (append-only integrity, Fail-close)
-        # 새 브랜치 첫 push에선 github.event.before 가 zero-SHA라 diff가 실패하고
-        # 가드가 "변경 없음"으로 조용히 통과한다 → 직전 커밋(없으면 빈 트리)으로 폴백.
-        # 차단 정책([PRO-11]): exit 1(REJECT)만 실패. 3(CLARIFY)·4(HOLD)는 annotation.
+
+      - name: Gate chain (컨테이너가 정본 — scripts/ci.js)
+        # 차단 정책은 ci.js 안에 있다([PRO-11]: exit 1 만 차단, 3·4 는 경고).
+        # 여기서 계산하는 것은 **범위뿐**이다 — 새 브랜치 첫 push 에선 github.event.before 가
+        # zero-SHA 라 diff 가 실패하고 가드가 "변경 없음"으로 조용히 통과한다 → 폴백이 필요하다.
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
           if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
             BASE=$(git rev-parse "${{ github.sha }}~1" 2>/dev/null || git hash-object -t tree /dev/null)
           fi
-          node scripts/permission-guard.js --range "$BASE..${{ github.sha }}" && ec=0 || ec=$?
-          if [ "$ec" -eq 1 ]; then exit 1; fi
-          if [ "$ec" -ne 0 ]; then echo "::warning::permission-guard outcome=$ec (CLARIFY/HOLD — 비차단, PRO-11 차단 정책)"; fi
-      - name: Handoff linter (PRO-13 — REJECT 없음, 어떤 판정도 비차단)
-        run: |
-          node scripts/handoff-linter.js && ec=0 || ec=$?
-          if [ "$ec" -eq 1 ]; then exit 1; fi
-          if [ "$ec" -ne 0 ]; then echo "::warning::handoff-linter outcome=$ec (CLARIFY — 다음 세션 부트스트랩에서 정리)"; fi
-      - name: Full test suite (all gate + query + hook + eval logic)
-        run: npm test
-      - name: Health scorecard (gate status + structural metrics)
-        run: node scripts/health.js
-      - name: Adopter arm (PRO-17 — 같은 게이트를 다른 형상에서 한 번 더)
-        # 상류는 자기 형상만 돈다([LSN-17]). 사본에 ①init 적용(env) ②평면 데이터 모양 교체(data)
-        # 를 걸고 기존 도구를 그대로 돌린다 — 새 게이트가 아니라 같은 게이트의 두 번째 실행이다.
-        run: node scripts/adopter-arm.js
+          docker compose -f docker-compose.harness.yml run --rm harness --range "$BASE..${{ github.sha }}"
+
       - name: Append gate evidence to Raw plane (PRO-11 — "시스템만 Append"의 이행)
         # 게이트 전부 그린으로 여기 도달했을 때만 실행된다. [skip ci]로 자기 재트리거 방지.
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         run: |
           SHORT=$(git rev-parse --short "${{ github.sha }}")
-          echo "- [$(date -u +%F)][EVD-ci] gates green @ ${SHORT} (run ${{ github.run_id }}) — naming·history·permission·handoff·tests·health·adopter-arm" >> .union-stack/verification/raw/evidence.md
+          echo "- [$(date -u +%F)][EVD-ci] gates green @ ${SHORT} (run ${{ github.run_id }}) — ci.js chain in container ([TOOL-27])" >> .union-stack/verification/raw/evidence.md
           git config user.name 'harness-ci'
           git config user.email 'actions@users.noreply.github.com'
-          git add .union-stack/verification/raw/evidence.md
-          git commit -m 'chore(evidence): CI gate green append [skip ci]' || exit 0
+          git add .union-stack/verification/raw/evidence.md .union-stack/verification/raw/receipts.md
+          git commit -m 'chore(evidence): CI gate green + receipts append [skip ci]' || exit 0
           git push || echo "::warning::evidence push 실패(브랜치 보호/권한) — 다음 그린 런에서 재시도됨"

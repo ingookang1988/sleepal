@@ -40,8 +40,9 @@ check('플래그 없으면 본 run 실행', wrapped([]), 7);
 // --- 통합: 게이트 6종 전부가 완전한 계약을 선언하는가 ---
 // 템플릿 전용 게이트는 `init --drop-template-bits` 가 삭제한다 — 어답터에선 **파일 부재**가 정상이다.
 // 부재만 건너뛴다(존재하는데 require 가 던지면 그대로 터진다 — 고장을 조용히 넘기지 않는다).
-const TEMPLATE_ONLY = new Set(['./leakage-guard']);
-for (const mod of ['./zfs-linter', './history-linter', './permission-guard', './leakage-guard', './health', './handoff-linter']) {
+// adopter-census 는 상류 전용([TOOL-34] upstream-only) — 어답터엔 배송되지 않는다(어답터 C 실측: 어답터 스위트의 유일한 실패).
+const TEMPLATE_ONLY = new Set(['./leakage-guard', './adopter-census']);
+for (const mod of ['./zfs-linter', './history-linter', './permission-guard', './leakage-guard', './health', './handoff-linter', './weakening-guard', './frontmatter-backfill', './adopter-census', './retro']) {
   if (TEMPLATE_ONLY.has(mod) && !fs.existsSync(path.join(__dirname, mod.slice(2) + '.js'))) {
     console.log(`(${mod} 없음: 템플릿 전용 게이트 — 계약 검사 건너뜀)`); continue;
   }

@@ -76,10 +76,12 @@ function rows(roots) {
 /** 문서 1개 → 칩+슬러그+상태 마크업(순수). */
 function docSpan(d, colors) {
   const locked = LOCKED.has(d.status);
+  // 보이는 상태는 첫 토큰(산문 status 60종 실측 — 마커·장문이 본문으로 샌다), 전문은 title 로.
+  const head = statusHead(d.status);
   const status = d.status
-    ? `<span class="st${locked ? ' lock' : ''}">${locked ? '\u{1F512} ' : ''}${esc(d.status)}</span>`
+    ? `<span class="st${locked ? ' lock' : ''}"${head !== String(d.status).trim() ? ` title="${esc(d.status)}"` : ''}>${locked ? '\u{1F512} ' : ''}${esc(head)}</span>`
     : '';
-  return `<span class="doc" data-st="${esc(d.status || '')}" title="${esc(d.file)}">`
+  return `<span class="doc" data-st="${esc(statusHead(d.status))}" title="${esc(d.file)}">`
     + `<span class="chip" style="--c:${colors[d.domain]}">${d.domain}</span>`
     + `<span class="slug">${esc(d.slug || d.file)}</span>${status}</span>`;
 }
@@ -93,10 +95,16 @@ function nodeHtml(node, colors) {
 }
 
 /** 평면에 실존하는 status → 필터 행(순수). status가 하나도 없으면 빈 문자열(무가정). */
+/** status 의 첫 토큰(어답터 실측: "Done (2026-01-01, **사유**)" 같은 산문 status 60종 — 센서스·mapStatus 와 같은 규약). 마커는 뗀다. */
+function statusHead(s) {
+  const head = String(s == null ? '' : s).trim().split(/[\s(（—:：]/)[0] || '';
+  return head.replace(/\*\*|`/g, '');
+}
+
 function filterHtml(index) {
   const count = {};
   let missing = 0;
-  for (const d of index) { if (d.status) count[d.status] = (count[d.status] || 0) + 1; else missing++; }
+  for (const d of index) { const h = statusHead(d.status); if (h) count[h] = (count[h] || 0) + 1; else missing++; }
   const sts = Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b));
   if (!sts.length) return '';
   const box = (key, label, n) =>
@@ -195,7 +203,7 @@ const FILTER_JS = `
 })();
 `;
 
-module.exports = { assignColors, forest, rows, docSpan, filterHtml, planeBody, render, PLANE_CSS, FILTER_JS, SLOTS, NEUTRAL };
+module.exports = { assignColors, forest, rows, docSpan, filterHtml, planeBody, render, PLANE_CSS, FILTER_JS, SLOTS, NEUTRAL, statusHead };
 
 if (require.main === module) {
   const args = process.argv.slice(2);

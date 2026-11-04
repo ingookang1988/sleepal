@@ -39,6 +39,7 @@ const SKIP_DIRS = new Set(['.git', 'node_modules']);
  * 않고 형상을 바꾸는 것이 [LSN-17] 계열 검증의 전제라, 사본 로직을 한 벌로 모은다
  * (`e6-workspace` 의 결함 주입 워크스페이스와 `adopter-arm` 의 형상 팔이 같은 것을 쓴다).
  */
+// @test-asset 격리 사본 픽스처 :: copyTree(src, dest) — 파괴적·형상 변경 시나리오는 사본에서([TOOL-20]·[TOOL-26] 공유)
 function copyTree(src, dest, opts = {}) {
   let n = 0;
   walkFiles(src, '', rel => {

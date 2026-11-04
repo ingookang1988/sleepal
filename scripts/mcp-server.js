@@ -3,15 +3,15 @@
 // zero-dependency MCP stdio 서버 (JSON-RPC 2.0, newline-delimited). union-stack plane을
 // 에이전트가 *런타임에 질의*하는 표준 표면. 전부 read-only(쓰기 미노출 → 권한 우회 없음).
 // 등록 예: .mcp.json → { "mcpServers": { "union-stack": { "command":"node","args":["scripts/mcp-server.js"] } } }
-const { parseId } = require('./zfs_util');
+const { parseId, isUpstreamRef } = require('./zfs_util');
 const { buildIndex } = require('./zfs_index');
 const { upwardFetch, blastRadius, whereToRecord } = require('./query');
 const { lint } = require('./zfs-linter');
 const { version: VERSION } = require('../package.json'); // 단일 출처 — 버전 드리프트 방지
 
 const TOOLS = [
-  { name: 'upward_fetch', description: '작업 진입 맥락: ID의 부모 PLAN/FLOW/CON/ARCH/MTG + 같은 계보 LSN.',
-    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ZFS ID·파일명·브래킷 ID' } }, required: ['id'] } },
+  { name: 'upward_fetch', description: '작업 진입 맥락: ID의 부모 PLAN/FLOW/CON/ARCH/MTG + 같은 계보 LSN. sections=true 면 부모 문서의 계약 절만 발췌(excerpts)로 함께 낸다([PRO-28] ③).',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ZFS ID·파일명·브래킷 ID' }, sections: { type: 'boolean', description: '계약 절 발췌 포함' }, extra: { type: 'string', description: '추가로 인출할 절 이름(쉼표 목록, 접두 일치)' } }, required: ['id'] } },
   { name: 'blast_radius', description: '수정·삭제 영향권: 대상의 모든 자손 + 잠금(Verifying) 여부.',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   { name: 'where_to_record', description: '과거/결정 기록 라우팅: kind→목적지(HANDOFF/사적메모리/lessons/proposals/ledger/HISTORY).',
@@ -24,11 +24,29 @@ const TOOLS = [
 
 /** 도구 디스패치(순수). 전부 read-only. */
 function callTool(name, args = {}) {
-  if (name === 'upward_fetch') { const id = parseId(args.id || ''); if (!id) throw new Error(`bad id: ${args.id}`); return upwardFetch(id, buildIndex()); }
+  // 상류 참조([PRO-27] ①) — 로컬 색인에서 해소하지 않는다. 오류가 아니라 외부 참조 INFO.
+  if ((name === 'upward_fetch' || name === 'blast_radius') && isUpstreamRef(args.id || '')) {
+    return { id: args.id, external: true, note: '상류 참조(up:) — 로컬 색인에서 해소하지 않는 외부 참조([PRO-27] ①). 상류 레포에서 읽어라.' };
+  }
+  if (name === 'upward_fetch') {
+    const id = parseId(args.id || ''); if (!id) throw new Error(`bad id: ${args.id}`);
+    const r = upwardFetch(id, buildIndex());
+    if (!args.sections) return r;
+    const { fetchExcerpts } = require('./section-fetch');
+    const root = require('path').resolve(__dirname, '..');
+    const extra = String(args.extra || '').split(',').map(x => x.trim()).filter(Boolean);
+    return { ...r, excerpts: fetchExcerpts(root, [...r.context, ...r.lessons], { cfg: require('./adapter').load(root), extra }) };
+  }
   if (name === 'blast_radius') { const id = parseId(args.id || ''); if (!id) throw new Error(`bad id: ${args.id}`); return blastRadius(id, buildIndex()); }
   if (name === 'where_to_record') return whereToRecord(args.kind);
   if (name === 'zfs_lint') return { violations: lint() };
-  if (name === 'list_docs') { const idx = buildIndex(); return { docs: args.domain ? idx.filter(d => d.domain === args.domain) : idx }; }
+  if (name === 'list_docs') {
+    // 파생 라벨([PRO-26] ④) — ID 단독 자리라 라벨을 함께 낸다(upward_fetch·blast_radius 는 file 을 내므로 생략).
+    const idx = buildIndex();
+    const labels = require('./label').labelMap(idx);
+    const docs = (args.domain ? idx.filter(d => d.domain === args.domain) : idx).map(d => ({ ...d, label: labels.get(`${d.domain}-${d.id}`) || null }));
+    return { docs };
+  }
   throw new Error(`unknown tool: ${name}`);
 }
 
