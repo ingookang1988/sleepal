@@ -18,7 +18,9 @@ import { closeDev, EYE_SAFE, getDev, openDev, paintDebug, paintHud, setBuild,
 // ── T 파트 등록 지점 ([PLAN-02] §경계 1 · [CON-02]) ─────────────
 //  mode.js / tracker.js / sound.js 는 여기서 import 되어 palBus 로 만난다 —
 //  index.html 은 건드리지 않는다. 모드 발행은 mode.js 만([CON-02] 규칙 1).
-import { _machine, _modeFeed, initMode, MODE, modeCommand, modeParams, modeStart } from './mode.js';
+import { _machine, _modeFeed, canSee, initMode, MODE, modeCommand, modeParams, modeStart, senseQuery, senseStart } from './mode.js';
+// 앱(통역사) 층 — 케어 문장 띠 [WO-01c-1]. 눈은 상태를, 이 띠는 이유를 말한다.
+import { _careTick, CARE, careLine, initCare, LINES, lintLine } from './care.js';
 //    import { initTracker } from './tracker.js'; initTracker(palBus);
 //    import { initSound } from './sound.js';     initSound(palBus);
 // H 소비자 — 보드 미연결 시 모드 → 눈 상태 유도([CON-02] 규칙 4). 구독만 하므로 import 로 충분하다.
@@ -281,16 +283,46 @@ function demoLux(pairs) {
   }
 }
 
+// ── 시작 화면 — 2단계 [WO-01c-1] ───────────────────────────────
+//  1단계 "팰에게 방 보여주기": 사용자 제스처 안에서 카메라·마이크를 묻는다. 결과는 사실 문장으로.
+//  2단계 "시작": 전체화면·회전 잠금·Wake Lock 은 또 다른 제스처가 필요하다 — 그래서 두 번 누른다.
+//  두 단계를 한 탭에 몰면 전체화면 전환 직후 권한 대화상자가 겹쳐 거부되기 쉽다(UX 브리핑 1번).
+function paintSense(s) {
+  const note = $('senseNote'), bS = $('bSense'), bG = $('bStart');
+  const cam = s.cam === true, mic = s.mic === true, asked = s.cam !== null || s.mic !== null;
+  note.textContent =
+    !asked        ? '팰이 아직 방을 볼 수 없어요 — 카메라로 밝기를, 마이크로 소리를 느껴요. 아무것도 저장하거나 보내지 않아요.'
+    : cam && mic  ? '팰이 방을 볼 수 있고 소리도 들을 수 있어요.'
+    : cam         ? '팰이 방을 볼 수 있어요 — 소리는 듣지 못해요.'
+    : mic         ? '팰이 소리는 듣지만 방을 볼 수 없어요 — 밝기를 느끼지 못해요.'
+    :               '팰이 방을 볼 수 없어요 — 그래도 눈은 떠요.';
+  bS.textContent = !asked ? '팰에게 방 보여주기' : cam ? '팰이 방을 봐요' : '다시 보여주기';
+  bS.disabled = cam;
+  bS.classList.toggle('primary', !asked);
+  bG.classList.toggle('primary', asked);
+}
+async function sense() {
+  const bS = $('bSense');
+  bS.disabled = true; bS.textContent = '팰이 방을 보는 중…';
+  try { paintSense(await senseStart()); }
+  catch (e) { log('감각 시작 실패: ' + e.message); paintSense(MODE.sensed); }
+}
+
 // ── 시작 ───────────────────────────────────────────────────────
 export function boot(build) {
   setBuild(build);
+  $('bSense').onclick   = sense;
   $('bStart').onclick   = function () { $('faceScreen').dataset.seen = '1'; enter(); };
   $('bCal').onclick     = openCal;
   $('bConnect').onclick = connect;
   $('bDev').onclick     = openDev;
+  // dev 는 무대·제품 화면에 보이지 않는다 — ?dev=1 이나 이전 토글(세션)이 있을 때만
+  $('bDev').style.display = getDev() ? '' : 'none';
   if (!navigator.bluetooth) {
-    $('entryNote').textContent = 'Web Bluetooth 미지원 브라우저입니다 — 얼굴은 그대로 동작합니다(후광만 없음).';
+    $('entryNote').textContent = '이 브라우저에서는 팰의 몸(후광)과 연결할 수 없어요 — 눈은 그대로 떠요.';
   }
+  paintSense(MODE.sensed);
+  senseQuery().then(paintSense).catch(function () {});
   addEventListener('resize', function () {
     if ($('faceScreen').classList.contains('on')) applyViewBox();
   });
@@ -298,6 +330,7 @@ export function boot(build) {
   paintRuler();
   setDev(getDev());       // 버튼 라벨 동기화. 기본 OFF — ?dev=1 이나 이전 토글이 있을 때만 ON
   initMode(palBus);       // [WO-02d-1] 모드 머신 — 200ms 타이머, rAF 와 독립(밤에도 센다)
+  initCare();             // [WO-01c-1] 케어 문장 띠 — 1Hz, 문장이 바뀔 때만 잠깐
   requestAnimationFrame(frame);
 
   // 검증 훅 — 콘솔/헤드리스에서 호출한다 (R3 게이트 등)
@@ -329,6 +362,9 @@ export function boot(build) {
     EYE_FOR_MODE: EYE_FOR_MODE, eyeForMode: eyeForMode, NIGHT_AFTER_S: NIGHT_AFTER_S,
     // 검사용 — 가상 시계로 핵에 먹인다 · 밤 타이머를 지금 적용한다
     _modeFeed: _modeFeed, _machine: _machine, _nightNow: _nightNow,
+    // [WO-01c-1] 케어 문장 — 시트·게이트가 읽는다
+    CARE: CARE, LINES: LINES, careLine: careLine, lintLine: lintLine, canSee: canSee,
+    senseStart: senseStart, _careTick: _careTick,
     // 검사용 — 배관을 태우지 않고 라인 스트림만 흉내낸다
     _feedRaw: _feedRaw,
     // 검사용 — rAF 없이 루프를 결정적으로 밟는다(반응 곡선 측정)

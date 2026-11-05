@@ -47,7 +47,19 @@
        display:inline-block;margin-right:8px;vertical-align:middle;transition:.2s}
   .dot.on{background:#39D98A;box-shadow:0 0 12px #39D98A}
   .dot.err{background:#FF7A45}
-  #entryNote{font-size:12px;color:#5D6478}
+  /* 보조 문구 — 12px #5D6478 은 대비 3.3:1 로 AA 미달이었다. 13px #7F8BA3(5.7:1)로. */
+  #senseNote,#entryNote{font-size:13px;color:#7F8BA3;max-width:34em}
+  /* 보조 링크 — 1차 행동(시작)과 급을 나눈다. 터치 표적은 세로 40px 이상 유지. */
+  .links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
+  button.link{background:none;border:0;padding:11px 8px;font-size:12.5px;font-weight:500;color:#7F8BA3}
+  button:disabled{opacity:.55;cursor:default}
+  /* ── 케어 문장 띠 [WO-01c-1] — #faceScreen 바깥의 형제(R3). 입 아래 띠에만 놓이고(care.js layout),
+     문장이 바뀔 때만 떠올랐다 사라진다([PLAN-01c] 상시 표시 금지). NIGHT 에서는 care.js 가 비운다(R4). */
+  #care{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;
+       padding:0 16px;pointer-events:none;opacity:0;transition:opacity .6s ease;
+       color:#C9D1E3;font-size:13px;letter-spacing:.01em;text-shadow:0 1px 2px #000;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #care.on{opacity:1}
   #live{display:flex;flex-direction:column;gap:8px;align-items:center}
   #live .big{font-family:ui-monospace,monospace;font-size:34px;font-weight:700;
        font-variant-numeric:tabular-nums;line-height:1;display:flex;
@@ -100,16 +112,20 @@
      걸린다. 그래서 이 탭 하나가 반드시 있어야 하고, [WO-01b-3]
      오디오 잠금 해제도 같은 탭 하나로 겸한다. -->
 <section id="entryScreen" class="screen on">
-  <h2>팰이 눈을 뜰 준비가 되었습니다</h2>
-  <p>시작하면 가로로 고정되고 화면이 꺼지지 않습니다.<br>팰은 방의 밝기와 소리를 느끼며 먼저 졸려 합니다 — 카메라(조도계)와 마이크 권한을 묻습니다.</p>
+  <h2>팰이 기다리고 있어요</h2>
+  <p>팰은 방의 밝기와 소리를 느끼며 먼저 졸려 해요.<br>시작하면 화면이 가로로 고정되고 꺼지지 않아요.</p>
+  <!-- 2단계 [WO-01c-1]: ① 팰에게 방 보여주기(카메라·마이크 권한 — 제스처 1) ② 시작(전체화면·Wake Lock — 제스처 2).
+       1차 행동은 하나뿐이다. 연결·보정·dev 는 아래 보조 링크로 내려갔다. 문장 주어는 전부 팰(R2). -->
   <div class="rowbtn">
-    <button id="bConnect"><span class="dot" id="dot"></span>팰과 연결</button>
-    <button class="primary" id="bStart">시작</button>
+    <button class="primary" id="bSense">팰에게 방 보여주기</button>
+    <button id="bStart">시작</button>
   </div>
-  <p id="entryNote">팰과 연결하지 않아도 동작합니다 — 후광만 없습니다. 연결하면 팰의 몸이 밝기를 대신 잽니다.</p>
-  <div class="rowbtn">
-    <button id="bCal">화면 보정</button>
-    <button id="bDev">dev</button>
+  <p id="senseNote">팰이 아직 방을 볼 수 없어요 — 카메라로 밝기를, 마이크로 소리를 느껴요. 아무것도 저장하거나 보내지 않아요.</p>
+  <p id="entryNote">팰의 몸(후광)이 없어도 눈은 떠요. 몸이 연결되면 밝기는 몸이 느껴요.</p>
+  <div class="links">
+    <button class="link" id="bConnect"><span class="dot" id="dot"></span>팰과 연결</button>
+    <button class="link" id="bCal">화면 보정</button>
+    <button class="link" id="bDev">dev</button>
   </div>
 </section>
 
@@ -266,6 +282,8 @@
      face-sheet 의 R3 게이트가 잡는다(실제로 잡혔다). 얼굴 요소에는 문자가
      하나도 없어야 하고, HUD 는 그 위에 겹치는 별개의 층이다.
      띠의 위 경계는 매 프레임 눈 바운딩박스에서 계산된다(paintHud). -->
+<!-- 케어 문장 띠 — HUD 와 같은 자리(dev HUD 가 켜지면 양보). 얼굴 바깥의 형제라 R3 가 지켜진다. -->
+<div id="care" aria-live="polite"></div>
 <div id="hud" aria-hidden="true">
   <div id="hudTxt"></div>
   <div class="hbars">
@@ -290,7 +308,7 @@ import { boot } from './main.js';
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 앱의 전제다).
 // ⚠ 이 문자열은 반드시 index.html 에 남는다 — deploy.js 와 배포본 신선도
 //   검사가 *이 파일에서* grep 한다([ADR-116]). 모듈로 옮기지 말 것.
-const BUILD = '2026-11-05a';
+const BUILD = '2026-11-05b';
 
 // PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
 // 이전 버전 캐시를 지운다([WO-02a-1]). 등록 실패는 조용히 무시한다 —

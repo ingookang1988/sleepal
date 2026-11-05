@@ -11,7 +11,7 @@
 | [WO-01b-4 · expression_layer] | 표정 레이어 — 눈부심 찡그림과 미세 표정 | PLAN-01b | Active | 있음 |
 | [WO-01b-5 · emotion_mouth] | 이산 표정·입·떠다니는 도상 — 트리거 수신부 + 아래꺼풀 + 입 + zzz/음표 | PLAN-01b | Verifying | 있음 |
 | [WO-01b-6 · sound_gaze] | 시선 — 소리 나는 쪽으로 눈이 이동한다 (귀 + 사카드) | PLAN-01b | Verifying | 있음 |
-| [WO-01c-1 · care_lines] | 케어 문장 5종 사전 작성 — R2 검수 통과 | PLAN-01c | Draft | 해당없음 |
+| [WO-01c-1 · care_lines] | 케어 문장 5종 사전 작성 — R2 검수 통과 | PLAN-01c | Active | 있음 |
 | [WO-01c-2 · quiet_space] | quiet space 접합 인터페이스 확정 | PLAN-01c | Draft | 해당없음 |
 | [WO-01d-1 · material_and] | 재료 확보와 실측 — 폰 외곽 + 화면 경계 | PLAN-01d | Draft | 해당없음 |
 | [WO-01d-2 · cut_unit1] | 1호기 재단 — 12품목 18장 | PLAN-01d | Draft | 해당없음 |

@@ -27,6 +27,11 @@ export const MODE = {
   lux: null, snd: null,    // 마지막으로 핵에 먹인 값
   sndSrc: '-',             // 'ear' | 'listen' | '-'
   ticks: 0, at: null,
+  params: null,            // 핵의 상수(아래서 채운다) — 케어 문장이 "어둡다/시끄럽다"를 같은 문턱으로 읽는다
+  // 밤새 느낀 것 — 아침 케어 문장의 재료([WO-01c-1]). 횟수만, 점수 아님(R6). SLEEP 진입마다 리셋.
+  night: { bright: 0, noise: 0, sleptAt: null },
+  // 시작 화면의 "팰에게 방 보여주기" 결과 — null 은 아직 안 물어봄
+  sensed: { cam: null, mic: null },
 };
 export { MODES, DEFAULTS };
 
@@ -43,6 +48,27 @@ function readParams() {
 }
 const machine = createModeMachine({ params: readParams(), t0: now() });
 export const modeParams = machine.params;
+MODE.params = machine.params;
+
+// 방을 볼 수 있는가 — 조도 표본이 있거나(카메라·보드) 그 원천이 살아 있는가. 케어 문장의 BLIND 분기.
+export function canSee() { return MODE.lux !== null || camOn() || bleStatus().connected; }
+
+// ── 밤새 느낀 것 — SLEEP 동안 "밝음이 잠깐 이상 지속" · "소리가 잠깐 이상 지속"을 한 번씩 센다 ──
+//  원자료는 남기지 않는다. 횟수만 — 아침 문장은 "몇 번"으로만 말한다(R6).
+const EP = { brightSince: null, brightCounted: false, noiseSince: null, noiseCounted: false };
+const EP_BRIGHT_S = 3, EP_NOISE_S = 2;
+function nightEpisodes(t, lv, sl) {
+  if (MODE.mode !== 'SLEEP') return;
+  const p = machine.params;
+  if (lv !== null && lv > p.brightLux) {
+    if (EP.brightSince === null) EP.brightSince = t;
+    else if (!EP.brightCounted && t - EP.brightSince >= EP_BRIGHT_S) { MODE.night.bright++; EP.brightCounted = true; }
+  } else { EP.brightSince = null; EP.brightCounted = false; }
+  if (sl !== null && sl > p.noiseLevel) {
+    if (EP.noiseSince === null) EP.noiseSince = t;
+    else if (!EP.noiseCounted && t - EP.noiseSince >= EP_NOISE_S) { MODE.night.noise++; EP.noiseCounted = true; }
+  } else { EP.noiseSince = null; EP.noiseCounted = false; }
+}
 
 // ── T 수음 — 모노 RMS 하나 ───────────────────────────────────
 const listen = { stream: null, ctx: null, an: null, buf: null, timer: null, level: null };
@@ -100,7 +126,11 @@ function publish(events, t) {
       log('mode ' + ev.from + ' → ' + ev.to + ' (' + ev.cause + ')');
       bus.dispatchEvent(new CustomEvent('mode:change', { detail: { from: ev.from, to: ev.to, cause: ev.cause } }));
       // 수음 생애: SLEEP 에서만(귀가 금지되는 구간). 그 밖에서는 귀가 있거나 필요 없다.
-      if (ev.to === 'SLEEP') listenStart(); else listenStop();
+      if (ev.to === 'SLEEP') {
+        listenStart();
+        MODE.night = { bright: 0, noise: 0, sleptAt: ev.t };
+        EP.brightSince = null; EP.brightCounted = false; EP.noiseSince = null; EP.noiseCounted = false;
+      } else listenStop();
     } else if (ev.type === 'mode:progress') {
       MODE.progress = ev.to ? { to: ev.to, elapsed: ev.elapsed, need: ev.need } : null;
       if (t - progressAt >= 1.0 || !ev.to) {          // 버스는 1Hz 로만 — dev HUD 용이다
@@ -127,6 +157,7 @@ function tick() {
 }
 function feed(t, lv, sl, src) {
   MODE.lux = lv; MODE.snd = sl; MODE.sndSrc = src || '-'; MODE.ticks++; MODE.at = t;
+  nightEpisodes(t, lv, sl);
   publish(machine.feed({ t, lux: lv, snd: sl }), t);
 }
 
@@ -136,11 +167,30 @@ export function initMode(b) {
   if (!timer) timer = setInterval(tick, 200);
 }
 
-// 시작 버튼 → 세션 시작. 사용자 제스처 안에서 권한을 묻는다.
-export async function modeStart() {
-  // 조도계 — 보드가 연결돼 있으면 보드 LUX: 가 lux 를 채우므로 카메라를 켜지 않는다.
-  if (!bleStatus().connected && !camOn()) await camStart();
+// "팰에게 방 보여주기" — 시작 화면의 1단계. 사용자 제스처 안에서 카메라·마이크를 묻고 결과를 **사실**로 남긴다.
+//  거부돼도 실패가 아니다: 눈은 뜨고, 케어 문장이 "팰이 방을 볼 수 없어요"를 말한다.
+export async function senseStart() {
+  if (!bleStatus().connected && !camOn()) await camStart();   // 보드가 있으면 보드가 밝기를 느낀다
   await primeMic();
+  MODE.sensed = { cam: camOn() || bleStatus().connected, mic: micPrimed };
+  return MODE.sensed;
+}
+// 돌아온 방문 — 이미 허락된 권한은 다시 묻지 않고 바로 "볼 수 있음"으로 둔다(Permissions API 가 없으면 모름).
+export async function senseQuery() {
+  if (!navigator.permissions || !navigator.permissions.query) return MODE.sensed;
+  const q = async (name) => {
+    try { const st = (await navigator.permissions.query({ name })).state; return st === 'granted' ? true : st === 'denied' ? false : null; }
+    catch { return null; }
+  };
+  const cam = await q('camera'), mic = await q('microphone');
+  MODE.sensed = { cam, mic };
+  if (mic) micPrimed = true;
+  return MODE.sensed;
+}
+// 시작 버튼 → 세션 시작(2단계). 권한은 1단계에서 물었고, 여기서는 이미 허락된 센서만 켠다.
+export async function modeStart() {
+  if (!bleStatus().connected && !camOn() && MODE.sensed.cam !== false) await camStart();
+  if (MODE.sensed.mic !== false) await primeMic();
   modeCommand('play');
 }
 export function modeCommand(cmd) {
