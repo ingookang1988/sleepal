@@ -7,3 +7,4 @@
 - [2026-08-22][EVD-ci] gates green @ 9ff988a (run 32552665512) — naming·history·permission·handoff·tests·health·adopter-arm
 - [2026-08-22][EVD-ci] gates green @ 7139a32 (run 32556874425) — naming·history·permission·handoff·tests·health·adopter-arm
 - [2026-08-22][EVD-ci] gates green @ 6cbd169 (run 32558124898) — naming·history·permission·handoff·tests·health·adopter-arm
+- [2026-11-05][EVD-ci] gates green @ fc3aebb (run 41954848859) — ci.js chain in container ([TOOL-27])
