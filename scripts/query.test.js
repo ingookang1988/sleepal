@@ -1,6 +1,6 @@
 // scripts/query.test.js
 // 순수 조회 로직 단위 테스트(합성 색인 — 레포 비의존). 실행: node scripts/query.test.js
-const { upwardFetch, blastRadius, contractEdges, normEnforcement, concernUsage, whereToRecord } = require('./query');
+const { upwardFetch, blastRadius, contractEdges, normEnforcement, concernUsage, roadmapWiring, whereToRecord } = require('./query');
 
 let pass = 0, fail = 0;
 function check(label, got, exp) {
@@ -23,6 +23,25 @@ const uf = upwardFetch('01a1', index);
 check('uf chain', uf.chain, ['01a1', '01a', '01']);
 check('uf context domains', uf.context.map(c => c.domain), ['CON', 'FLOW', 'MTG', 'PLAN']);
 check('uf lessons', uf.lessons.map(l => l.id), ['01a']);
+// PHASE 도 계보 맥락에 실린다([PRO-19] ② — roadmap 은 plan·sprint 의 macro-direction parent)
+const ufPhase = upwardFetch('01a1', [...index, { domain: 'PHASE', id: '01', file: 'project/roadmap/PHASE-01_x.md' }]);
+check('uf PHASE 편입', ufPhase.context.some(c => c.domain === 'PHASE' && c.id === '01'), true);
+
+// --- roadmapWiring: 로드맵 배선 관측([PRO-19] ② — 판정 없는 표면화) ---
+const rwIndex = [
+  { domain: 'PHASE', id: '01', file: 'PHASE-01.md' },              // 활성 계보 01 이 내려온다
+  { domain: 'PHASE', id: '02', file: 'PHASE-02.md' },              // 아무도 안 내려온다 → 정체
+  { domain: 'PLAN', id: '01a', status: 'Active', file: 'PLAN-01a.md' },
+  { domain: 'WO', id: '01a-1', status: 'Draft', file: 'WO-01a-1.md' },
+  { domain: 'WO', id: '10a-1', status: 'Draft', file: 'WO-10a-1.md' }, // 뿌리에 PHASE 없음 → 무연결
+  { domain: 'WO', id: '02a-1', status: 'Closed', file: 'WO-02a-1.md' }, // 종결 — 활성 아님(PHASE-02 를 못 살린다)
+  { domain: 'FLOW', id: '01a', status: 'Active', file: 'FLOW-01a.md' }, // 작업 도메인 아님 — 계수 제외
+];
+const rw = roadmapWiring(rwIndex);
+check('rw 계수', [rw.phases, rw.active], [2, 3]);
+check('rw 무연결 작업', rw.unanchored, ['WO-10a-1']);
+check('rw 정체 PHASE(종결 자손은 못 살린다)', rw.stale, ['PHASE-02']);
+check('rw 빈 평면', roadmapWiring([]), { phases: 0, active: 0, unanchored: [], stale: [] });
 
 // --- blastRadius ---
 const br = blastRadius('01a', index);
@@ -106,6 +125,75 @@ check('route env→private memory', /memory/i.test(whereToRecord('a machine-spec
 check('route env not lessons', /lessons/.test(whereToRecord('cross-repo environment quirk').match.destination), false);
 // 레포/제품 특정 반복 실패는 여전히 lessons(환경 키워드 없으면)
 check('route repo pitfall→lessons still', whereToRecord('a repeated pitfall in this feature').match.destination, '.union-stack/reference/lessons/LSN-*');
+
+// --- [PRO-27] ① 계약 소비자의 up: 참조는 미해소가 아니라 외부(externalConsumers) ---
+const brUp = blastRadius('01', [
+  ...index.filter(d => d.domain !== 'CON'),
+  { domain: 'CON', id: '01', file: 'reference/contracts/CON-01_x.md', consumers: ['up:FLOW-09', 'FLOW-99'] },
+]);
+check('외부 소비자 분류', brUp.externalConsumers.map(u => u.ref), ['up:FLOW-09']);
+check('오타 소비자는 여전히 미해소', brUp.unresolvedConsumers.map(u => u.ref), ['FLOW-99']);
+
+// --- [PRO-27] ③ 일부: 빈 upward-fetch 는 (없음)+PASS 가 아니라 CLARIFY ---
+const { fetchOutcome } = require('./query');
+check('맥락 있으면 PASS', fetchOutcome(upwardFetch('01a1', index)).outcome, 'PASS');
+const empty = fetchOutcome(upwardFetch('345', index));
+check('맥락 0건이면 CLARIFY', empty.outcome, 'CLARIFY');
+check('CLARIFY 에 질문 한 줄', typeof empty.question === 'string' && empty.question.length > 0, true);
+
+// CLI 표면 — 종료코드가 계약([PRO-11] CLARIFY=3)대로 나오는가. 상류 레포에서 실행(색인은 상류 자신).
+const { spawnSync } = require('child_process');
+const cliCwd = require('path').resolve(__dirname, '..');
+const cli = (args) => spawnSync(process.execPath, ['scripts/upward-fetch.js', ...args], { cwd: cliCwd, encoding: 'utf8' });
+const vac = cli(['WO-999']);
+check('CLI: 계보 맥락 0 → exit 3(CLARIFY)', vac.status, 3);
+check('CLI: CLARIFY 문구', /CLARIFY/.test(vac.stdout + vac.stderr), true);
+const ext = cli(['up:PRO-27']);
+check('CLI: up: 인자는 외부 참조 INFO · exit 0', ext.status, 0);
+check('CLI: 외부 참조 문구', /상류 참조/.test(ext.stdout + ext.stderr), true);
+const extBr = spawnSync(process.execPath, ['scripts/blast-radius.js', 'up:PRO-27'], { cwd: cliCwd, encoding: 'utf8' });
+check('blast-radius CLI: up: 인자 exit 0', extBr.status, 0);
+
+// --- [PRO-27] ③ 조상 = 산술 ∪ frontmatter 부모 ---
+const linIndex = [
+  { domain: 'PHASE', id: '01', file: 'PHASE-01.md' },
+  { domain: 'PLAN', id: '07', file: 'PLAN-07.md', parents: ['PHASE-01'] },
+  { domain: 'PLAN', id: '12', file: 'PLAN-12.md' },
+  { domain: 'PRO', id: '36', file: 'PRO-36.md' },
+  { domain: 'LSN', id: '07', file: 'LSN-07.md' },
+  { domain: 'WO', id: '345', status: 'Active', file: 'WO-345.md', parents: ['PLAN-07'] },
+  { domain: 'WO', id: '12a-1', status: 'Verifying', file: 'WO-12a-1.md', parents: ['PRO-36'], arithmetic: false },
+  { domain: 'WO', id: '12b-1', status: 'Active', file: 'WO-12b-1.md' },
+];
+const ufS = upwardFetch('345', linIndex);
+check('선언 부모(plan:)가 맥락에', ufS.context.map(c => `${c.domain}-${c.id}`), ['PHASE-01', 'PLAN-07']);
+check('선언 부모는 via:frontmatter', ufS.context.find(c => c.id === '07').via, 'frontmatter');
+check('선언 부모의 조상(PHASE)까지 폐포', ufS.context.some(c => c.domain === 'PHASE'), true);
+check('선언 목록 노출(폐포 순)', ufS.declared, ['PLAN-07', 'PHASE-01']);
+check('LSN 은 합산 조상 기준', ufS.lessons.map(l => l.id), ['07']);
+check('맥락 있으니 PASS', fetchOutcome(ufS).outcome, 'PASS');
+const ufL = upwardFetch('12a-1', linIndex);
+check('산술 차단(arithmetic:false): 무관한 PLAN-12 상속 안 함', ufL.context.some(c => c.domain === 'PLAN' && c.id === '12'), false);
+check('산술 차단이어도 선언 부모(PRO-36, 도메인 무관)는 싣는다', ufL.context.map(c => `${c.domain}-${c.id}`), ['PRO-36']);
+check('산술 차단 시 chain 은 자기 자신뿐', ufL.chain, ['12a-1']);
+check('산술 적용 WO 는 기존대로 PLAN-12 상속', upwardFetch('12b-1', linIndex).context.map(c => `${c.domain}-${c.id}`), ['PLAN-12']);
+check('순환 가드', upwardFetch('a1', [{ domain: 'WO', id: 'a1', file: 'a', parents: ['WO-b2'] }, { domain: 'WO', id: 'b2', file: 'b', parents: ['WO-a1'] }]).context.map(c => c.id), ['b2']);
+// blastRadius: 선언 부모로 이 계보를 가리키는 문서가 영향권(잠금 포함)
+const brS = blastRadius('07', linIndex);
+check('선언 자식이 영향권에(같은 ID 의 LSN 은 기존대로 산술 자손)', brS.affected.map(a => `${a.domain}-${a.id}`), ['PLAN-07', 'LSN-07', 'WO-345']);
+check('선언 자식은 viaParent 표식', brS.affected.find(a => a.id === '345').viaParent, 'PLAN-07');
+check('선언 자식의 잠금이 차단한다', blastRadius('36', linIndex).blocked, true);
+check('산술 차단 문서는 산술 자손으로 안 잡힌다', blastRadius('12', linIndex).affected.map(a => a.id), ['12', '12b-1']);
+// roadmapWiring: PHASE 도달에 선언 부모 사용
+const rwS = roadmapWiring(linIndex);
+check('plan: 으로 PHASE 에 닿은 WO 는 unanchored 아님', rwS.unanchored.includes('WO-345'), false);
+check('PHASE-01 은 stale 아님(선언 경로로 활성 계보가 내려온다)', rwS.stale, []);
+// CLI: 상류 PRO-부모 WO 가 더는 CLARIFY 가 아니다 — 상류 픽스처(PRO-27·WO-27a-2) 의존이라 템플릿 모드에서만([ADR-30]; 카나리아 어답터에서 거짓 실패 실측).
+if (require('./adapter').isTemplateRepo()) {
+  const realUf = cli(['WO-27a-2']);
+  check('CLI: upward-fetch WO-27a-2 → exit 0', realUf.status, 0);
+  check('CLI: PRO-27 이 frontmatter 부모로 실린다', /\[PRO-27\].*frontmatter/.test(realUf.stdout), true);
+} else console.log('(어답터: 상류 픽스처 CLI 검사 건너뜀)');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

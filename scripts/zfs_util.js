@@ -65,6 +65,19 @@ function parseId(name) {
   return null;
 }
 
+// --- 상류 참조 네임스페이스([PRO-27] ①) ------------------------------------------
+// 어답터 문서가 상류(union-stack) 문서를 가리킬 때 `[up:PRO-27]` 처럼 접두를 쓴다. ID 변경이 아니라
+// **참조 표기**다([ADR-25] 유지). 도구는 이 참조를 로컬 색인에서 해소하지 않고 외부 참조(INFO)로 분류한다.
+// 실측 근거: 어답터 3곳 모두 상류 ID 와 로컬 ID 가 같은 공간을 쓰고 있었고(PRO-16~18 · PRO-22/23/26 충돌),
+// strict 참조 린터가 상류 `[PRO-26]` 을 로컬 문서로 오해소해 Fail-close 했다(SURVEY-02).
+const UP_PREFIX = 'up:';
+
+/** `up:ID` · `[up:ID]` 꼴인가(순수). */
+function isUpstreamRef(s) { return /^\[?up:/.test(String(s || '')); }
+
+/** 접두·브래킷을 벗긴 `DOMAIN-ID`(순수). 접두가 없으면 그대로. */
+function stripUpstreamRef(s) { return String(s || '').replace(/^\[?up:/, '').replace(/\]$/, ''); }
+
 /**
  * otherId 가 planId 의 진짜 자식/단말/자기자신인지 판정.
  * 루만 교차 규칙: 부모가 숫자로 끝나면 자식은 알파벳(다음 레벨), 부모가 알파벳으로 끝나면
@@ -110,4 +123,5 @@ function ancestorChain(id) {
 module.exports = {
   ZFS_REGEX, VALID_DOMAINS, isValidDomain, isValidName,
   parse, parseId, isDescendant, ancestorChain,
+  UP_PREFIX, isUpstreamRef, stripUpstreamRef,
 };

@@ -60,5 +60,19 @@ check('gatherGating returns array', Array.isArray(gg));
 if (isTemplateRepo()) check('gating empty on template', gg.length === 0);
 else console.log(`(어답터: 템플릿 청결도 단언 건너뜀 — 게이팅 대상 ${gg.length}건)`);
 
+// --- [PRO-27] ① 상류 참조 네임스페이스 [up:ID] — 로컬 색인에서 해소하지 않는 외부 참조 ---
+const { gatherAll, prefixUpstreamRefs } = require('./ref-linter');
+const up = extractRefs('어답터 문서가 [up:PRO-27] 을 가리키고 [PRO-24] 는 로컬이다. [up:ADR-54?] 도 외부.');
+check('up: 참조도 추출된다(3건)', up.length === 3);
+check('up: 참조는 external 표식', up.find(r => r.raw === 'PRO-27').external === true && up.find(r => r.raw === 'PRO-24').external === false);
+check('external 은 로컬 미해소로 세지 않는다', findBroken(up, new Set()).map(r => r.raw).join() === 'PRO-24');
+check('external + forward 둘 다 표식', up.find(r => r.raw === 'ADR-54').external && up.find(r => r.raw === 'ADR-54').forward);
+// 배포 접두(순수) — 상류 문서를 어답터로 옮길 때 상류 ID 에 up: 을 붙인다. 이미 붙은 것·비ID 브래킷은 건드리지 않는다(멱등).
+const pre = prefixUpstreamRefs('[PRO-24] [up:PRO-27] [ADR-54?] [TODO] [a link](x)');
+check('접두 멱등·비ID 무시', pre === '[up:PRO-24] [up:PRO-27] [up:ADR-54?] [TODO] [a link](x)');
+check('접두 두 번 = 한 번', prefixUpstreamRefs(pre) === pre);
+const ga = gatherAll();
+check('gatherAll: broken 배열 + external 계수', Array.isArray(ga.broken) && typeof ga.external === 'number');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -24,7 +24,7 @@ const { read: readLedger } = require('./ledger');
 const { parseEntries: parseHistory } = require('./history-linter');
 const { walkFiles } = require('./fs_walk');
 const { LOCKED } = require('./query');
-const { planeBody, PLANE_CSS, FILTER_JS } = require('./lineage-tree');
+const { planeBody, PLANE_CSS, FILTER_JS, statusHead } = require('./lineage-tree');
 
 /** frontmatter 유래 자유 문자열 이스케이프(lineage-tree 와 동일 규칙). */
 function esc(s) {
@@ -108,6 +108,15 @@ function gistOf(text, n) {
  * → ③줄 단위로 행두 마커(인용·헤딩) 처리 → ④`<br>` 로 잇기.
  * ⚠ 속성값(`title="…"`)에는 쓰지 마라 — 태그가 들어가면 안 되는 자리이므로 거긴 `esc` 가 정본이다.
  */
+/**
+ * 이미 스타일이 입혀진 칩(`<code>` 등)에 넣을 **평문** — 인라인 마커를 *해석해서 벗긴다*.
+ * `esc` 만 하면 백틱·볼드가 원문으로 샌다(실측: 어답터 규범 헤딩의 `` `pg` `` · `` `PACKAGE` `` —
+ * 상류 헤딩엔 백틱이 없어 안 드러난 형상이다). `prose` 를 쓰면 칩 안에 칩이 중첩된다.
+ * 그래서 proseInline 으로 파싱한 뒤 태그만 걷는다 — **마커 문법은 여전히 한 벌**이다([ADR-47]).
+ */
+function plain(s) {
+  return proseInline(esc(String(s == null ? '' : s))).replace(/<\/?(code|b)>/g, '');
+}
 function prose(txt) {
   return proseInline(esc(String(txt == null ? '' : txt))).split('\n').map(line => {
     const quoted = /^&gt;\s?/.test(line);   // esc 이후라 인용 마커는 '&gt;' 다
@@ -143,6 +152,22 @@ ${tile('부트스트랩', budget.total, `/ ${budget.totalCap} tok${budget.over ?
 }
 
 /** health.gather() 결과 → 게이트/관측 표(순수). */
+/** 어답터 이탈(신규) 카드([PRO-29] ②(c), [WO-29a-6]) — 상류 전용. round 없음(어답터·회차 없음) = 카드 없음. 레이블·이탈 키·개수만. */
+function censusSection(round) {
+  if (!round) return '';
+  const total = round.rows.reduce((n, r) => n + (r.delta ? r.delta.new.length : 0), 0);
+  const rows = round.rows.map(r => {
+    if (!r.delta) return `<tr><td>${esc(r.label)}</td><td class="meta" colspan="3">델타 없음(구 원자료)</td></tr>`;
+    const d = r.delta;
+    return `<tr><td>${esc(r.label)}</td><td>${d.new.length ? `<b>신규 ${d.new.length}</b> ${d.new.map(k => `<code>${esc(k)}</code>`).join(' ')}` : '신규 0'}${d.first ? ' <span class="meta">(첫 회차)</span>' : ''}</td><td>지속 ${d.persist.length}</td><td>해소 ${d.resolved.length}</td></tr>`;
+  }).join('\n');
+  return `<section class="card" id="adopters"><h2>어답터 이탈(신규) — census ${esc(round.date)}</h2>
+<div class="meta">신규 ${total} · 조치는 사람이 어답터 세션에 전달한다(상류는 어답터 레포를 쓰지 않는다). HANDOFF 한 줄: <code>node scripts/adopter-census.js --handoff</code></div>
+<table><tr><th>레포</th><th>신규</th><th>지속</th><th>해소</th></tr>
+${rows}
+</table></section>`;
+}
+
 function healthSection(h) {
   const tr = d => {
     const m = MARKS[d.status] || MARKS.INFO;
@@ -297,14 +322,14 @@ function sprintView(sprint, today) {
       ? w.closed_by.map(t => `<code>${esc(t.split('/').pop())}</code>`).join('')
       : '<span class="note">없음</span>';
     return `<section class="card norm">
-    <h2>[WO-${esc(w.id)}] <span class="ntitle">${esc(w.title || '')}</span></h2>
+    <h2>[WO-${esc(w.id)}] <span class="ntitle">${proseInline(esc(w.title || ''))}</span></h2>
     <div class="meta"><span class="pill ${w.status === 'Verifying' ? 'aging' : 'fresh'}">status<b>${esc(w.status || '없음')}</b></span>
       <span class="pill">부모<b>${esc(w.parent || '미기입')}</b></span>${evPill(w)}</div>
     <div class="frow"><span class="flabel">상위 흔적</span><span class="fvals">${traces}</span></div>
     ${issues.length
-      ? `<div class="frow"><span class="flabel scope">닫힘 미충족</span><span class="fvals t">${issues.map(i => esc(i.msg)).join('<br>')}</span></div>`
+      ? `<div class="frow"><span class="flabel scope">닫힘 미충족</span><span class="fvals t">${issues.map(i => proseInline(esc(i.msg))).join('<br>')}</span></div>`
       : `<div class="frow"><span class="flabel">닫힘 조건</span><span class="fvals t"><span class="ok">충족</span> — 지금 닫아도 종료 의례를 통과한다</span></div>`}
-    ${infos.length ? `<div class="frow"><span class="flabel">참고</span><span class="fvals t">${infos.map(esc).join('<br>')}</span></div>` : ''}
+    ${infos.length ? `<div class="frow"><span class="flabel">참고</span><span class="fvals t">${infos.map(x => proseInline(esc(x))).join('<br>')}</span></div>` : ''}
   </section>`;
   };
   const hoCard = handoff
@@ -490,10 +515,11 @@ function productView(product, today) {
     `<div class="crow"><span class="nm">${esc(a.id)}</span><span class="note">${esc(a.date)}</span>`
     + `<span class="fvals t">${prose(gistOf(a.text, 80))}</span></div>`;
   const liveRow = r =>
-    `<div class="crow${r.example ? ' dim' : ''}"><span class="nm">${prose(r.feature)}</span>`
-    + `<span class="note">${prose(r.ref)}</span><span class="fvals t">${prose(r.status)}</span></div>`;
+    `<div class="crow${r.example ? ' dim' : ''}"><span class="nm">${prose(closeDanglingMarker(r.feature))}</span>`
+    + `<span class="note">${prose(closeDanglingMarker(r.ref))}</span><span class="fvals t">${prose(closeDanglingMarker(r.status))}</span></div>`;
   const planCounts = {};
-  plans.forEach(d => { planCounts[d.status || '(없음)'] = (planCounts[d.status || '(없음)'] || 0) + 1; });
+  // 산문 status(어답터 실측 60종)는 첫 토큰으로 집계 — 전문은 행의 title 로.
+  plans.forEach(d => { const k = statusHead(d.status) || '(없음)'; planCounts[k] = (planCounts[k] || 0) + 1; });
 
   return `<div class="tiles">
   <div class="tile"><div class="tl">현재 단계</div><div class="tv">${esc(current ? current.key : latest ? latest.key : '없음')}</div><div class="ts">${esc(current ? (current.status || '미기입') : latest ? `${latest.status} — 후속 단계 미정` : 'PHASE 문서 없음')}</div></div>
@@ -518,7 +544,7 @@ function productView(product, today) {
   <div class="meta">${plans.length} PLAN</div>
   ${plans.length
     ? `<div class="pills">${Object.entries(planCounts).map(([k, v]) => `<span class="pill">${esc(k)}<b>${v}</b></span>`).join('')}</div>`
-      + plans.map(d => `<div class="crow"><span class="nm">PLAN-${esc(d.id)}</span><span class="note">${esc(d.status || '(없음)')}</span><span class="fvals t">${esc(d.slug)}</span></div>`).join('')
+      + plans.map(d => `<div class="crow"><span class="nm">PLAN-${esc(d.id)}</span><span class="note"${d.status && statusHead(d.status) !== String(d.status).trim() ? ` title="${esc(d.status)}"` : ''}>${esc(statusHead(d.status) || '(없음)')}</span><span class="fvals t">${esc(d.slug)}</span></div>`).join('')
     : '<div class="meta">PLAN 문서 없음</div>'}</section>
   </div>
   <div class="grid">
@@ -696,11 +722,11 @@ function normView(norms, sync, concerns) {
   const card = n => {
     const g = GRADE[n.grade] || GRADE.isolated;
     return `<section class="card norm">
-    <h2>${esc(n.key)} <span class="ntitle">${esc(n.title || '')}</span></h2>
+    <h2>${esc(n.key)} <span class="ntitle">${proseInline(esc(n.title || ''))}</span></h2>
     <div class="meta"><span class="pill ${g.cls}"><b>${g.label}</b></span>
       <span class="note">${esc(g.why)}</span></div>
-    <div class="meta"><span class="note">${esc(n.file)} · ${n.kb}KB · status ${esc(n.status || '없음')} · tier ${esc(n.tier || '미기입')}</span></div>
-    ${n.headings.length ? `<div class="frow"><span class="flabel">절 구조</span><span class="fvals">${n.headings.map(h => `<code>${esc(h)}</code>`).join('')}</span></div>` : ''}
+    <div class="meta"><span class="note">${esc(n.file)} · ${n.kb}KB · status ${esc(statusHead(n.status) || '없음')} · tier ${esc(n.tier || '미기입')}</span></div>
+    ${n.headings.length ? `<div class="frow"><span class="flabel">절 구조</span><span class="fvals">${n.headings.map(h => `<code>${plain(h)}</code>`).join('')}</span></div>` : ''}
     ${n.gateContracts.length ? n.gateContracts.map(contractBlock).join('')
       : `<div class="frow"><span class="flabel">집행</span><span class="fvals t">판정하는 게이트 없음</span></div>`}
     ${fileList('코드 인용', n.cites)}
@@ -763,8 +789,10 @@ function worktableSection(wos) {
   if (!act.length && !bad.length) {
     return `<section class="card" id="wo"><h2>작업대 — 활성 WO<label class="more" data-nav="sprint" for="v-sprint">자세히 →</label></h2><div class="meta">활성 WO 없음</div></section>`;
   }
-  const tr = w => `<tr><td class="nm">[WO-${w.id}]</td><td>${esc(w.title || '')}</td>`
-    + `<td>${esc(w.parent || '')}</td><td>${esc(w.status || '')}</td><td class="note">${esc(w.evidence || '')}</td></tr>`;
+  // 제목·증거는 평면의 자유 산문이라 prose 를 거친다(부모·상태는 식별자 → esc 유지, [ADR-35]).
+  // 증거는 특히 코드 스팬·볼드가 잦다 — `sync-db --force`, **병합은 PO 판단** 같은 문장이 그대로 들어온다.
+  const tr = w => `<tr><td class="nm">[WO-${w.id}]</td><td>${prose(w.title || '')}</td>`
+    + `<td>${esc(w.parent || '')}</td><td>${esc(w.status || '')}</td><td class="note">${prose(w.evidence || '')}</td></tr>`;
   const warn = bad.length
     ? `<div class="meta bad">frontmatter 없는 WO ${bad.length}건: ${bad.map(w => esc(w.file)).join(' ')}</div>` : '';
   return `<section class="card" id="wo"><h2>작업대 — 활성 WO<label class="more" data-nav="sprint" for="v-sprint">자세히 →</label></h2>${warn}
@@ -935,6 +963,7 @@ ${healthSection(health)}
 ${budgetSection(budget)}
 ${worktableSection(wos)}
 ${syncSection(health.sync, today)}
+${censusSection(data.census || null)}
 </div>
 </div>
 <div class="grid">
@@ -1009,17 +1038,18 @@ function gatherAll(root = path.resolve(__dirname, '..'), today = new Date().toIS
   const data = {
     index: buildIndex(root), health: gatherHealth(root), budget: gatherBudget(root),
     wos, sprint: gatherSprint(root, wos), time: gatherTime(root), today,
+    census: require('./adapter').isTemplateRepo(root) ? require('./census_round').latestRound(root) : null,
   };
   data.product = gatherProduct(root, data);   // 파생만 한다 — 같은 수집을 두 번 하지 않는다
   return data;
 }
 
 module.exports = {
-  tilesSection, healthSection, budgetSection, worktableSection,
+  tilesSection, healthSection, budgetSection, worktableSection, censusSection,
   sizeSection, syncSection, effectSection, contractSection, normCard, normView,
   gatherSprint, sprintView, gatherTime, timeView,
   gatherProduct, productView, parseExitCriteria, parseLiveRows, PHASE_TERMINAL,
-  esc, prose, proseInline, clip, gistOf, closeDanglingMarker,
+  esc, prose, proseInline, plain, clip, gistOf, closeDanglingMarker,
   loadSections, renderSection, buildViews, routerCss,
   render, gatherAll, VIEWS, MARKS,
 };

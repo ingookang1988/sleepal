@@ -66,14 +66,23 @@ function isEmptyCell(c) {
 const HEADING_ENTRY = /^(#{2,6})[ \t]+(\d{4}-\d{2}-\d{2})[ \t]*(?:[—–:-][ \t]*)?(.*)$/;
 const ANY_HEADING = /^(#{1,6})[ \t]+/;
 // 본문에서 라벨을 집는다 — 하위 헤딩(`#### Rationale`)·목록 항목(`- **근거:** …`)·굵은 라벨 모두.
-const INLINE_LABEL = /^[ \t]*(?:[-*+][ \t]*)?(?:#{1,6}[ \t]*)?\**[ \t]*([A-Za-z가-힣]+)[ \t]*\**[ \t]*[:：][ \t]*(.*)$/;
+const INLINE_LABEL = /^[ \t]*(?:[-*+][ \t]*)?(?:#{1,6}[ \t]*)?([*_`]*)[ \t]*([A-Za-z가-힣]+)[ \t]*([*_`]*)[ \t]*[:：][ \t]*(.*)$/;
 const BARE_LABEL = /^[ \t]*(?:[-*+][ \t]*)?#{1,6}[ \t]*\**[ \t]*([A-Za-z가-힣]+)[ \t]*\**[ \t]*$/;
 const REASON_LABEL = /^(근거|왜|이유|reason|rationale|why)$/i;
 const NOTE_LABEL = /^(시사점|고려사항|영향|impact|implication|note)$/i;
 const FACT_LABEL = /^(결정|사실|분기점|decision|fact|change)$/i;
 
-/** 라벨 값의 바깥 강조 표식만 벗긴다(`**근거:** x` 의 닫는 `**`). 안쪽 강조는 보존 — 값의 일부다. */
-const trimLabelValue = v => String(v).replace(/^[*_`\s]+/, '').replace(/[*_`\s]+$/, '');
+/**
+ * 라벨의 닫는 장식이 콜론 뒤로 넘어온 형태(`**근거:** x`)에서만 그 장식을 벗긴다 — 라벨이
+ * 마커를 열고(open) 콜론 앞에서 닫지 않았을(preClose 없음) 때뿐이다. 그 외의 머리 마커는
+ * **값의 여는 마커**라 손대지 않는다(#7: 무차별 strip 이 `근거: **X**` 의 여는 `**` 를 먹어
+ * 짝이 한 칸 밀리고, prose() 강조가 반대 토큰에 걸렸다 — 값의 첫 글자부터는 값이다).
+ */
+const labelValue = (open, preClose, rest) => {
+  let v = String(rest);
+  if (open && !preClose && v.startsWith(open)) v = v.slice(open.length);
+  return v.trim();
+};
 
 /**
  * 헤딩형 분기점 → 항목 배열(순수). 한 항목 = 날짜 헤딩부터 같은 레벨 이상의 다음 헤딩 직전까지.
@@ -93,11 +102,12 @@ function parseHeadingEntries(md) {
       if (bare) {
         const key = bare[1].toLowerCase();
         const rest = cur.body.slice(k + 1).find(l => l.trim() && !BARE_LABEL.test(l)) || '';
-        if (!(key in fields)) fields[key] = trimLabelValue(rest.replace(/^[ \t]*[-*+][ \t]*/, ''));
+        // 바닥 라벨(`#### 근거`)은 장식을 자기 줄에서 닫는다 — 다음 줄은 통째로 값이다.
+        if (!(key in fields)) fields[key] = rest.replace(/^[ \t]*[-*+][ \t]*/, '').trim();
         continue;
       }
       const inline = line.match(INLINE_LABEL);
-      if (inline) { const key = inline[1].toLowerCase(); if (!(key in fields)) fields[key] = trimLabelValue(inline[2]); }
+      if (inline) { const key = inline[2].toLowerCase(); if (!(key in fields)) fields[key] = labelValue(inline[1], inline[3], inline[4]); }
     }
     const pick = re => { const k = Object.keys(fields).find(x => re.test(x)); return k ? fields[k] : ''; };
     const fact = cur.title || pick(FACT_LABEL) || '(제목 없음)';

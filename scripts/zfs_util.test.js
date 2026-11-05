@@ -107,6 +107,15 @@ check('parseId(garbage)',  parseId('hello-world'), null);
   });
 }
 
+// --- [PRO-27] ① 상류 참조 표기 up: — ID 변경이 아니라 참조 표기다([ADR-25]) ---
+const { isUpstreamRef, stripUpstreamRef } = require('./zfs_util');
+check('up: 접두 인식', isUpstreamRef('up:PRO-27'), true);
+check('브래킷 포함 인식', isUpstreamRef('[up:PRO-27]'), true);
+check('접두 없는 ID 는 로컬', isUpstreamRef('PRO-27'), false);
+check('접두 벗기기', stripUpstreamRef('[up:PRO-27]'), 'PRO-27');
+check('로컬 ID 는 그대로', stripUpstreamRef('PRO-27'), 'PRO-27');
+check('up: 인자는 parseId 가 ID 로 오해소하지 않는다', parseId('up:PRO-27'), null);
+
 console.log(`
 ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

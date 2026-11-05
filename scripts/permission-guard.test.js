@@ -173,5 +173,19 @@ check('보존 검사가 Schema 판정을 건드리지 않는다', findViolations
 check('append-only outcome=REJECT',
   findViolations([{ path: '.union-stack/archive_ledger.md', added: 0, removed: 1 }])[0].outcome, 'REJECT');
 
+// --- preflight (검사 불가를 통과로 처리하지 않는다 — fail-close) ---
+const { preflight } = require('./permission-guard');
+const PF_OK = { gitRoot: '/repo', controlPlaneInRepo: true };
+check('preflight: 저장소+제어평면 → 검사 수행', preflight(PF_OK).ok, true);
+check('preflight: 저장소+제어평면 → PASS(0)', preflight(PF_OK).code, 0);
+check('preflight: git 아님 → fail-close REJECT(1)',
+  preflight({ gitRoot: null, controlPlaneInRepo: false }).code, 1);
+check('preflight: 제어평면이 저장소 밖 → fail-close REJECT(1)',
+  preflight({ gitRoot: '/repo/dashboard', controlPlaneInRepo: false }).code, 1);
+check('preflight: --allow-no-git → 경고 후 통과(0)',
+  preflight({ gitRoot: null, controlPlaneInRepo: false }, { allowNoGit: true }).code, 0);
+check('preflight: --allow-no-git 이어도 검사는 수행 안 함',
+  preflight({ gitRoot: null, controlPlaneInRepo: false }, { allowNoGit: true }).ok, false);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -66,6 +66,10 @@ export function applyViewBox() {
   VB.dx = (screenWmm - 158) / 2;
   VB.dy = (hmm - 73) / 2;
   VB.hmm = hmm;
+  // 세로 화면 — 얼굴은 폭에 맞춰 작아진다(물리 158mm 가 세로 축에 있으므로). 억지로 키우지 않고
+  // CSS 가 고개 갸웃(비언어 신호)을 건다. 밤(body.night)에는 CSS 가 그것도 멈춘다(R4).
+  VB.portrait = vh > vw;
+  document.body.classList.toggle('portrait', VB.portrait);
   window.__vb = VB;
 }
 
@@ -82,6 +86,7 @@ export function setEyeState(name) {
   F.blinkAt = s.blink ? now() + rand(s.blink[0], s.blink[1]) : Infinity;
 
   document.body.style.backgroundColor = s.bg;
+  document.body.classList.toggle('night', name === 'NIGHT');   // ⛔ R4 — CSS 애니메이션(고개 갸웃)도 밤에는 멈춘다
   $('dim').style.opacity = s.dim;
   for (const id of ['eyeL', 'eyeR']) {
     $(id).style.fill = s.eye;

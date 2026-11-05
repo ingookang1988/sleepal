@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // scripts/health.js
 // 하네스 자가 건강진단 — "조견표의 코드화". 게이트 상태 + 구조 지표를 자동 산출한다.
-// read-only·zero-dep. 실행: node scripts/health.js [--json]
+// read-only·zero-dep. 실행: node scripts/health.js [--json] [--root <dir>]
+//   --root <dir> : 다른 레포(어답터 평면·팔 사본)를 측정한다([PRO-27] ④). `.union-stack` 이 없으면 REJECT
+//                  "측정 대상 아님" — 플래그를 무시하고 상류 자신을 측정하던 결함("0건 검사 = 통과" 클래스)의 수리.
 // (true A/B eval은 템플릿 단독으론 불가 — 대신 *자기 준수도*를 지속 측정한다.)
 const fs = require('fs');
 const path = require('path');
@@ -14,11 +16,14 @@ const { findViolations: historyViolationsOf, findClarifications: historyClarific
 let leakageGuard = null;
 try { leakageGuard = require('./leakage-guard'); } catch { /* 어답터 — 게이트 해당 없음 */ }
 const { walkFiles } = require('./fs_walk');
-const { load: loadAdapter } = require('./adapter');
+const { load: loadAdapter, isTemplateRepo } = require('./adapter');
+const censusRound = require('./census_round');
 const { gather: gatherBrokenRefs } = require('./ref-linter');
 const { gather: gatherBudget } = require('./context-budget');
+const receipts = require('./receipts');
+const retro = require('./retro');
 
-const { contractEdges, normEnforcement, concernUsage, NORM_DOMAINS } = require('./query');
+const { contractEdges, normEnforcement, concernUsage, roadmapWiring, NORM_DOMAINS } = require('./query');
 const { gather: gatherCards } = require('./tools-index');
 const { extractRefs } = require('./ref-linter');
 const { withContract } = require('./gate-contract');
@@ -84,7 +89,7 @@ function lastDateIn(txt) {
 }
 
 /** 순수 계산: 1차 지표 → 차원별 평가 리포트. (FS 비의존 → 테스트 용이) */
-function computeHealth({ index, domainsDefined, guideCount, namingViolations, historyViolations, leakageViolations, oversize = [], brokenRefs = 0, budget = null, sync = null, lessons = null, effect = null, contracts = null, norms = null, adapter = null, historyClarifications = 0 }) {
+function computeHealth({ index, domainsDefined, guideCount, namingViolations, historyViolations, leakageViolations, oversize = [], brokenRefs = 0, budget = null, sync = null, lessons = null, effect = null, contracts = null, norms = null, roadmap = null, adapter = null, historyClarifications = 0, testInfra = null, receiptsInfo = null, retroInfo = null, upstream = null, census = null }) {
   const used = new Set(index.map(d => d.domain));
   const unused = domainsDefined.filter(d => !used.has(d));
   const locked = index.filter(d => LOCKED.includes(d.status));
@@ -161,6 +166,49 @@ function computeHealth({ index, domainsDefined, guideCount, namingViolations, hi
     dims.push({ name: 'norm enforcement', status: 'INFO', value: bits.join(' · '),
       note: norms.norms.filter(n => n.grade !== 'gated').map(n => n.key).join(' ') });
   }
+  if (roadmap) {
+    // 로드맵 배선 관측([PRO-19] ②) — roadmap 은 Schema 라 에이전트가 되쓰지 못하므로, 죽지 않게
+    // 하는 수단은 대필이 아니라 정체의 표면화다. 갱신은 신호를 본 인간이 한다.
+    const bits = [`PHASE ${roadmap.phases}`, `활성 계보 ${roadmap.active}`];
+    if (roadmap.unanchored.length) bits.push(`로드맵 무연결 ${roadmap.unanchored.length}`);
+    if (roadmap.stale.length) bits.push(`무활동 PHASE ${roadmap.stale.length}`);
+    dims.push({ name: 'roadmap wiring', status: 'INFO', value: bits.join(' · '),
+      note: [...roadmap.unanchored.map(k => `무연결:${k}`), ...roadmap.stale.map(k => `정체:${k}`)].join(' ') });
+  }
+  if (testInfra) {
+    // 테스트 인프라 관측([PRO-21] 3단계) — 게이트가 아니라 계기판이다. §5.5 실측(재사용 실패는
+    // 의지가 아니라 가시성 문제)이 하드 게이트를 기각했으므로, 여기는 영원히 INFO 다.
+    const bits = [`스위트 ${testInfra.testFiles}`,
+      testInfra.catalogAssets === null ? '카탈로그 무기입' : `카탈로그 자산 ${testInfra.catalogAssets}`,
+      `FLOW 케이스 ${testInfra.flowCases}${testInfra.flowCases ? `(체크 ${testInfra.flowChecked})` : ''}`];
+    if (testInfra.evidenceLast) bits.push(`evidence ${testInfra.evidenceLast}`);
+    dims.push({ name: 'test infra', status: 'INFO', value: bits.join(' · ') });
+  }
+  if (receiptsInfo) {
+    // 영수증 관측([PRO-22] 단계 2) — 차단 검사별 **최신 영수증 포인터·나이**. 영수증이 끊기면 꺼진 CI 가 여기서 보인다.
+    // 선언 부재는 무기입(INFO)이지 0 이 아니다([ADR-28]). 판정하지 않는다 — 나이의 임계는 어답터·사람이 정한다.
+    const bits = receiptsInfo.declared
+      ? [`선언 ${receiptsInfo.declared}(차단 ${receiptsInfo.blocking})`, `영수증 ${receiptsInfo.lines}줄`,
+        ...receiptsInfo.latest.map(l => l.date ? `${l.name} ${l.age}d(${l.outcome}${l.targets != null && l.targets !== '-' ? ' · ' + l.targets : ''})` : `${l.name} 영수증 없음`)]
+      : ['선언 무기입', `영수증 ${receiptsInfo.lines}줄`];
+    dims.push({ name: 'receipts', status: 'INFO', value: bits.join(' · '), note: receiptsInfo.missing.length ? '영수증 없음: ' + receiptsInfo.missing.join(' ') : '' });
+  }
+  if (retroInfo) {
+    // 회고 트리거([PRO-25] ① v0.2) — 등급 매핑: PRO 의 "CLARIFY" 는 health 에선 WARN(비차단 표면화, §8 ④). 넘지 않으면 INFO 로 현재 값만.
+    // 에이전트가 할 일은 HANDOFF §4 에 제안 한 줄뿐이다([PRO-25] ②). 판정·GC·승격은 사람의 세션.
+    const vals = retroInfo.indicators.map(i => `${i.name} ${i.value == null ? '—' : i.value}`).join(' · ');
+    dims.push({ name: 'retro due', status: retroInfo.due ? 'WARN' : 'INFO',
+      value: retroInfo.due ? `due — ${retroInfo.reasons.join(' · ')}` : `사유 없음 · ${vals}`,
+      note: retroInfo.due ? vals + (retroInfo.delta && retroInfo.delta.length ? ' · Δ ' + retroInfo.delta.map(d => `${d.name} ${d.prev}→${d.now}`).join(' ') : '') + ' — 회고 제안은 HANDOFF §4 한 줄(node scripts/retro.js --proposal)' : '' });
+  }
+  if (upstream) {
+    // 하류 제안 고리([PRO-29] ①(a)) — 상류 새 버전을 명령 없이 보인다. 영원히 INFO: 업데이트 유무는 결함이 아니고, 적용은 사람이 제안문을 보고 정한다([ADR-12]).
+    dims.push(upstreamDim(upstream));
+  }
+  if (census) {
+    // 상류 이탈 알림 고리의 트리거([PRO-29] ②(d), [WO-29a-6]) — 상류 자신만. 영원히 INFO: 회차를 묻는 것이지 판정이 아니다.
+    dims.push(censusDim(census));
+  }
   const tiers = { draft: 0, reviewed: 0, ratified: 0, untagged: 0 };
   index.forEach(d => { tiers[d.tier && tiers[d.tier] !== undefined ? d.tier : 'untagged']++; });
   dims.push({ name: 'tier distribution', status: 'INFO',
@@ -170,13 +218,84 @@ function computeHealth({ index, domainsDefined, guideCount, namingViolations, hi
   return { dims, byDomain, fails, warns, healthy: fails === 0 };
 }
 
+/** 순수: census 최신 회차 → 차원(항상 INFO). 마지막 회차가 STALE_DAYS 초과면 "회차 필요". */
+function censusDim({ round, today }) {
+  const name = 'adopter census';
+  const cmd = 'node scripts/adopter-census.js --delta --write';
+  if (!round) return { name, status: 'INFO', value: '회차 없음', note: `회차: ${cmd}` };
+  const days = censusRound.daysSince(round.date, today);
+  const n = censusRound.newCount(round);
+  const base = `마지막 회차 ${round.date}(${days}일) · 신규 이탈 ${n}`;
+  if (days > censusRound.STALE_DAYS) return { name, status: 'INFO', value: `${base} — 회차 필요(${censusRound.STALE_DAYS}일 초과)`, note: `회차: ${cmd} · HANDOFF 한 줄: node scripts/adopter-census.js --handoff` };
+  return { name, status: 'INFO', value: base, note: n ? 'HANDOFF §4 한 줄: node scripts/adopter-census.js --handoff' : '' };
+}
+
+/** 순수: upstream 수집 결과 → 차원(항상 INFO). */
+function upstreamDim(up) {
+  const name = 'upstream';
+  if (up.self) return { name, status: 'INFO', value: '해당 없음 — 상류 자신' };
+  const last = up.last;
+  const cmd = 'node scripts/template-update.js --proposal';
+  if (!last || (!last.at && !last.error)) return { name, status: 'INFO', value: '확인 기록 없음', note: `확인: ${cmd}` };
+  if (last.error && !last.at) return { name, status: 'INFO', value: `확인 실패(오프라인?) — ${last.error}`, note: `재시도: ${cmd}` };
+  const when = last.at ? last.at.slice(0, 10) : '?';
+  const err = last.error ? ` · 최근 재확인 실패(${last.error})` : '';
+  // [WO-29a-4] 실행 가능 항목(auto · 새 review · ⚠)만 "업데이트 있음"을 켠다. 보존 포크·앵커 없음·HOLD·확인된 review 는 숫자로만. 구 캐시(auto 없음)는 전 표기.
+  const fresh = last.auto !== undefined;
+  const kept = [];
+  if (last.forked) kept.push(`보존 포크 ${last.forked}`);
+  if (last.unknown) kept.push(`앵커 없음 ${last.unknown}`);
+  if (last.held) kept.push(`HOLD ${last.held}`);
+  if (fresh && last.review) kept.push(`review ${last.review - (last.reviewNew || 0)} 확인됨`);
+  if (!last.updates) {
+    if (!fresh) return { name, status: 'INFO', value: `최신(${last.localVer || '?'}, 확인 ${when})${err}` };
+    return { name, status: 'INFO', value: `실행할 것 없음(${last.localVer || '?'}${kept.length ? ' · ' + kept.join(' · ') : ''}, 확인 ${when})${err}` };
+  }
+  const bits = fresh
+    ? [last.auto ? `자동 적용 ${last.auto}` : null, last.reviewNew ? `새 review ${last.reviewNew}` : null, last.migrations ? `⚠ 마이그레이션 ${last.migrations}` : null,
+      last.localVer && last.upstreamVer && last.localVer !== last.upstreamVer ? `상류 ${last.upstreamVer} · 로컬 ${last.localVer}` : null].filter(Boolean)
+    : [`상류 ${last.upstreamVer || '?'} · 로컬 ${last.localVer || '?'}`, `sync ${last.sync || 0}`, `review ${last.review || 0}`, last.migrations ? `⚠ 마이그레이션 ${last.migrations}` : null].filter(Boolean);
+  return { name, status: 'INFO', value: `업데이트 있음 — ${bits.join(' · ')}${fresh && kept.length ? ` (그 밖 ${kept.join(' · ')})` : ''} (확인 ${when})${err}`,
+    note: `제안문을 사람에게 보이고 승인 뒤 --apply(반영 없이 review 만 봤다면 --ack-review): ${cmd}` };
+}
+
+/**
+ * upstream 수집 — 캐시(template-sync.json lastCheck)를 읽는다. `opts.refresh` 가 있을 때만, 만료·부재면 그것을 1회 돌린다.
+ * **기본은 읽기 전용**: census([TOOL-30])·대시보드·테스트가 gather 를 부르므로 어답터에 쓰기·네트워크 0. 갱신은 health CLI 가 자기 레포에서만 켠다.
+ * health 는 동기라 자식 프로세스로(타임아웃 상한). 상류 자신은 대조하지 않는다. 고장은 삼킨다(점수표 생존 — [ADR-28]).
+ * opts.refresh: true = 자식 프로세스(template-update --refresh-cache) · 함수 = 주입 · 없음 = 갱신 안 함. opts.now 는 시계 주입.
+ */
+function gatherUpstream(root, opts = {}) {
+  if (isTemplateRepo(root)) return { self: true };
+  let tu = null;
+  try { tu = require('./template-update'); } catch { /* 어답터가 이 스크립트를 뺐다 */ }
+  const read = () => {
+    if (tu) return tu.readLastCheck(root);
+    try { return JSON.parse(fs.readFileSync(path.join(root, '.union-stack/template-sync.json'), 'utf8')).lastCheck || null; } catch { return null; }
+  };
+  const now = opts.now || Date.now();
+  let last = read();
+  const fresh = tu ? tu.isFresh(last, now) : !!last;
+  if (!fresh && opts.refresh) {
+    const refresh = typeof opts.refresh === 'function' ? opts.refresh : (() => {
+      const script = path.join(root, 'scripts', 'template-update.js');
+      if (!fs.existsSync(script)) return;
+      require('child_process').spawnSync(process.execPath, [script, '--refresh-cache'], { cwd: root, timeout: UPSTREAM_TIMEOUT_MS, stdio: 'ignore' });
+    });
+    try { refresh(); } catch { /* 네트워크·실행 실패는 INFO 로 남는다 */ }
+    last = read();
+  }
+  return { self: false, last };
+}
+const UPSTREAM_TIMEOUT_MS = 15000;
+
 function countGuides(root) {
   let n = 0;
   walkFiles(root, '.union-stack', rel => { if (rel.endsWith('/_GUIDE.md')) n++; });
   return n;
 }
 
-function gather(root = path.resolve(__dirname, '..')) {
+function gather(root = path.resolve(__dirname, '..'), opts = {}) {
   const index = buildIndex(root);
   const namingViolations = lint(root).length;
   const adapter = loadAdapter(root);
@@ -184,7 +303,10 @@ function gather(root = path.resolve(__dirname, '..')) {
   const historyMd = fs.existsSync(hp) ? fs.readFileSync(hp, 'utf8') : '';
   const historyViolations = historyViolationsOf(historyMd).length;
   const historyClarifications = historyClarificationsOf(historyMd).length;
-  const leakageViolations = leakageGuard
+  // 해당 여부는 **측정 대상**이 그 게이트를 갖는가로 정한다([WO-29a-8] — census 가 상류 health 를 root 로 돌릴 때 상류 모듈이
+  // 가드를 뺀 어답터를 판정했다: 6회차 A 오탐). 판정 자체는 상류 모듈로 한다(가드가 있는 레포).
+  const targetHasGuard = fs.existsSync(path.join(root, 'scripts', 'leakage-guard.js'));
+  const leakageViolations = leakageGuard && targetHasGuard
     ? leakageGuard.collectFiles(root)
         .filter(rel => !leakageGuard.isSanitized(rel, fs.readFileSync(path.join(root, rel), 'utf8'))).length
     : null;
@@ -205,13 +327,64 @@ function gather(root = path.resolve(__dirname, '..')) {
   const sync = gatherSync(root);
   const contracts = contractEdges(index);
   const norms = normEnforcement(index, gatherEnforcers(root), gatherPlaneCites(root), gatherNormDocs(root, index));
+  const roadmap = roadmapWiring(index);
   const r = computeHealth({
     index, domainsDefined: [...VALID_DOMAINS], guideCount: countGuides(root),
     namingViolations, historyViolations, historyClarifications, leakageViolations, oversize, brokenRefs, budget,
-    sync, lessons: gatherLessons(root), effect: gatherEffectSurface(root), contracts, norms, adapter,
+    sync, lessons: gatherLessons(root), effect: gatherEffectSurface(root), contracts, norms, roadmap, adapter,
+    testInfra: gatherTestInfra(root), receiptsInfo: gatherReceipts(root, adapter), retroInfo: gatherRetro(root),
+    upstream: gatherUpstream(root, { refresh: !!opts.upstreamRefresh }),
+    census: isTemplateRepo(root) ? { round: censusRound.latestRound(root), today: opts.today || new Date().toISOString().slice(0, 10) } : null,
   });
   // 판정(dims) 외에 원자료도 함께 낸다 — 대시보드가 같은 수집을 두 번 하지 않도록(합성 원칙).
-  return { ...r, sizes, sizeCapKb: SIZE_CAP_KB, sync, contracts, norms, adapter, concerns: concernUsage(index) };
+  return { ...r, sizes, sizeCapKb: SIZE_CAP_KB, sync, contracts, norms, roadmap, adapter, concerns: concernUsage(index) };
+}
+
+/** 회고 트리거 수집([PRO-25] ①) — retro.gather 의 얇은 래퍼. 고장은 null 로(점수표가 통째로 죽지 않게 — [ADR-28]). */
+function gatherRetro(root) {
+  try { const r = retro.gather(root); return { due: r.due, reasons: r.reasons, indicators: r.indicators, delta: r.delta }; } catch { return null; }
+}
+
+/** 영수증 관측 수집([PRO-22] 단계 2) — 선언(adapter.checks)과 receipts.md 를 대조. 순수 계산은 computeReceipts. */
+function computeReceipts(checks, recs, today = new Date()) {
+  const latest = receipts.latestByName(recs, 'product');
+  const blocking = (checks || []).filter(c => c.blocking);
+  const rows = blocking.map(c => {
+    const r = latest.get(c.name);
+    return r ? { name: c.name, date: r.date, age: receipts.ageDays(r.date, today), outcome: r.outcome, targets: r.targets == null ? null : r.targets } : { name: c.name, date: null, age: null, outcome: null, targets: null };
+  });
+  return { declared: (checks || []).length, blocking: blocking.length, lines: recs.length, latest: rows, missing: rows.filter(r => !r.date).map(r => r.name) };
+}
+function gatherReceipts(root, adapter) {
+  let recs = [];
+  try { recs = receipts.parseReceipts(receipts.read(root) || ''); } catch { recs = []; }
+  return computeReceipts((adapter && adapter.checks) || [], recs);
+}
+
+/**
+ * 테스트 인프라 관측([PRO-21] 3단계, 순수 수집). 소프트 의존([ADR-28]) — 카탈로그 부재
+ * (어답터 미작성)는 null 로, 층 3 평면 부재는 0 으로 낸다. 고장과 부재를 구별한다.
+ */
+function gatherTestInfra(root) {
+  let testFiles = 0;
+  try { testFiles = fs.readdirSync(path.join(root, 'scripts')).filter(f => f.endsWith('.test.js')).length; } catch {}
+  let catalogAssets = null;
+  try {
+    const tc = require('./test-catalog');
+    if (fs.existsSync(path.join(root, tc.CATALOG))) catalogAssets = tc.gather(root).length;
+  } catch {} // test-catalog 스크립트 부재(구버전 형상) — 무기입이 정직한 값이다
+  let flowCases = 0, flowChecked = 0;
+  try {
+    walkFiles(root, '.union-stack/feature/flow', rel => {
+      if (!rel.endsWith('.md') || rel.endsWith('_GUIDE.md')) return;
+      const txt = fs.readFileSync(path.join(root, rel), 'utf8');
+      flowCases += (txt.match(/^\s*- \[[ xX]\]/gm) || []).length;
+      flowChecked += (txt.match(/^\s*- \[[xX]\]/gm) || []).length;
+    });
+  } catch {}
+  let evidenceLast = null;
+  try { evidenceLast = lastDateIn(fs.readFileSync(path.join(root, '.union-stack/verification/raw/evidence.md'), 'utf8')); } catch {}
+  return { testFiles, catalogAssets, flowCases, flowChecked, evidenceLast };
 }
 
 /** 평면별 최종 기입 날짜 + ledger 항목 수를 모은다(관측만 — [PRO-11] C3). */
@@ -297,6 +470,7 @@ function gatherPlaneCites(root) {
     try { txt = fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return; }
     const seen = new Set();
     for (const r of extractRefs(txt)) {
+      if (r.external) continue; // 상류 참조(up:)는 로컬 인용이 아니다([PRO-27] ①)
       if (!NORM_DOMAINS.has(r.domain) || seen.has(r.raw)) continue;
       seen.add(r.raw); // 한 파일이 같은 규범을 여러 번 인용해도 "인용한 파일 1개"로 센다
       const e = cites[r.raw] || (cites[r.raw] = { count: 0, files: [] });
@@ -341,10 +515,41 @@ function gatherLessons(root) {
   return out;
 }
 
-function run(root) {
-  const r = gather(root);
-  if (process.argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return r.fails ? 1 : 0; }
+/** `--root <dir>` 해석(순수). 없으면 dflt, 값이 비면 null(오용을 조용히 기본값으로 접지 않는다). */
+function resolveRoot(argv, dflt) {
+  const i = argv.indexOf('--root');
+  if (i < 0) return dflt;
+  const v = argv[i + 1];
+  if (!v || v.startsWith('--')) return null;
+  return path.resolve(v);
+}
+
+/** 측정 루트 검증 — `.union-stack` 디렉터리가 있어야 측정 대상이다. 없으면 REJECT 재료(엉뚱한 루트 측정 금지). */
+function validateRoot(root) {
+  if (!root || !fs.existsSync(root)) return { ok: false, reason: `${root}: 경로가 없다 — 측정 대상 아님(.union-stack 없음)` };
+  const us = path.join(root, '.union-stack');
+  let isDir = false;
+  try { isDir = fs.statSync(us).isDirectory(); } catch { /* 없음 */ }
+  if (!isDir) return { ok: false, reason: `${root}: .union-stack 디렉터리가 없다 — 측정 대상 아님` };
+  return { ok: true, reason: null };
+}
+
+function run(argv = process.argv.slice(2)) {
+  const dflt = path.resolve(__dirname, '..');
+  const root = resolveRoot(argv, dflt);
+  if (root === null) { console.error('health: --root <dir> 의 값이 없다.'); return 1; }
+  const v = validateRoot(root);
+  if (!v.ok) { console.error(`health: REJECT — ${v.reason}`); return 1; }
+  const external = root !== dflt;
+  // 상류 확인 캐시 갱신은 자기 레포에서만([PRO-29] ①(a)) — `--root` 로 남의 레포를 잴 때는 쓰기·네트워크 0.
+  const r = gather(root, { upstreamRefresh: !external && !argv.includes('--offline') });
+  if (argv.includes('--json')) { console.log(JSON.stringify({ root, ...r }, null, 2)); return r.fails ? 1 : 0; }
   console.log('# union-stack health\n');
+  if (external) {
+    // 어답터 평면: 로컬 도메인·설정은 판정이 아니라 INFO([PRO-27] ④ — 상류 enum 을 강제하지 않는다).
+    console.log(`  측정 루트: ${root}  (--root — 어답터 평면)`);
+    console.log(`  · 어답터 설정 adapter.json: ${r.adapter && r.adapter.present ? '있음' : '없음'}${r.adapter && r.adapter.private ? ' · private' : ''} — INFO\n`);
+  }
   for (const d of r.dims) {
     const mark = d.status === 'OK' ? '✓' : d.status === 'FAIL' ? '✗' : d.status === 'WARN' ? '!' : '·';
     console.log(`  ${mark} ${d.name.padEnd(20)} ${d.status.padEnd(5)} ${d.value}${d.note ? '  (' + d.note + ')' : ''}`);
@@ -354,6 +559,6 @@ function run(root) {
   return r.fails ? 1 : 0;
 }
 
-module.exports = { computeHealth, gather, gatherSync, gatherLessons, computeEffectSurface, gatherEffectSurface, parseContract, lastDateIn, CONTRACT };
+module.exports = { gatherUpstream, upstreamDim, censusDim, computeHealth, gather, gatherSync, gatherLessons, gatherTestInfra, computeReceipts, gatherReceipts, gatherRetro, computeEffectSurface, gatherEffectSurface, parseContract, lastDateIn, resolveRoot, validateRoot, CONTRACT };
 
-if (require.main === module) process.exit(withContract(CONTRACT, () => run())());
+if (require.main === module) process.exit(withContract(CONTRACT, argv => run(argv))());

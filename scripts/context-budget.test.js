@@ -39,5 +39,47 @@ const g = gather();
 check('gather rows present', Array.isArray(g.rows) && g.rows.length === 3);
 check('gather has total', typeof g.total === 'number');
 
+// --- budgetsFor: adapter.json budgets 가 기본 예산을 덮는다(어답터 C 실측 — 포크 대신 설정) ---
+const { budgetsFor, BUDGETS, TOTAL_CAP } = require('./context-budget');
+const fsB = require('fs'), osB = require('os'), pathB = require('path');
+const tmpB = fsB.mkdtempSync(pathB.join(osB.tmpdir(), 'cb-'));
+try {
+  check('설정 없음 → 기본값', JSON.stringify(budgetsFor(tmpB)) === JSON.stringify({ ...BUDGETS, total: TOTAL_CAP }));
+  fsB.mkdirSync(pathB.join(tmpB, '.union-stack'));
+  fsB.writeFileSync(pathB.join(tmpB, '.union-stack/adapter.json'), '{"budgets": {"handoff": 2200}}');
+  const b = budgetsFor(tmpB);
+  check('handoff 만 덮고 나머지 기본', b.handoff === 2200 && b.project === BUDGETS.project && b.total === TOTAL_CAP);
+  fsB.mkdirSync(pathB.join(tmpB, '.union-stack/sprint'));
+  fsB.writeFileSync(pathB.join(tmpB, '.union-stack/sprint/HANDOFF.md'), 'x'.repeat(8000));
+  const gB = gather(tmpB);
+  check('gather(root) 가 설정 예산을 쓴다(2000 tok < 2200 → OK)', gB.rows.find(r => r.name === 'handoff').budget === 2200 && gB.rows.find(r => r.name === 'handoff').status === 'OK');
+} finally { fsB.rmSync(tmpB, { recursive: true, force: true }); }
+
+// --- [WO-28a-6] AGENTS.md advisory 행 + PRO frontmatter injects: 대조([PRO-28] ⑤ 판정 2026-10-18) ---
+const { parseInjects, measureAgents, gatherInjects } = require('./context-budget');
+check('injects 정상', JSON.stringify(parseInjects('"+120 tok — 마커 블록 1행"')) === JSON.stringify({ tok: 120, reason: '마커 블록 1행' }));
+check('injects 부호·대시 생략 허용', parseInjects('80 tok - 이유').tok === 80);
+check('injects 형식 오류 → error', !!parseInjects('많이').error && !!parseInjects('"+50 tok"').error);
+check('injects 빈 값 → error', !!parseInjects('').error);
+const agentsTxt = 'head\n<!-- x:begin — gen -->\n' + 'a'.repeat(40) + '\n<!-- x:end -->\ntail';
+const ma = measureAgents(agentsTxt);
+check('AGENTS 마커 블록 분리 계측', ma.tokens === estimateTokens(agentsTxt) && ma.markers > 0 && ma.markers < ma.tokens && ma.blocks === 1);
+check('AGENTS 없음 → null', measureAgents('') === null);
+const tmpI = fsB.mkdtempSync(pathB.join(osB.tmpdir(), 'cbi-'));
+try {
+  const before = gather(tmpI);
+  check('AGENTS·PRO 없음 → advisory 비어 있고 현행과 동일', before.advisory.agents === null && before.advisory.injects.declared.length === 0 && before.rows.length === 3);
+  fsB.writeFileSync(pathB.join(tmpI, 'AGENTS.md'), 'x'.repeat(40000));
+  fsB.mkdirSync(pathB.join(tmpI, '.union-stack/proposals'), { recursive: true });
+  fsB.writeFileSync(pathB.join(tmpI, '.union-stack/proposals/PRO-01_a.md'), '---\nid: PRO-01\ninjects: "+30 tok — 블록"\n---\n# a');
+  fsB.writeFileSync(pathB.join(tmpI, '.union-stack/proposals/PRO-02_b.md'), '---\nid: PRO-02\ninjects: 잔뜩\n---\n# b');
+  fsB.writeFileSync(pathB.join(tmpI, '.union-stack/proposals/PRO-03_c.md'), '---\nid: PRO-03\n---\n# c');
+  const gi = gather(tmpI);
+  check('AGENTS 는 advisory — 총합·over 에 넣지 않는다', gi.advisory.agents.tokens === 10000 && gi.total === before.total && gi.over === before.over);
+  check('injects 합산 · 필드 없음 = 신고 0', gi.advisory.injects.sum === 30 && gi.advisory.injects.declared.length === 1);
+  check('injects 형식 오류 = CLARIFY', gi.advisory.injects.clarify.length === 1 && gi.advisory.injects.clarify[0].id === 'PRO-02');
+  check('gatherInjects 단독', gatherInjects(tmpI).sum === 30);
+} finally { fsB.rmSync(tmpI, { recursive: true, force: true }); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

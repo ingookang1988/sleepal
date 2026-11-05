@@ -5,24 +5,27 @@
 # Handoff → next session
 
 ## 1. Summary
-NU40·조도 전용 RN 앱 [WO-02f-1]을 Galaxy S22에 설치해 수직 슬라이스 실기까지 완료하고 Closed→아카이브했다. `SLEEPPAL-PILLOW-01` NUS notify, `LUX:2344`, RSSI -66, USB reverse 로컬 PWA 얼굴, SQLite 14:36~14:38 조도 버킷 3개를 확인했고 `feature/live.md`에 Live로 반영했다.
+방향 전환(HISTORY 2026-11-05, 인간 승인): **보드 없이 폰 앱(PWA, 폰 Chrome 단독)만으로 "팰이 먼저 잠든다" 루프**가 돌도록 [WO-02d-1] 모드 상태 머신을 착수·구현했다 — `mode-core.mjs`(순수 핵)·`mode.js`(T 배선)·`face/mode-eyes.js`(모드→눈 유도, [CON-02] v0.2 규칙 4). 이어 UX 브리핑의 1·3·4·5번으로 [WO-01c-1] **케어 문장 띠 + 시작 화면 2단계**를 착수했다([ADR-123]) — `care-core.mjs`(사전 문장 16 + R2·R6 린트)·`care.js`. node 66/66 + 헤드리스 게이트 42/42. 잔여 2·7번(세로 갸웃 신호 · 밤 두 손가락 길게)도 [ADR-124]로 닫았다. 게이트가 부수 결함을 잡았다: `serve.js` 가 `.mjs` 를 octet-stream 으로 서빙해 PR #6 이후 얼굴이 안 떴음([ADR-307], 수정). 앞선 작업: 하네스 상류 동기화 PR #9([ADR-305]·[ADR-306]) CI 그린, 머지 대기.
 
 ## 2. Changed locations (ID list)
-- [PLAN-02] v0.3 · [CON-03] v0.2 · [PLAN-02f] v0.4 · [CON-02f] v0.3 · [CON-02f1] v0.1 · [WO-02f-1] Closed→archived
-- `mobile/` · `feature/live.md` · `sprint/next.md` · `sprint/HANDOFF.md`
+- HISTORY 2026-11-05 행 · [CON-01] v0.5 · [CON-02] v0.2 · [WO-02d-1] Draft→Active · [WO-01c-1] Draft→Active · [ADR-401][ADR-307][ADR-123][ADR-124] 원장 append · `sprint/next.md` 재생성
+- `app/care-core.mjs`·`app/care.js`(신규) · `scripts/care-core.test.js`(신규) · `app/index.html`(시작 화면 2단계·`#care`·BUILD 2026-11-05b) · `app/mode.js`(밤 에피소드·senseStart/senseQuery) · `scripts/mode-gate.js`(34 검사)
+- `app/mode-core.mjs`·`app/mode.js`·`app/face/mode-eyes.js`(신규) · `app/main.js`·`app/hud.js`·`app/index.html`(BUILD 2026-11-05a)·`app/sw.js` · `scripts/serve.js`(.mjs MIME)·`scripts/serve.test.js` · `scripts/mode-core.test.js`(신규)
+- (PR #9) 하네스 sync 67파일 · `adapter.json` · [WO-02f-2] 신설
 
 ## 3. Next task (single entry point)
-**[PLAN-02f] 단계 7 밤샘 검증** — 30분 예비 런으로 `LUX:` 수신율·`gapMs`·배터리·발열과 `SLEEPING` 정상 종료를 먼저 확인한 뒤 8시간 런으로 확장한다. 새 WO를 02f-2로 만들고 시작할 것.
+**[WO-02d-1] 실기 검증(Closed 조건)** — 폰 Chrome 에서 `app/` 열고 "팰에게 방 보여주기" → 허용 → "시작" → 불 끄고 조용히 5분 → 팰이 먼저 잠드는지 1회 실측. 케어 띠가 "팰이 어둠에 눈이 익어가요 → 잠들려고 해요 → 잠들었어요"로 이유를 말하는지 함께 본다. HUD(`?dev=1`) 의 `mode` 줄로 후보/경과를 보며 상수(`?dark=&bright=&quiet=&noise=&sleepS=`)를 튜닝하고 실값을 [ADR-401] 후속 항목으로 남긴다. 통과하면 Closed + `feature/live.md` 행. 같은 실기에서 [WO-01c-1] 인간 R2 검수(LINES 16종 어감)도 끝낸다.
 
 ## 4. Open / cautions
-- 동시 보드 세션이 [CON-01] v0.3에 `IMU:`/`MOVE:`를 추가했지만 RN의 [CON-02f1] 범위는 조도 전용이다. 현재 앱은 둘을 unknown으로 무시하고 얼굴/DB에 전달하지 않는다.
-- 최신 main의 [CON-03] 제품 기록과 RN 조도 SQLite [CON-02f1]은 별도 계약이다. 동기화는 정의되지 않았고 암묵적으로 합치지 않는다.
-- RSSI는 `VERY_NEAR 추정`뿐이며 10cm를 보장하지 않는다. 백그라운드 강제 화면 실행도 범위 밖이다.
-- PWA는 현재 HTTPS URL을 WebView로 읽는다. 릴리스 R8을 위한 번들 내장/오프라인 패키징은 후속이다.
-- 폰 인터넷이 꺼져 Railway PWA가 실패해 `.env.local`의 `http://127.0.0.1:5173` + ADB reverse로 실기했다. Metro와 `scripts/serve.js`가 현재 실행 중이며 USB 연결이 끊기면 이 로컬 PWA도 끊긴다.
-- `npm audit --omit=dev`: Expo CLI/config 전이 의존성 moderate 10건. expo-doctor 권장 버전은 모두 일치하고 비파괴 수정 경로가 없어 강제 downgrade하지 않았다.
+- **배포 필요**: Railway PWA(`face-production-7605`)는 PR #6 이후 `.mjs` MIME 결함으로 얼굴이 안 뜨는 상태였다([ADR-307]). 이 브랜치 머지 후 `npm run deploy`(Railway 토큰 필요 — 인간)로 BUILD `2026-11-05a` 배포 + `deploy.js --check-only` 확인.
+- 상수 기본값(dark 40 · bright 200 · quiet 0.05 · noise 0.12)은 **실측 전**이다. 카메라 조도계는 AE 때문에 절대값이 불안정 — 어두운 방에서 `lux.last` 가 실제로 `darkLux` 아래로 내려가는지가 첫 확인점. 폰이 몸통 안이면 후면 카메라가 안쪽을 본다(`lux.js` 주석) — 손에 들거나 협탁 거치로 먼저 검증.
+- 귀(WIND_DOWN)와 T 수음(SLEEP)은 동시에 getUserMedia 를 열지 않도록 설계했으나 전환 순간의 실기 동작은 미검증. 마이크 거부 시 조도 단독 루프.
+- 거치 자동 감지(충전 이벤트·devicemotion)는 후속 WO 로 분리 — 시작 버튼이 세션 시작. `feature/live.md` 는 실기 전이라 갱신하지 않았다.
+- UX 브리핑(2026-11-05) 8항목 중 1·2·3·4·5·7 해소([ADR-123][ADR-124]), 6번은 아침 회고 문장 1줄로 최소 해소, 8번은 시작 화면 재구성으로 자연 해소. 케어 문장 17종 어감은 인간 검수 대기([WO-01c-1] Closed 조건).
+- [CON-01]·[CON-02] 편집 시 Verifying 자손 [WO-01b-5][WO-01b-6] 잠금 노출 — 인간 승인 하에 진행([ADR-401]). 그 WO 의 소유 세션은 계약 v0.5/v0.2 를 재확인할 것.
+- 하네스: `weakening-guard.js` 로컬 포크([ADR-306]) 상류 제안 대기 · 상류 전용 스크립트 18개 동결(인간 결정) · review `_GUIDE` 5건 `--ack-review` 대기 · [WO-02f-2](밤샘, 보드 경로)는 보류.
+- 회고 트리거 due(정체 WO 24·GC 가능 PLAN 1) — 회고 제안 — 정체 WO 24 ≥ 5.
 
 ## 5. Verification status
-- mobile: Jest 13/13 · `tsc` · expo-doctor 21/21 · Gradle `assembleDebug` 489 tasks · Galaxy S22 설치/실행 · NUS GATT/notify/RSSI/LUX/SQLite/PWA 얼굴 실기 통과.
-- APK: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` 171MB(재생성 산출물).
-- root: npm test 35/35 · lint · health 전 게이트 통과. 미검증: 5Hz 유실률, `SLEEPING` System OFF, 30분/8시간 지속성, PWA 번들 내장.
+- root: `npm test` 66/66(mode-core 8 · care-core 6 · serve 15 포함) · `npm run lint` · `health` 전 게이트 · `weakening-guard` PASS · `permission-guard --strict`(HISTORY 편집은 Approved-by 트레일러).
+- 헤드리스 통합 게이트 42/42(`scripts/mode-gate.js`, Playwright 필요). 미검증: **폰 실기 자동 전환** · 상수 실값 · 마이크 전환 · 권한 대화상자 실흐름(Permissions API 상태 매핑) · 케어 띠와 입의 실기 간격 · Railway 배포본.
