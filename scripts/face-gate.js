@@ -88,9 +88,13 @@ const DT = 16.667;
   ok('happy: 기하 불변(윗꺼풀·고개 갸웃 0 · 아래꺼풀 0.62)', sh.every(f => f.lidE === 0 && f.head === 0) && Math.abs(Math.max(...sh.map(f => f.low)) - 0.62) < 0.02, Math.max(...sh.map(f => f.low)).toFixed(2));
 
   // ── [WO-01b-10] §디자인 제안 — 눈 형태 어휘 · 입 굵기 · 아침 팔레트 · 어휘 thinking/yawn ──
-  const shape = async (st) => { await set(st); await run(8000); return p.evaluate(() => { const e = document.getElementById('eyeL'); return { rx: +e.getAttribute('rx'), ry: +e.getAttribute('ry'), h: +e.getAttribute('height'), dip: +(document.getElementById('lidL').getAttribute('d').match(/Q [\d.]+ ([-\d.]+)/)[1]) - +(document.getElementById('lidL').getAttribute('d').match(/V ([-\d.]+)/)[1]) - 2, bg: document.body.style.backgroundColor }; }); };
+  // 높이는 호흡(BREATH_AMP)이 얹혀 끝 프레임 위상에 따라 ±2% 흔들린다 — 위상 0 이 벽시계(now())라 게이트가 고정할 수 없다.
+  // 총 8초는 그대로 두고 마지막 한 호흡 주기(정수 프레임) 동안 F.hNow 를 평균해 호흡을 상쇄한다(형태 배율만 남는다).
+  const shape = async (st) => { await set(st); const P = await p.evaluate((s) => SP.BREATH[s] * 1000, st); await run(8000 - P); const cyc = await run(P);
+    const hMean = cyc.reduce((a, f) => a + f.h, 0) / cyc.length;
+    return p.evaluate((hMean) => { const e = document.getElementById('eyeL'); return { rx: +e.getAttribute('rx'), ry: +e.getAttribute('ry'), h: +e.getAttribute('height'), dip: +(document.getElementById('lidL').getAttribute('d').match(/Q [\d.]+ ([-\d.]+)/)[1]) - +(document.getElementById('lidL').getAttribute('d').match(/V ([-\d.]+)/)[1]) - 2, bg: document.body.style.backgroundColor, hMean: +hMean.toFixed(2) }; }, hMean); };
   const sA = await shape('AWAKE'), sD = await shape('DROWSY'), sM = await shape('MORNING');
-  ok('눈 형태: AWAKE 원(ry=rx) · DROWSY 넓적(ry≈0.8rx)+처진 꺼풀(dip≈7) · MORNING 살짝 세로로 긴 둥근 눈', Math.abs(sA.ry - sA.rx) < 0.05 && Math.abs(sD.ry / sD.rx - 0.8) < 0.03 && Math.abs(sD.dip - 7) < 0.3 && Math.abs(sA.dip - 4) < 0.3 && sM.h > 46 && Math.abs(sM.dip - 2) < 0.3, JSON.stringify({ A: sA, D: sD, M: sM }));
+  ok('눈 형태: AWAKE 원(ry=rx) · DROWSY 넓적(ry≈0.8rx)+처진 꺼풀(dip≈7) · MORNING 살짝 세로로 긴 둥근 눈(호흡 평균 높이 M/A ≈ 1.04)', Math.abs(sA.ry - sA.rx) < 0.05 && Math.abs(sD.ry / sD.rx - 0.8) < 0.03 && Math.abs(sD.dip - 7) < 0.3 && Math.abs(sA.dip - 4) < 0.3 && Math.abs(sM.hMean / sA.hMean - 1.04) < 0.01 && sM.hMean > 46 && Math.abs(sM.dip - 2) < 0.3, JSON.stringify({ A: sA, D: sD, M: sM }));
   ok('아침 팔레트 = 새벽빛(#5A4A52) · 각성과 다름', sM.bg === 'rgb(90, 74, 82)' && sA.bg === 'rgb(10, 13, 20)', sM.bg);
   const sw = await p.evaluate(() => document.getElementById('mouth').getAttribute('stroke-width'));
   ok('입 굵기 4.5', sw === '4.5', sw);
