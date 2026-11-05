@@ -23,6 +23,7 @@ function context() {
     dark: MODE.lux === null ? null : MODE.lux < MODE.params.darkLux,
     noisy: MODE.snd === null ? null : MODE.snd > MODE.params.noiseLevel,
     night: MODE.night,
+    portrait: window.innerHeight > window.innerWidth,
   };
 }
 

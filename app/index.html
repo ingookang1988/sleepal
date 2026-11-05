@@ -25,6 +25,10 @@
 
   /* ── 얼굴 ───────────────────────────────────────────────── */
   #faceScreen svg{width:100%;height:100%;display:block}
+  /* 세로 화면 — 팰이 고개를 갸웃한다(회전 유도의 비언어 신호, R1·R3). 밤에는 멈춘다(R4). */
+  body.portrait:not(.night) #faceScreen svg{transform-origin:50% 50%;animation:nod 3.6s ease-in-out infinite}
+  @keyframes nod{0%,100%{transform:rotate(0)}35%{transform:rotate(-7deg)}70%{transform:rotate(5deg)}}
+  @media (prefers-reduced-motion:reduce){body.portrait #faceScreen svg{animation:none}}
   .eye{transition:fill 2.5s ease,opacity .5s ease .9s}
   .shut{transition:stroke 2.5s ease,opacity .5s ease .9s}
 
@@ -308,7 +312,7 @@ import { boot } from './main.js';
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 앱의 전제다).
 // ⚠ 이 문자열은 반드시 index.html 에 남는다 — deploy.js 와 배포본 신선도
 //   검사가 *이 파일에서* grep 한다([ADR-116]). 모듈로 옮기지 말 것.
-const BUILD = '2026-11-05b';
+const BUILD = '2026-11-05c';
 
 // PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
 // 이전 버전 캐시를 지운다([WO-02a-1]). 등록 실패는 조용히 무시한다 —

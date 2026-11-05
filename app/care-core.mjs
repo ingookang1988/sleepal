@@ -23,6 +23,7 @@ export const LINES = Object.freeze({
   NOISE:        '팰이 소리 때문에 자꾸 깨요',
   REWAKE:       '팰이 눈부셔서 다시 깨요',
   BLIND:        '팰이 방을 볼 수 없어서 밝기를 느끼지 못해요',
+  PORTRAIT:     '팰이 가로로 눕고 싶어 해요',             // 세로 화면 — 회전을 말로 시키지 않고 팰의 바람으로(R2)
   // 아침 — 밤새 느낀 것(점수가 아니라 회고)
   NIGHT_CALM:   '팰은 밤새 어두운 방에서 푹 잤어요',
   NIGHT_LIGHT:  '팰은 밤중에 불빛에 몇 번 뒤척였어요',
@@ -48,8 +49,8 @@ export function lintLine(s) {
 
 /**
  * careLine(ctx) → 문장 | null(출력 없음).
- *  ctx: { eye, mode, candidate(to|null), canSee(bool), dark(bool|null), noisy(bool|null), night:{bright, noise} }
- *  규칙 순서가 곧 우선순위다. NIGHT 는 무조건 null(R4).
+ *  ctx: { eye, mode, candidate(to|null), canSee(bool), dark(bool|null), noisy(bool|null), night:{bright, noise}, portrait(bool) }
+ *  규칙 순서가 곧 우선순위다. NIGHT 는 무조건 null(R4). 세로 화면은 잠듦·아침 뒤, 이유 문장 앞.
  */
 export function careLine(ctx) {
   const c = ctx || {};
@@ -60,6 +61,7 @@ export function careLine(ctx) {
     return b && s ? LINES.NIGHT_BOTH : b ? LINES.NIGHT_LIGHT : s ? LINES.NIGHT_NOISE : LINES.NIGHT_CALM;
   }
   if (c.eye === 'ASLEEP' || c.mode === 'SLEEP') return LINES.ASLEEP;
+  if (c.portrait === true) return LINES.PORTRAIT;             // 깨어 있는 동안만 — 보는 사람이 있을 때의 신호
   if (c.canSee === false) return LINES.BLIND;                // 방을 못 보면 이유를 먼저 — 밝기 문장은 거짓이 된다
   if (c.mode === 'WIND_DOWN') {
     if (c.candidate === 'SLEEP') return LINES.FALLING;

@@ -47,6 +47,16 @@ test('선택 규칙: 상태 5종과 이유 문장', async () => {
   assert.equal(careLine({ ...see, eye: 'MORNING', mode: 'WAKE', night: { bright: 1, noise: 1 } }), LINES.NIGHT_BOTH);
 });
 
+test('세로 화면: 깨어 있을 때만 "가로로 눕고 싶어 해요" — 잠듦·아침·밤은 그대로', async () => {
+  const { LINES, careLine } = await import(url);
+  assert.equal(careLine({ portrait: true, canSee: true, eye: 'AWAKE', mode: 'PLAY' }), LINES.PORTRAIT);
+  assert.equal(careLine({ portrait: true, canSee: false, eye: 'DROWSY', mode: 'WIND_DOWN' }), LINES.PORTRAIT);   // BLIND 보다 앞
+  assert.equal(careLine({ portrait: true, canSee: true, eye: 'ASLEEP', mode: 'SLEEP' }), LINES.ASLEEP);
+  assert.equal(careLine({ portrait: true, canSee: true, eye: 'MORNING', mode: 'WAKE' }), LINES.NIGHT_CALM);
+  assert.equal(careLine({ portrait: true, eye: 'NIGHT', mode: 'SLEEP' }), null);
+  assert.equal(careLine({ portrait: false, canSee: true, eye: 'AWAKE', mode: 'PLAY' }), LINES.AWAKE);
+});
+
 test('방을 못 보면(카메라·보드 없음) 밝기 문장 대신 이유를 말한다 — 잠듦·아침은 예외', async () => {
   const { LINES, careLine } = await import(url);
   assert.equal(careLine({ canSee: false, eye: 'AWAKE', mode: 'PLAY' }), LINES.BLIND);

@@ -94,6 +94,36 @@ const { chromium } = require('playwright');
   // 키 경로
   await page.keyboard.press('r'); s = await st();
   ok('키 r → WAKE', s.mode === 'WAKE' && s.eye === 'MORNING', s.mode);
+  // ── 밤 제스처 안전장치(R4) — 탭은 아무것도 켜지 않고, 두 손가락 길게만 기상 ──
+  await page.evaluate(() => { SP.modeCommand('sleep'); SP._nightNow(); });
+  s = await st(); ok('밤 제스처 준비: NIGHT', s.eye === 'NIGHT', s.eye);
+  const touch = (type, n) => page.evaluate(([type, n]) => {
+    const el = document.getElementById('faceScreen');
+    const ts = Array.from({ length: n }, (_, i) => new Touch({ identifier: i, target: el, clientX: 100 + i * 60, clientY: 120 }));
+    el.dispatchEvent(new TouchEvent(type, { touches: type === 'touchend' ? [] : ts, changedTouches: ts, bubbles: true, cancelable: true }));
+  }, [type, n]);
+  await touch('touchstart', 2); await touch('touchend', 2); await page.waitForTimeout(200); s = await st();
+  ok('밤: 두 손가락 탭 → 아무 일도 없다(NIGHT 유지)', s.eye === 'NIGHT' && s.mode === 'SLEEP', JSON.stringify(s));
+  await touch('touchstart', 3); await touch('touchend', 3); await page.waitForTimeout(200);
+  const dbgOn = await page.evaluate(() => document.getElementById('dbgScreen').classList.contains('on'));
+  s = await st(); ok('밤: 세 손가락(디버그) → 잠김', !dbgOn && s.eye === 'NIGHT', 'dbg=' + dbgOn);
+  await touch('touchstart', 2); await page.waitForTimeout(700); await touch('touchend', 2); await page.waitForTimeout(200); s = await st();
+  ok('밤: 두 손가락 짧게(0.7초) 떼면 → 취소, NIGHT 유지', s.eye === 'NIGHT', s.eye);
+  await touch('touchstart', 2); await page.waitForTimeout(1700); s = await st(); await touch('touchend', 2);
+  ok('밤: 두 손가락 1.5초 이상 → 기상(WAKE · MORNING)', s.eye === 'MORNING' && s.mode === 'WAKE', JSON.stringify(s));
+  // ── 세로 화면 — 고개 갸웃(비언어 신호) + 케어 문장, 밤에는 정지 ──
+  const pp = await browser.newPage({ viewport: { width: 360, height: 780 } });
+  await pp.goto('http://127.0.0.1:5173/app/?nightS=1', { waitUntil: 'networkidle' });
+  await pp.click('#bStart'); await pp.waitForTimeout(700);
+  const por = await pp.evaluate(() => { SP._careTick(); return { portrait: document.body.classList.contains('portrait'), anim: getComputedStyle(document.querySelector('#faceScreen svg')).animationName, line: SP.CARE.line }; });
+  ok('세로: body.portrait · 고개 갸웃 애니메이션 · "팰이 가로로 눕고 싶어 해요"', por.portrait && por.anim === 'nod' && por.line === '팰이 가로로 눕고 싶어 해요', JSON.stringify(por));
+  const porNight = await pp.evaluate(() => { SP.setEyeState('NIGHT'); SP._careTick(); return { anim: getComputedStyle(document.querySelector('#faceScreen svg')).animationName, line: SP.CARE.line, night: document.body.classList.contains('night') }; });
+  ok('세로 + 밤: 갸웃 정지 · 문장 없음(R4)', porNight.anim === 'none' && porNight.line === null && porNight.night, JSON.stringify(porNight));
+  // 회전 — 전체화면 상태에서는 뷰포트 변경이 막히므로 먼저 빠져나온다
+  await pp.evaluate(() => (document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()).catch(() => {}));
+  await pp.setViewportSize({ width: 780, height: 360 }); await pp.waitForTimeout(300);
+  const land = await pp.evaluate(() => ({ portrait: document.body.classList.contains('portrait'), anim: getComputedStyle(document.querySelector('#faceScreen svg')).animationName }));
+  ok('가로로 돌리면 portrait 해제 · 갸웃 정지', !land.portrait && land.anim === 'none', JSON.stringify(land));
   // 명령으로 잠들고 바로 깨면 — 조용한 밤 문장
   await page.evaluate(() => { SP.modeCommand('sleep'); SP.modeCommand('wake'); SP._careTick(); }); c = await page.evaluate(() => SP.CARE.line);
   ok('아침(조용한 밤) → NIGHT_CALM', c === '팰은 밤새 어두운 방에서 푹 잤어요', c);

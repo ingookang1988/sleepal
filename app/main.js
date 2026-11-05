@@ -160,10 +160,29 @@ addEventListener('keydown', function (e) {
 function emitTrigger(kind, tone) {
   emitExpression(kind, tone === undefined ? 1 : tone, 'system');
 }
+// ⛔ R4 — 밤에는 탭으로 아무것도 켜지지 않는다. 새벽에 폰을 더듬다 두 손가락이 스쳐 화면이 켜지면
+//  이 제품이 막으려던 행동을 제품이 유발한다. 밤의 유일한 손 경로는 **두 손가락을 NIGHT_HOLD_MS 동안
+//  누르는** 의도적 동작 → 기상(모드 명령). 세 손가락 디버그도 밤에는 잠긴다(데스크톱 키 d 는 dev 용).
+export const NIGHT_HOLD_MS = 1500;
+let nightHold = null;
+function cancelNightHold() { if (nightHold) { clearTimeout(nightHold); nightHold = null; } }
 $('faceScreen').addEventListener('touchstart', function (e) {
+  if (F.state === 'NIGHT') {
+    if (e.touches.length === 2 && !nightHold) {
+      nightHold = setTimeout(function () {
+        nightHold = null;
+        log('밤 — 두 손가락 길게 → 기상');
+        modeCommand('wake');
+        if (F.state === 'NIGHT') setEyeState('MORNING');   // 보드 경로(모드 유도 비활성)에서도 손 경로는 깨운다
+      }, NIGHT_HOLD_MS);
+    }
+    return;
+  }
+  cancelNightHold();
   if (e.touches.length === 2) setEyeState(ORDER[(ORDER.indexOf(F.state) + 1) % ORDER.length]);
   else if (e.touches.length === 3) toggleDebug();
 }, { passive:true });
+['touchend', 'touchcancel'].forEach(function (ev) { $('faceScreen').addEventListener(ev, cancelNightHold, { passive:true }); });
 
 $('dbgClose').onclick   = closeDev;
 // 폰이 몸통 안에 있을 때의 조작 경로. [CON-01] RX 메시지만 쓴다.
@@ -365,6 +384,7 @@ export function boot(build) {
     // [WO-01c-1] 케어 문장 — 시트·게이트가 읽는다
     CARE: CARE, LINES: LINES, careLine: careLine, lintLine: lintLine, canSee: canSee,
     senseStart: senseStart, _careTick: _careTick,
+    NIGHT_HOLD_MS: NIGHT_HOLD_MS,
     // 검사용 — 배관을 태우지 않고 라인 스트림만 흉내낸다
     _feedRaw: _feedRaw,
     // 검사용 — rAF 없이 루프를 결정적으로 밟는다(반응 곡선 측정)
