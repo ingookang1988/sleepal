@@ -60,9 +60,13 @@ test('게이트·톤: gate 0 이면 채널 0 · tone 0 은 55%', async () => {
 });
 
 test('kind 채널: sad 는 윗꺼풀 처짐, curious 는 고개 갸웃, 알 수 없는 kind 는 무시', async () => {
-  const { channels, trigger } = await import(url);
+  const { channels, trigger, EMO_DEF } = await import(url);
   assert.ok(channels('sad', 1).lid > 0 && channels('sad', 1).tilt < 0);
   assert.ok(channels('curious', 1).head > 0 && channels('curious', 1).hL > 0 && channels('curious', 1).hR < 0);
   assert.equal(channels('happy', 1).lid, 0); assert.equal(channels('startled', 1).head, 0);
+  // v0.2 어휘 — thinking(한쪽 눈 가늘게 + 갸웃) · yawn(입 벌림 + 눈 찡그림)
+  assert.ok(channels('thinking', 1).hR < 0 && channels('thinking', 1).head > 0 && channels('thinking', 1).open === 0);
+  assert.ok(channels('yawn', 1).open >= 0.9 && channels('yawn', 1).lid > 0 && channels('yawn', 1).hL < 0);
+  assert.ok(EMO_DEF.thinking && EMO_DEF.yawn);
   assert.deepEqual(trigger([], 'angry', 1, 'play'), []);
 });

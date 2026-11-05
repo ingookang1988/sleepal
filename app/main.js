@@ -4,7 +4,7 @@
 'use strict';
 import { $, clamp, log, palBus, qs, rand, smooth } from './core.js';
 import { applyViewBox, blinkAmount, EYE, F, getScreenWmm, lidPath, lowLidPath, ORDER,
-         setEyeState, setScreenWmm, show, STATES, VB } from './face/eyes.js';
+         setEyeState, setScreenWmm, SHAPE, show, SHP, STATES, VB } from './face/eyes.js';
 import { BREATH, BREATH_AMP, DROWSE, EMO, emitExpression, expression, exprTrigger, GATE, GAZE_MM, gazeTo, GL, GZ,
          nodAmt, normalizeExpressionTrigger } from './face/expression.js';
 import { tickMouth } from './face/mouth.js';
@@ -59,8 +59,12 @@ function frame(ts) {
     } else blink = a;
   }
 
+  // ── 눈 형태 어휘 — 상태 목표로 천천히(τ 1.5s) [WO-01b-10] ──
+  SHP.dip = smooth(SHP.dip, SHP.dipT, 1.5, dt);
+  SHP.ry = smooth(SHP.ry, SHP.ryT, 1.5, dt);
+  SHP.hmul = smooth(SHP.hmul, SHP.hmulT, 1.5, dt);
   // ── 눈 기하 ─────────────────────────────────────────────
-  const h  = X ? X.h  : EYE.h;
+  const h  = (X ? X.h  : EYE.h) * SHP.hmul;
   const cy = X ? X.cy : EYE.cy;
   const rx = Math.min(EYE.w, h) / 2;
   const top = cy - h / 2;
@@ -77,9 +81,11 @@ function frame(ts) {
     const eye = $(i ? 'eyeR' : 'eyeL');
     eye.setAttribute('y', topI.toFixed(2));
     eye.setAttribute('height', hi.toFixed(2));
-    eye.setAttribute('rx', (Math.min(EYE.w, hi) / 2).toFixed(2));
-    // 눈꺼풀은 *현재* 눈 높이를 따라간다 — 찡그린 눈에 맞춰 짧아진다
-    $(i ? 'lidR' : 'lidL').setAttribute('d', lidPath(EYE.cx[i], topI + lid * hi));
+    const rxi = Math.min(EYE.w, hi) / 2;
+    eye.setAttribute('rx', rxi.toFixed(2));
+    eye.setAttribute('ry', (rxi * SHP.ry).toFixed(2));          // 넓적한 졸린 눈 ↔ 둥근 눈
+    // 눈꺼풀은 *현재* 눈 높이를 따라간다 — 찡그린 눈에 맞춰 짧아진다. 처짐(dip)은 상태 형태.
+    $(i ? 'lidR' : 'lidL').setAttribute('d', lidPath(EYE.cx[i], topI + lid * hi, SHP.dip));
     // 아래꺼풀 — 기쁨이 눈 아래를 ⌣ 로 깎는다. low=0 이면 눈 아래에 숨어 있고
     // arch 도 0 에 수렴해 눈에 닿지 않는다 [WO-01b-5]
     const low = X ? X.lowLid : 0;
@@ -148,6 +154,9 @@ addEventListener('keydown', function (e) {
   else if (e.key === '7') emitTrigger('curious');
   else if (e.key === '8') emitTrigger('sad');
   else if (e.key === '9') emitTrigger('note');
+  // 어휘 확장 [WO-01b-10] — t 생각 · y 하품
+  else if (e.key === 't') emitTrigger('thinking');
+  else if (e.key === 'y') emitTrigger('yawn');
   else if (e.key === '0') { setMusic(!FX.music); log('음악 fx ' + (FX.music ? 'ON' : 'OFF')); }
   // 시선 [WO-01b-6] — , 왼쪽 소리 · . 오른쪽 소리 · / 정면 소리 · m 마이크 토글
   else if (e.key === ',') feedSnd(0.6, -1);
@@ -206,6 +215,8 @@ $('dbgHappy').onclick   = function () { fireAndShow('happy'); };
 $('dbgCurious').onclick = function () { fireAndShow('curious'); };
 $('dbgSad').onclick     = function () { fireAndShow('sad'); };
 $('dbgNote').onclick    = function () { fireAndShow('note'); };
+$('dbgThink').onclick   = function () { fireAndShow('thinking'); };
+$('dbgYawn').onclick    = function () { fireAndShow('yawn'); };
 $('dbgMusic').onclick   = function () {
   setMusic(!FX.music);
   $('dbgMusic').textContent = FX.music ? '♪ 음악 끄기' : '♪ 음악';
@@ -362,6 +373,7 @@ export function boot(build) {
     lux: lux, applyViewBox: applyViewBox, show: show,
     connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
     GL: GL, GATE: GATE, BREATH: BREATH, BREATH_AMP: BREATH_AMP, DROWSE: DROWSE, nodAmt: nodAmt, expression: expression, VB: VB,
+    SHAPE: SHAPE, SHP: SHP,
     // [WO-01b-5] 이산 표정·입·fx — 시트 게이트가 읽는다
     EMO: EMO, emitExpression: emitExpression, exprTrigger: exprTrigger,
     normalizeExpressionTrigger: normalizeExpressionTrigger,

@@ -4,12 +4,13 @@
 //    zzz 는 오른눈 오른쪽 여백(x≥143), 음표는 두 눈 사이 회랑(x 66~92)에서만 산다.
 //  ⛔ R4 — NIGHT 진입 즉시 전부 제거하고 스폰하지 않는다.
 'use strict';
-import { $, clamp, palBus, rand } from '../core.js';
+import { $, clamp, palBus, qs, rand } from '../core.js';
 import { F, STATES, VB } from './eyes.js';
 import { normalizeExpressionTrigger } from './expression-protocol.mjs';
 
 const NS = 'http://www.w3.org/2000/svg';
-export const FX = { alive: [], music: false, nextZ: 0, nextNote: 0, prev: null };
+// zzz 위치 — 'right'(오른눈 오른쪽 여백, 기본) | 'center'(두 눈 위 중앙 회랑). 좁은 화면 비교용 `?zzz=center`([WO-01b-10] §디자인 제안 4).
+export const FX = { alive: [], music: false, nextZ: 0, nextNote: 0, prev: null, zzzPos: qs.get('zzz') === 'center' ? 'center' : 'right' };
 const LIFE = { z: 4.5, note: 3.6 };
 const DIE_T = 0.3;   // 상태 전이 시 페이드 — zzz 가 MORNING 으로 4.5초 넘어오지 않게([ANL-01b] 근인 7, [WO-01b-7])
 
@@ -54,7 +55,10 @@ export function tickFx(t, dt) {
     FX.nextZ = t + rand(2.6, 4.2);
     let nz = 0;
     for (const p of FX.alive) if (p.kind === 'z') nz++;
-    if (nz < 3) spawn('z', 145 + rand(-1.5, 1.5), 15 + rand(-1, 1));
+    if (nz < 3) {
+      if (FX.zzzPos === 'center') spawn('z', 79 + rand(-4, 4), 11 + rand(-1, 1));   // 두 눈 위 회랑(눈 윗변 14 위)
+      else spawn('z', 145 + rand(-1.5, 1.5), 15 + rand(-1, 1));
+    }
   }
   // 음악 재생 중 — 음표가 두 눈 사이 회랑을 타고 오른다
   if (FX.music && t >= FX.nextNote) {

@@ -4,7 +4,7 @@ id: CON-01b
 title: 팰 표정 자극 프로토콜 (센서·놀이·버튼 → 얼굴 합성)
 status: Draft
 tier: draft
-version: 0.1
+version: 0.2
 consumers: [CON-02f, WO-02b-2, WO-02c-1]
 ---
 
@@ -20,7 +20,8 @@ consumers: [CON-02f, WO-02b-2, WO-02c-1]
 
 ```ts
 type ExpressionTrigger = {
-  kind: "happy" | "curious" | "sad" | "startled" | "relieved" | "note";
+  kind: "happy" | "curious" | "sad" | "startled" | "relieved" | "note"
+      | "thinking" | "yawn";   // v0.2 — 놀이·졸림 어휘([WO-01b-10] §디자인 제안 5, [ADR-126]). RN 브리지([CON-02f]) 의 allowlist 는 v0.1 부분집합을 유지해도 된다(모르는 kind 는 무시)
   tone: number; // 0..1
   source: "play" | "lux" | "sound" | "button" | "system";
 };
@@ -41,6 +42,8 @@ type ExpressionTrigger = {
 | 보드 `BTN:A:DOWN`/거치 확정 | 얼굴 진입 | `happy` | `button` |
 | 놀이 응답 | 없음 | `happy|curious|sad` | `play` |
 | 사운드 도상 1발 | 없음 | `note` | `system` |
+| 놀이 응답(생각 중) | 시선 위(GZ) | `thinking` — 한쪽 눈 가늘게 + 갸웃 | `play` |
+| 졸림의 예약 하품 / 놀이 "하품" | 입 하품(mouth.js 봉투) | `yawn` — 눈 찡그림 + 입 벌림 | `system` \| `play` |
 
 센서 매핑은 **원시값과 별개인 파생 반응**이다. `LUX`가 이산 표정을 만들더라도 [CON-01] 규칙 2대로 상태 전이는 0이다.
 

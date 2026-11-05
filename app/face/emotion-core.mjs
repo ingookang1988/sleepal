@@ -11,6 +11,8 @@ export const EMO_DEF = Object.freeze({
   sad:      { dur: 2.6, atk: 0.45, rel: 1.00 },   // 눈꼬리 바깥 처짐 + 윗꺼풀 처짐 + 입꼬리 내림
   startled: { dur: 0.9, atk: 0.06, rel: 0.36 },   // 빛 급상승 — 짧은 수축 + 'o' (+ 하드 블링크, kind 기준)
   relieved: { dur: 1.8, atk: 0.24, rel: 0.75 },   // 빛 급하강 — 아래꺼풀 + 입꼬리
+  thinking: { dur: 2.2, atk: 0.30, rel: 0.70 },   // 시선 위 + 한쪽 눈 가늘게 + 살짝 갸웃 (v0.2)
+  yawn:     { dur: 2.0, atk: 0.70, rel: 0.80 },   // 입 하품 + 눈 찡그림 (v0.2) — 입 봉투와 같은 리듬
 });
 export const FADE_T = 0.18;   // 이전 봉투를 내리는 시간(초) — 새 어택(0.06~0.45)과 겹쳐 연속으로 읽힌다
 
@@ -32,6 +34,8 @@ export function channels(kind, a) {
     case 'sad':      return { low: 0.12 * a, hL: 0, hR: 0, tilt: -5 * a, curve: -2.6 * a, open: 0, lid: 0.15 * a, head: 0 };
     case 'startled': return { low: 0, hL: -0.14 * a, hR: -0.14 * a, tilt: 2.5 * a, curve: 0, open: 0.72 * a, lid: 0, head: 0 };
     case 'relieved': return { low: 0.34 * a, hL: 0.02 * a, hR: 0.02 * a, tilt: 0, curve: 1.35 * a, open: 0, lid: 0, head: 0 };
+    case 'thinking': return { low: 0, hL: 0, hR: -0.12 * a, tilt: 0, curve: 0.4 * a, open: 0, lid: 0, head: 1.5 * a };
+    case 'yawn':     return { low: 0, hL: -0.10 * a, hR: -0.10 * a, tilt: 0, curve: 0, open: 1.0 * a, lid: 0.30 * a, head: 0 };
     default:         return ZERO();
   }
 }

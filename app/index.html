@@ -184,8 +184,9 @@
     <!-- 입 [WO-01b-5] — 곡선(닫힘) + 타원(하품·"후—"). R1: 음소 형태 없음.
          눈보다 얇고(3 vs 5) 옅게 — 감긴 눈 ⌣ 과 헷갈리지 않게. mouth.js 소유. -->
     <g id="mouthG">
+      <!-- 입 굵기 3 → 4.5: 확산지가 휘도를 깎으면 얇은 입은 사라진다([WO-01b-10] §디자인 제안 2, 실측 전 잠정) -->
       <path id="mouth" d="M 69 63.5 Q 79 66 89 63.5" fill="none"
-            stroke="#EAEEF7" stroke-width="3" stroke-linecap="round" opacity="0"/>
+            stroke="#EAEEF7" stroke-width="4.5" stroke-linecap="round" opacity="0"/>
       <ellipse id="mouthO" cx="79" cy="65" rx="2.2" ry="0" fill="#EAEEF7" opacity="0"/>
     </g>
 
@@ -253,6 +254,8 @@
     <button id="dbgCurious">호기심</button>
     <button id="dbgSad">서운함</button>
     <button id="dbgNote">♪ 음표</button>
+    <button id="dbgThink">생각</button>
+    <button id="dbgYawn">하품</button>
     <button id="dbgMusic">♪ 음악</button>
   </div>
   <!-- 시선 대역 [WO-01b-6] — 합성 소리는 feedSnd() 로만, 마이크는 RMS 만 남기고
@@ -312,7 +315,7 @@ import { boot } from './main.js';
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 앱의 전제다).
 // ⚠ 이 문자열은 반드시 index.html 에 남는다 — deploy.js 와 배포본 신선도
 //   검사가 *이 파일에서* grep 한다([ADR-116]). 모듈로 옮기지 말 것.
-const BUILD = '2026-11-05d';
+const BUILD = '2026-11-05e';
 
 // PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
 // 이전 버전 캐시를 지운다([WO-02a-1]). 등록 실패는 조용히 무시한다 —

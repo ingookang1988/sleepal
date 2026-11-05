@@ -64,7 +64,8 @@ const DT = 16.667;
   // mode:progress 주입 → k → 눈꺼풀
   await p.evaluate(() => SP.palBus.dispatchEvent(new CustomEvent('mode:progress', { detail: { to: 'SLEEP', elapsed: 150, need: 300 } })));
   const sk = await run(DT * 3); const fk = sk[2];
-  ok('mode:progress(SLEEP 50%) → k 0.5 · 윗꺼풀 +0.1(꾸벅 없을 때)', Math.abs(fk.k - 0.5) < 0.01 && (fk.nod > 0 || Math.abs(fk.lidE - 0.1) < 0.02), JSON.stringify({ k: fk.k, lidE: fk.lidE.toFixed(2), nod: fk.nod.toFixed(2) }));
+  // lidE 는 k(0.1) 에 꾸벅·하품(yawn kind 의 눈 찡그림)이 더해질 수 있다 — 하한만 본다
+  ok('mode:progress(SLEEP 50%) → k 0.5 · 윗꺼풀 ≥ +0.1', Math.abs(fk.k - 0.5) < 0.01 && fk.lidE >= 0.08, JSON.stringify({ k: fk.k, lidE: fk.lidE.toFixed(2), nod: fk.nod.toFixed(2) }));
   await p.evaluate(() => SP.palBus.dispatchEvent(new CustomEvent('mode:change', { detail: { from: 'WIND_DOWN', to: 'PLAY', cause: 'command' } })));
   const sk0 = (await run(DT * 2))[1];
   ok('mode:change → k 0', sk0.k === 0);
@@ -86,6 +87,30 @@ const DT = 16.667;
   await emit('happy'); const sh = await run(2000);
   ok('happy: 기하 불변(윗꺼풀·고개 갸웃 0 · 아래꺼풀 0.62)', sh.every(f => f.lidE === 0 && f.head === 0) && Math.abs(Math.max(...sh.map(f => f.low)) - 0.62) < 0.02, Math.max(...sh.map(f => f.low)).toFixed(2));
 
+  // ── [WO-01b-10] §디자인 제안 — 눈 형태 어휘 · 입 굵기 · 아침 팔레트 · 어휘 thinking/yawn ──
+  const shape = async (st) => { await set(st); await run(8000); return p.evaluate(() => { const e = document.getElementById('eyeL'); return { rx: +e.getAttribute('rx'), ry: +e.getAttribute('ry'), h: +e.getAttribute('height'), dip: +(document.getElementById('lidL').getAttribute('d').match(/Q [\d.]+ ([-\d.]+)/)[1]) - +(document.getElementById('lidL').getAttribute('d').match(/V ([-\d.]+)/)[1]) - 2, bg: document.body.style.backgroundColor }; }); };
+  const sA = await shape('AWAKE'), sD = await shape('DROWSY'), sM = await shape('MORNING');
+  ok('눈 형태: AWAKE 원(ry=rx) · DROWSY 넓적(ry≈0.8rx)+처진 꺼풀(dip≈7) · MORNING 살짝 세로로 긴 둥근 눈', Math.abs(sA.ry - sA.rx) < 0.05 && Math.abs(sD.ry / sD.rx - 0.8) < 0.03 && Math.abs(sD.dip - 7) < 0.3 && Math.abs(sA.dip - 4) < 0.3 && sM.h > 46 && Math.abs(sM.dip - 2) < 0.3, JSON.stringify({ A: sA, D: sD, M: sM }));
+  ok('아침 팔레트 = 새벽빛(#5A4A52) · 각성과 다름', sM.bg === 'rgb(90, 74, 82)' && sA.bg === 'rgb(10, 13, 20)', sM.bg);
+  const sw = await p.evaluate(() => document.getElementById('mouth').getAttribute('stroke-width'));
+  ok('입 굵기 4.5', sw === '4.5', sw);
+  await set('AWAKE'); await run(2500);
+  await emit('thinking'); const st2 = await run(1200);
+  const gyMin = Math.min(...(await p.evaluate(() => [SP.F.X.gy])));
+  const pkT = st2.reduce((m, f) => (f.hm[1] < m.hm[1] ? f : m), st2[0]);
+  ok('thinking: 한쪽 눈 가늘게(hR<0.9) · 갸웃 · 시선 위(gy<0)', pkT.hm[1] <= 0.9 && pkT.head > 1 && gyMin < -0.3, JSON.stringify({ hR: pkT.hm[1].toFixed(2), head: pkT.head.toFixed(1), gy: gyMin.toFixed(2) }));
+  await run(2500); await emit('yawn'); const sy = await run(1000);   // 정점(어택 0.7s 뒤)에서 읽는다
+  const ry = await p.evaluate(() => +document.getElementById('mouthO').getAttribute('ry')); await run(1200);
+  ok('yawn: 입 하품(타원 ry≥3) + 눈 찡그림(lidE≥0.25)', ry >= 3 && Math.max(...sy.map(f => f.lidE)) >= 0.25, JSON.stringify({ ry, lidE: Math.max(...sy.map(f => f.lidE)).toFixed(2) }));
+  await run(3000); await set('DROWSY'); const sdy = await run(20000);
+  ok('DROWSY 의 예약 하품이 눈 찡그림(yawn kind)을 동반한다', sdy.some(f => f.emo === 'yawn' && f.lidE > 0.1), String(sdy.some(f => f.emo === 'yawn')));
+  // zzz 중앙 회랑 옵션
+  const pz = await browser.newPage({ viewport: { width: 780, height: 360 } });
+  await pz.goto('http://127.0.0.1:5173/app/?nightS=99999&zzz=center', { waitUntil: 'networkidle' }); await pz.click('#bStart'); await pz.waitForTimeout(300);
+  await pz.evaluate(() => SP.setEyeState('ASLEEP'));
+  await pz.evaluate(([DT]) => { let t = 1000; for (let i = 0; i < 600; i++) { t += DT; SP._step(t); } }, [DT]);
+  const zc = await pz.evaluate(() => { const b = document.getElementById('fx').getBBox(); const eL = document.getElementById('eyeL').getBBox(), eR = document.getElementById('eyeR').getBBox(); const hit = (a, c) => a.x < c.x + c.width && a.x + a.width > c.x && a.y < c.y + c.height && a.y + a.height > c.y; return { n: document.getElementById('fx').childElementCount, x: b.x, y: b.y, w: b.width, hitL: hit(b, eL), hitR: hit(b, eR) }; });
+  ok('?zzz=center: 두 눈 위 중앙 회랑에서 피어오르고 눈 영역 교차 0', zc.n >= 1 && zc.x > 62 && zc.x + zc.w < 96 && !zc.hitL && !zc.hitR, JSON.stringify(zc));
   ok('페이지 오류 0', errors.length === 0, errors.join(' | '));
   console.log(R.join('\n')); console.log('\n' + R.filter(r => r.startsWith('FAIL')).length + ' FAIL / ' + R.length);
   await browser.close(); process.exit(R.some(r => r.startsWith('FAIL')) ? 1 : 0);

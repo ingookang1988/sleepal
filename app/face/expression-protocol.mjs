@@ -1,6 +1,7 @@
 // [CON-01b] 순수 표정 payload 정규화 — DOM·센서·렌더 의존성 0.
 export const EXPRESSION_KINDS = Object.freeze([
   'happy', 'curious', 'sad', 'startled', 'relieved', 'note',
+  'thinking', 'yawn',   // v0.2 — 놀이·졸림 어휘([WO-01b-10] §디자인 제안 5)
 ]);
 export const EXPRESSION_SOURCES = Object.freeze([
   'play', 'lux', 'sound', 'button', 'system',
