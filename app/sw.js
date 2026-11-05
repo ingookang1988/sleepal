@@ -20,7 +20,9 @@ const SHELL = ['./', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'
   // [WO-01c-1] 케어 문장 — 사전 문장이 곧 R8 폴백이라 오프라인에 반드시 있어야 한다
   'care.js', 'care-core.mjs',
   // [WO-01b-7] 이산 표정 순수 핵
-  'face/emotion-core.mjs'];
+  'face/emotion-core.mjs',
+  // [WO-02b-1] 놀이 왕복 — 오프라인이면 사전 반응으로 산다(R8). /api/* 는 여전히 캐시하지 않는다
+  'play.js', 'play-core.mjs'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

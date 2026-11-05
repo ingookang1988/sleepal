@@ -21,6 +21,8 @@ import { closeDev, EYE_SAFE, getDev, openDev, paintDebug, paintHud, setBuild,
 import { _machine, _modeFeed, canSee, initMode, MODE, modeCommand, modeParams, modeStart, senseQuery, senseStart } from './mode.js';
 // 앱(통역사) 층 — 케어 문장 띠 [WO-01c-1]. 눈은 상태를, 이 띠는 이유를 말한다.
 import { _careTick, CARE, careLine, initCare, LINES, lintLine } from './care.js';
+// 놀이 왕복 [WO-02b-1] — 한 손가락 길게 누름/스페이스 → 녹음 → STT → 반응 → 얼굴 · sleepIntent → 모드 명령
+import { initPlay, PLAY, PLAY_PARAMS, playCancel, playStart, playStop } from './play.js';
 //    import { initTracker } from './tracker.js'; initTracker(palBus);
 //    import { initSound } from './sound.js';     initSound(palBus);
 // H 소비자 — 보드 미연결 시 모드 → 눈 상태 유도([CON-02] 규칙 4). 구독만 하므로 import 로 충분하다.
@@ -364,6 +366,7 @@ export function boot(build) {
   setDev(getDev());       // 버튼 라벨 동기화. 기본 OFF — ?dev=1 이나 이전 토글이 있을 때만 ON
   initMode(palBus);       // [WO-02d-1] 모드 머신 — 200ms 타이머, rAF 와 독립(밤에도 센다)
   initCare();             // [WO-01c-1] 케어 문장 띠 — 1Hz, 문장이 바뀔 때만 잠깐
+  initPlay(palBus);       // [WO-02b-1] 놀이 왕복 — 입력·녹음·반응. R4 는 스스로 지킨다
   requestAnimationFrame(frame);
 
   // 검증 훅 — 콘솔/헤드리스에서 호출한다 (R3 게이트 등)
@@ -400,6 +403,8 @@ export function boot(build) {
     CARE: CARE, LINES: LINES, careLine: careLine, lintLine: lintLine, canSee: canSee,
     senseStart: senseStart, _careTick: _careTick,
     NIGHT_HOLD_MS: NIGHT_HOLD_MS,
+    // [WO-02b-1] 놀이 왕복 — 게이트가 읽고 누른다
+    PLAY: PLAY, PLAY_PARAMS: PLAY_PARAMS, playStart: playStart, playStop: playStop, playCancel: playCancel,
     // 검사용 — 배관을 태우지 않고 라인 스트림만 흉내낸다
     _feedRaw: _feedRaw,
     // 검사용 — rAF 없이 루프를 결정적으로 밟는다(반응 곡선 측정)
