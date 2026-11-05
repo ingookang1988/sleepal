@@ -38,6 +38,8 @@ const BAL_DEAD = 0.08;     // 이보다 작은 불균형은 "방향 모름" = �
 // ── 마이크 (dev 제스처로만 켠다 — 권한 대화상자가 뜬다) ────────
 let stream = null, ctx = null, anL = null, anR = null, bufL = null, bufR = null;
 export const earOn = () => !!stream;
+// 놀이 녹음([WO-02b-1])이 빌려 쓴다 — 같은 스트림에 MediaRecorder 를 붙인다. 둘이 따로 getUserMedia 를 열지 않는다.
+export const earStream = () => stream;
 
 export async function earStart() {
   try {

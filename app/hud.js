@@ -9,6 +9,7 @@ import { earOn, snd } from './face/ear.js';
 import { camOn, lux } from './lux.js';
 import { bleStatus, DEVICE_PREFIX } from './ble.js';
 import { listening, MODE } from './mode.js';
+import { PLAY } from './play.js';
 
 // BUILD 문자열은 index.html 에 산다([ADR-116] — deploy.js 가 거기서 grep 한다).
 // 계기판·HUD 는 부팅 때 주입받는다.
@@ -78,6 +79,10 @@ export function paintDebug() {
       '   lux ' + (MODE.lux === null ? '-' : MODE.lux) +
       '   snd ' + (MODE.snd === null ? '-' : MODE.snd.toFixed(3)) + '(' + MODE.sndSrc + (listening() ? '·on' : '') + ')' +
       '   n=' + MODE.ticks + '\n' +
+    // [WO-02b-1] 놀이 왕복 — 지연 실측이 증거다. 발화 원문은 여기 안 쓴다(로그에만)
+    'play     ' + PLAY.phase + '  mic ' + PLAY.mic + '  왕복 ' + PLAY.turns + '  폴백 ' + PLAY.fallbacks +
+      '   지연 ' + (PLAY.lat ? 'stt ' + PLAY.lat.stt + ' · chat ' + PLAY.lat.chat + ' · 총 ' + PLAY.lat.total + 'ms' : '-') +
+      '   마지막 ' + (PLAY.last ? PLAY.last.expression + (PLAY.last.sleepIntent ? ' · sleep' : '') + (PLAY.last.fallback ? ' (폴백 ' + PLAY.last.why + ')' : '') : '-') + '\n' +
     'hud      ' + (devMode ? 'ON — 얼굴 하단 띠' : 'OFF') + '   fps ' + F.fps.toFixed(0) + '\n' +
     'screen   ' + getScreenWmm().toFixed(1) + ' mm\n' +
     'build    ' + BUILD + '\n\n' +

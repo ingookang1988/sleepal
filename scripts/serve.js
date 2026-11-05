@@ -44,18 +44,51 @@ const API = {
   chatModel: () => process.env.PROXY_CHAT_MODEL || 'gpt-4o-mini',
   sttModel: () => process.env.PROXY_STT_MODEL || 'whisper-1',
   timeoutMs: () => Number(process.env.PROXY_TIMEOUT_MS) || 20000,
+  // STT 언어 힌트 — 한국어 인식률·지연 개선. 빈 문자열이면 보내지 않는다(제공자 자동 감지).
+  sttLang: () => (process.env.PROXY_STT_LANG === undefined ? 'ko' : process.env.PROXY_STT_LANG),
 };
+
+// 녹음 형식 — 브라우저마다 MediaRecorder 형식이 다르다(Chrome·Android = webm/opus,
+// iOS Safari = mp4/aac). STT 제공자는 파일 **확장자**로 형식을 판별하므로 Content-Type 에서
+// 확장자를 고른다. 목록 밖 Content-Type 은 그대로 multipart 헤더에 넣지 않는다(헤더 주입 차단).
+const AUDIO_TYPES = {
+  'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/m4a': 'm4a',
+  'audio/x-m4a': 'm4a', 'audio/aac': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav',
+};
+function audioType(header) {
+  const base = String(header || '').split(';')[0].trim().toLowerCase();
+  return AUDIO_TYPES[base] ? { type: base, ext: AUDIO_TYPES[base] } : { type: 'audio/webm', ext: 'webm' };
+}
 const MAX_CHAT_BYTES = 64 * 1024;        // 대화 JSON — 이보다 크면 뭔가 잘못됐다
 const MAX_STT_BYTES = 8 * 1024 * 1024;   // 녹음 상한(webm/opus 약 1분)과 짝 — [CON-04] 413 행
 
-// 어휘는 [WO-02b-2] 합의 전 잠정 — 확정되면 여기와 클라이언트가 같은 계약으로 바뀐다.
+// ---- 반응 어휘 — [CON-04] v0.2 ----
+//  expression 은 얼굴이 실제로 받는 [CON-01b] kind 의 놀이 부분집합이다(그 밖의 kind —
+//  startled·relieved 는 센서 반응, note 는 fx — 를 LLM 이 고르게 두지 않는다).
+//  babbleTone 은 [CON-01b] LEGACY_TONES 의 키 — 클라이언트가 tone 수치로 바꾼다.
+//  목록 밖 값은 여기서 기본값으로 접는다: 상류가 무엇을 주든 계약 밖 값은 나가지 않는다.
+const VOCAB = {
+  emotion: ['calm', 'happy', 'sleepy', 'curious', 'sad'],
+  expression: ['happy', 'curious', 'sad', 'thinking', 'yawn'],
+  babbleTone: ['soft', 'bright', 'drowsy'],
+};
+const VOCAB_DEFAULT = { emotion: 'calm', expression: 'curious', babbleTone: 'soft' };
+const pick = (k, v) => (VOCAB[k].includes(v) ? v : VOCAB_DEFAULT[k]);
+
+// 페르소나 — 팰은 사용자 곁에서 먼저 잠드는 반려 수면등이다. 사용자층은 성인(아동 타깃은
+// 스코프 밖 — [ARCH-01]). "아기·애완동물처럼"은 *팰의 성격*이지 사용자가 아니다([PLAN-02] §1).
+// v1 놀이 = 양 세기([ADR-308]). caption 은 v1 클라이언트가 표시하지 않으므로 요구하지 않는다.
 const PAL_SYSTEM = [
-  '너는 "팰" — 아이의 수면 친구다. 사용자 발화에 감정으로만 반응한다.',
+  '너는 "팰" — 사용자 곁에서 사용자보다 먼저 졸려 하고 먼저 잠드는 작은 반려 수면등이다.',
+  '팰은 사람 말을 하지 않는다. 아기나 애완동물처럼 감정과 표정으로만 반응한다.',
   '반드시 아래 키만 가진 JSON 객체 하나로만 답한다(코드펜스·설명 금지):',
-  '{"emotion":"calm|happy|sleepy|curious|sad","expression":"neutral|smile|blink|yawn|surprised",',
-  ' "babbleTone":"soft|bright|drowsy","sleepIntent":true|false,"caption":"선택 — 한 줄"}',
-  'sleepIntent 는 아이가 잘 준비가 됐다고 판단될 때만 true.',
-  'caption 을 쓸 때 주어는 팰이다(R2).',
+  '{"emotion":"calm|happy|sleepy|curious|sad","expression":"happy|curious|sad|thinking|yawn",',
+  ' "babbleTone":"soft|bright|drowsy","sleepIntent":true|false}',
+  '놀이 — 양 세기: 사용자가 양을 세면(예: "양 한 마리, 양 두 마리") 팰은 따라 세듯 반응한다.',
+  '숫자가 커질수록 팰은 점점 졸려 한다 — emotion 은 sleepy 쪽으로, babbleTone 은 drowsy 쪽으로,',
+  'expression 은 가끔 yawn 으로. 무엇을 말할지 고민하는 듯한 말에는 thinking.',
+  'sleepIntent 는 사용자가 이제 자겠다·잘 준비가 됐다고 말할 때만 true 다(예: "나 이제 잘게").',
+  '팰이 졸려 보인다는 이유만으로는 true 로 하지 않는다.',
 ].join('\n');
 
 function sendJson(res, code, obj, extra) {
@@ -133,14 +166,15 @@ async function handleChat(req, res) {
     const data = await r.json();
     out = JSON.parse(data.choices[0].message.content);
   } catch { return sendJson(res, 502, { error: 'upstream' }); }
-  // 형태를 여기서 고정한다 — 상류가 무엇을 주든 [CON-04] 응답만 나간다.
+  if (!out || typeof out !== 'object' || Array.isArray(out)) return sendJson(res, 502, { error: 'upstream' });
+  // 형태를 여기서 고정한다 — 상류가 무엇을 주든 [CON-04] 응답만 나간다(목록 밖 값은 기본값).
   const shaped = {
-    emotion: String(out.emotion || 'calm'),
-    expression: String(out.expression || 'neutral'),
-    babbleTone: String(out.babbleTone || 'soft'),
+    emotion: pick('emotion', out.emotion),
+    expression: pick('expression', out.expression),
+    babbleTone: pick('babbleTone', out.babbleTone),
     sleepIntent: out.sleepIntent === true,
   };
-  if (out.caption) shaped.caption = String(out.caption);
+  if (typeof out.caption === 'string' && out.caption) shaped.caption = out.caption.slice(0, 80);
   return sendJson(res, 200, shaped);
 }
 
@@ -149,16 +183,18 @@ async function handleStt(req, res) {
   if (!key) return sendJson(res, 503, { error: 'no-key' });
   const buf = await readBody(req, MAX_STT_BYTES);
   if (buf.length === 0) return sendJson(res, 400, { error: 'bad-request' });
-  const type = req.headers['content-type'] || 'audio/webm';
+  const audio = audioType(req.headers['content-type']);
 
   const boundary = '----palproxy' + Math.random().toString(36).slice(2);
   const part = (s) => Buffer.from(s, 'utf8');
-  const form = Buffer.concat([
-    part(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${API.sttModel()}\r\n`),
-    part(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.webm"\r\nContent-Type: ${type}\r\n\r\n`),
+  const field = (name, value) => part(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`);
+  const fields = [field('model', API.sttModel())];
+  if (API.sttLang()) fields.push(field('language', API.sttLang()));
+  const form = Buffer.concat(fields.concat([
+    part(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.${audio.ext}"\r\nContent-Type: ${audio.type}\r\n\r\n`),
     buf,
     part(`\r\n--${boundary}--\r\n`),
-  ]);
+  ]));
   const r = await upstream(API.sttUrl(), {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': `multipart/form-data; boundary=${boundary}` },
