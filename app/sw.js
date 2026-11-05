@@ -18,7 +18,9 @@ const SHELL = ['./', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'
   // [WO-02d-1] 모드 머신 — 오프라인에서도 팰이 먼저 잠들어야 한다(R8)
   'mode.js', 'mode-core.mjs', 'face/mode-eyes.js',
   // [WO-01c-1] 케어 문장 — 사전 문장이 곧 R8 폴백이라 오프라인에 반드시 있어야 한다
-  'care.js', 'care-core.mjs'];
+  'care.js', 'care-core.mjs',
+  // [WO-01b-7] 이산 표정 순수 핵
+  'face/emotion-core.mjs'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

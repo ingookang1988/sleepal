@@ -5,8 +5,8 @@
 import { $, clamp, log, palBus, qs, rand, smooth } from './core.js';
 import { applyViewBox, blinkAmount, EYE, F, getScreenWmm, lidPath, lowLidPath, ORDER,
          setEyeState, setScreenWmm, show, STATES, VB } from './face/eyes.js';
-import { BREATH, EMO, emitExpression, expression, exprTrigger, GATE, GAZE_MM, gazeTo, GL, GZ,
-         normalizeExpressionTrigger } from './face/expression.js';
+import { BREATH, BREATH_AMP, DROWSE, EMO, emitExpression, expression, exprTrigger, GATE, GAZE_MM, gazeTo, GL, GZ,
+         nodAmt, normalizeExpressionTrigger } from './face/expression.js';
 import { tickMouth } from './face/mouth.js';
 import { FX, fxNote, setMusic, tickFx } from './face/fx.js';
 import { earBanned, earOn, earStart, earStop, feedSnd, snd, tickEar } from './face/ear.js';
@@ -49,7 +49,8 @@ function frame(ts) {
     // 무거워지는 깜빡임 — 감기는 속도가 아니라 *뜨는* 속도를 늦춘다
     let env = F.blinkEnv || s.env;
     if (!F.blinkEnv && F.state === 'DROWSY') {
-      env = [env[0], env[1], 0.40 + Math.min((t - F.stateAt) / 30, 1) * 0.35];
+      // 졸릴수록(k) 뜨는 속도가 더 늦어진다 [WO-01b-8]
+      env = [env[0], env[1], 0.40 + Math.min((t - F.stateAt) / 30, 1) * 0.35 + 0.4 * DROWSE.k];
     }
     const a = blinkAmount(F.blinkT, env);
     if (a < 0) {
@@ -68,7 +69,8 @@ function frame(ts) {
 
   for (let i = 0; i < 2; i++) {
     F.lidNow[i] = smooth(F.lidNow[i], F.lid[i], 0.9, dt);
-    const lid = clamp(Math.max(F.lidNow[i], blink) + (X ? X.settle * 0.05 : 0), 0, 1);
+    // lidE: 점진 졸림·꾸벅·sad 의 윗꺼풀 추가 처짐 [WO-01b-8][WO-01b-10]
+    const lid = clamp(Math.max(F.lidNow[i], blink) + (X ? X.settle * 0.05 + X.lidE : 0), 0, 1);
     // 좌우 독립 높이 배율 — 호기심이 한쪽 눈만 키운다 [WO-01b-5]
     const hi = h * (X ? X.hMul[i] : 1);
     const topI = cy - hi / 2;
@@ -85,7 +87,8 @@ function frame(ts) {
       lowLidPath(EYE.cx[i], topI + hi + 5 - low * (hi * 0.6 + 5), 4.5 * low));
     // 기울기: 왼눈 +θ, 오른눈 −θ → 두 안쪽 끝이 내려간다.
     // 감정 기울기(tiltE)는 부호가 반대라 바깥 끝이 내려간다(서운함)
-    const th = (X ? X.tilt + X.tiltE : 0) * (i ? -1 : 1);
+    // head: 두 눈 **같은** 방향(고개 갸웃, curious) — 좌우 반대 부호인 찡그림·서운함 기울기와 구분된다 [WO-01b-10]
+    const th = (X ? X.tilt + X.tiltE : 0) * (i ? -1 : 1) + (X ? X.head : 0);
     $(i ? 'tiltR' : 'tiltL').setAttribute('transform',
       'translate(' + ox.toFixed(2) + ' ' + oy.toFixed(2) + ') rotate(' +
       th.toFixed(2) + ' ' + EYE.cx[i] + ' ' + cy.toFixed(2) + ')');
@@ -94,7 +97,7 @@ function frame(ts) {
   tickMouth(t, dt, X);
   tickFx(t, dt);
   // 감긴 눈은 호흡으로 오르내리고, 빛이 들면 떨린다
-  const sy = VB.dy + (X ? X.breath * 0.3 + X.tremor : 0);
+  const sy = VB.dy + (X ? X.breathMm + X.tremor : 0);   // 감긴 눈도 같은 mm 로 숨쉰다 [WO-01b-9]
   $('shutG').setAttribute('transform', 'translate(' + VB.dx.toFixed(2) + ' ' + sy.toFixed(2) + ')');
 
   // ── 계측 — 이 프레임이 실제로 그린 값 ────────────────────
@@ -358,7 +361,7 @@ export function boot(build) {
     setEyeState: setEyeState, handleLine: handleLine, feedLux: feedLux,
     lux: lux, applyViewBox: applyViewBox, show: show,
     connect: connect, send: send, onNotify: onNotify, onDisconnect: onDisconnect,
-    GL: GL, GATE: GATE, BREATH: BREATH, expression: expression, VB: VB,
+    GL: GL, GATE: GATE, BREATH: BREATH, BREATH_AMP: BREATH_AMP, DROWSE: DROWSE, nodAmt: nodAmt, expression: expression, VB: VB,
     // [WO-01b-5] 이산 표정·입·fx — 시트 게이트가 읽는다
     EMO: EMO, emitExpression: emitExpression, exprTrigger: exprTrigger,
     normalizeExpressionTrigger: normalizeExpressionTrigger,

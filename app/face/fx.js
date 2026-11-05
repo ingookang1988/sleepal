@@ -9,8 +9,9 @@ import { F, STATES, VB } from './eyes.js';
 import { normalizeExpressionTrigger } from './expression-protocol.mjs';
 
 const NS = 'http://www.w3.org/2000/svg';
-export const FX = { alive: [], music: false, nextZ: 0, nextNote: 0 };
+export const FX = { alive: [], music: false, nextZ: 0, nextNote: 0, prev: null };
 const LIFE = { z: 4.5, note: 3.6 };
+const DIE_T = 0.3;   // 상태 전이 시 페이드 — zzz 가 MORNING 으로 4.5초 넘어오지 않게([ANL-01b] 근인 7, [WO-01b-7])
 
 function spawn(kind, x, y) {
   const el = document.createElementNS(NS, 'use');
@@ -43,6 +44,11 @@ export function tickFx(t, dt) {
     }
     return;
   }
+  // 상태가 바뀌면 떠 있던 도상은 짧게 사라진다 — 새 상태의 것만 남는다.
+  if (F.state !== FX.prev) {
+    if (FX.prev !== null) for (const p of FX.alive) if (p.die === undefined) p.die = 0;
+    FX.prev = F.state;
+  }
   // 잠듦 — zzz 가 오른눈 오른쪽에서 피어오른다. 동시 3개까지.
   if (F.state === 'ASLEEP' && t >= FX.nextZ) {
     FX.nextZ = t + rand(2.6, 4.2);
@@ -59,11 +65,13 @@ export function tickFx(t, dt) {
     const p = FX.alive[i];
     p.t += dt;
     const u = p.t / LIFE[p.kind];
-    if (u >= 1) { p.el.remove(); FX.alive.splice(i, 1); continue; }
+    if (p.die !== undefined) p.die += dt;
+    if (u >= 1 || (p.die !== undefined && p.die >= DIE_T)) { p.el.remove(); FX.alive.splice(i, 1); continue; }
+    const dieK = p.die === undefined ? 1 : Math.max(0, 1 - p.die / DIE_T);
     const rise = p.kind === 'z' ? 11 : 46;               // z 는 살짝, 음표는 회랑 관통
     const sway = Math.sin(p.t * 1.7 + p.ph) * (p.kind === 'z' ? 1.2 : 2.4);
     const drift = p.kind === 'z' ? 4 * u : 0;            // z 는 오른쪽으로 흘러간다
-    const op = clamp(Math.min(u / 0.15, (1 - u) / 0.3), 0, 1) * (p.kind === 'z' ? 0.55 : 0.8);
+    const op = clamp(Math.min(u / 0.15, (1 - u) / 0.3), 0, 1) * (p.kind === 'z' ? 0.55 : 0.8) * dieK;
     const sc = p.kind === 'z' ? 0.8 + 0.5 * u : 0.9 + 0.15 * Math.sin(p.t * 3 + p.ph);
     p.el.setAttribute('opacity', op.toFixed(3));
     p.el.setAttribute('transform', 'translate(' + (VB.dx + p.x + sway + drift).toFixed(2) + ' ' +

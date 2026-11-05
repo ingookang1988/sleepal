@@ -6,11 +6,15 @@
 |---|---|---|---|---|
 | [WO-01a-1 · toolchain_verify] | 라이브러리 설치와 컴파일 검증 — 집 와이파이에서 | PLAN-01a | Draft | 해당없음 |
 | [WO-01b-1 · eye_render] | 눈 5상태 렌더 + 가로 전체화면 + Wake Lock | PLAN-01b | Active | 있음 |
+| [WO-01b-10 · emotion_legibility] | 표정 어휘 가독성 — sad 윗꺼풀 · curious 고개 갸웃 (ANL-01b 후보 5) | PLAN-01b | Verifying | 있음 |
 | [WO-01b-2 · https_deploy] | HTTPS 배포와 폰 실기 확인 | PLAN-01b | Active | 있음 |
 | [WO-01b-3 · breath_audio] | 숨소리·하품 오디오와 백그라운드 재생 실측 | PLAN-01b | Draft | 해당없음 |
 | [WO-01b-4 · expression_layer] | 표정 레이어 — 눈부심 찡그림과 미세 표정 | PLAN-01b | Active | 있음 |
 | [WO-01b-5 · emotion_mouth] | 이산 표정·입·떠다니는 도상 — 트리거 수신부 + 아래꺼풀 + 입 + zzz/음표 | PLAN-01b | Verifying | 있음 |
 | [WO-01b-6 · sound_gaze] | 시선 — 소리 나는 쪽으로 눈이 이동한다 (귀 + 사카드) | PLAN-01b | Verifying | 있음 |
+| [WO-01b-7 · emotion_crossfade] | 표정 합성·전이 정합 — 크로스페이드 큐 · startled 통일 · fx 전이 페이드 (ANL-01b 후보 1·6·7) | PLAN-01b | Verifying | 있음 |
+| [WO-01b-8 · gradual_drowsiness] | 졸림의 연속성 — mode:progress 점진 졸림 · DROWSY 표류 · 꾸벅 (ANL-01b 후보 2·3) | PLAN-01b | Verifying | 있음 |
+| [WO-01b-9 · breath_amplitude] | 호흡 진폭 상태별 — 후광과 같은 깊이로 (ANL-01b 후보 4) | PLAN-01b | Verifying | 있음 |
 | [WO-01c-1 · care_lines] | 케어 문장 5종 사전 작성 — R2 검수 통과 | PLAN-01c | Active | 있음 |
 | [WO-01c-2 · quiet_space] | quiet space 접합 인터페이스 확정 | PLAN-01c | Draft | 해당없음 |
 | [WO-01d-1 · material_and] | 재료 확보와 실측 — 폰 외곽 + 화면 경계 | PLAN-01d | Draft | 해당없음 |

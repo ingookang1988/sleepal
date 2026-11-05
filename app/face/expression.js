@@ -3,13 +3,17 @@
 //  [CON-01] 규칙 2 — 표정은 상태 전이를 절대 유발하지 않는다.
 //  ⛔ [ARCH-01] R4 — 밤에는 계산 자체를 돌리지 않는다.
 'use strict';
-import { smooth, clamp, palBus } from '../core.js';
+import { smooth, clamp, palBus, rand } from '../core.js';
 import { F, EYE } from './eyes.js';
 import { normalizeExpressionTrigger } from './expression-protocol.mjs';
 export { normalizeExpressionTrigger } from './expression-protocol.mjs';
+import { EMO_DEF, advance as emoAdvance, mix as emoMix, trigger as emoTrigger } from './emotion-core.mjs';
 
 // [CON-01] 호흡 주기. 보드의 후광과 같은 숫자를 써야 몸과 얼굴이 한 몸이 된다.
 export const BREATH = { AWAKE:4.0, DROWSY:5.5, ASLEEP:6.5, NIGHT:0, MORNING:4.5 };
+// 호흡 **진폭**(눈 높이 비율) — 주기만 상태별이고 진폭이 고정이면 감긴 눈은 0.6mm 라 후광만 숨쉬는 것처럼
+// 읽힌다([ANL-01b] 근인 3, [WO-01b-9]). 감긴 눈 곡선도 같은 mm 로 오르내린다(breathMm).
+export const BREATH_AMP = { AWAKE:0.02, DROWSY:0.03, ASLEEP:0.035, NIGHT:0, MORNING:0.02 };
 // 상태별 눈부심 응답 비율
 export const GATE   = { AWAKE:1, DROWSY:1, ASLEEP:0, NIGHT:0, MORNING:0.5 };
 
@@ -44,18 +48,12 @@ export const TAU_UP = 0.15, TAU_DOWN = 2.5;
 export const TAU_RELEASE = 0.4, RELEASE_T = 1.35;
 
 // ── 이산 표정 — [CON-01b] expr:trigger 소비부 [WO-01b-5] ───────
-//  연속 채널(glare)과 달리 *사건*이다: 봉투 하나가 타고 끝나면 기하는
-//  픽셀 단위로 원래대로 돌아온다. 놀이 감정은 serve.js PAL_SYSTEM 의
-//  enum(happy·curious·sad)을 재사용하고, 센서 반응은 startled·relieved 로 분리한다.
-//  [CON-01] 규칙 2 — 트리거는 상태 전이를 절대 유발하지 않는다.
-export const EMO = { kind:null, t:-1, tone:1, source:null };
-const EMO_DEF = {
-  happy:   { dur:1.9, atk:0.28, rel:0.70 },   // 아래꺼풀 ⌣ + 입꼬리
-  curious: { dur:1.6, atk:0.18, rel:0.50 },   // 한쪽 눈 확대 + 입 'o'
-  sad:     { dur:2.6, atk:0.45, rel:1.00 },   // 눈꼬리 바깥 처짐 + 입꼬리 내림
-  startled:{ dur:0.9, atk:0.06, rel:0.36 },   // 빛 급상승 — 짧은 수축 + 'o'
-  relieved:{ dur:1.8, atk:0.24, rel:0.75 },   // 빛 급하강 — 아래꺼풀 + 입꼬리
-};
+//  연속 채널(glare)과 달리 *사건*이다: 봉투가 타고 끝나면 기하는 픽셀 단위로 원래대로
+//  돌아온다. 놀이 감정은 serve.js PAL_SYSTEM 의 enum(happy·curious·sad)을 재사용하고,
+//  센서 반응은 startled·relieved 로 분리한다. [CON-01] 규칙 2 — 트리거는 상태 전이를 절대 유발하지 않는다.
+//  [WO-01b-7] 봉투 정의·합성은 emotion-core.mjs(순수). 슬롯이 여럿이라 새 트리거가 이전 봉투를
+//  짧게 내리면서 오른다 — 얼굴이 튀지 않는다. EMO.kind/t 는 HUD·시트 호환용 거울이다.
+export const EMO = { kind:null, t:-1, tone:1, source:null, slots:[] };
 // 상태별 표정 게이트 — glare 의 GATE 와 별도다. 잠듦·밤은 0 (R4 이중 방어,
 // [CON-02] 규칙 2: 소비자도 각자 막는다).
 const EMO_GATE = { AWAKE:1, DROWSY:0.5, ASLEEP:0, NIGHT:0, MORNING:1 };
@@ -71,10 +69,14 @@ export function exprTrigger(kind, tone, source) {
   const payload = typeof kind === 'object' ? normalizeExpressionTrigger(kind)
                                             : legacyPayload(kind, tone, source);
   if (!payload || !EMO_DEF[payload.kind] || !EMO_GATE[F.state]) return false;
+  EMO.slots = emoTrigger(EMO.slots, payload.kind, payload.tone, payload.source);
   EMO.kind = payload.kind;
   EMO.t = 0;
   EMO.tone = payload.tone;
   EMO.source = payload.source;
+  // startled 는 kind 기준으로 하드 블링크를 동반한다 — 원천(lux/play)에 따라 달라 보이지 않게([ANL-01b] 근인 8).
+  // lux 경로는 발화 전에 이미 블링크를 걸어 두므로(F.blinkT ≥ 0) 여기서 중복되지 않는다.
+  if (payload.kind === 'startled' && F.blinkT < 0) { F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0; }
   return true;
 }
 
@@ -92,12 +94,35 @@ palBus.addEventListener('expr:trigger', function (e) {
   if (payload && payload.kind !== 'note') exprTrigger(payload);
 });
 
-// 봉투 — 오르고(atk) · 머물고 · 풀린다(rel). 음수 = 끝.
-function emoAmt(d, t) {
-  if (t < d.atk) return t / d.atk;
-  if (t < d.dur - d.rel) return 1;
-  if (t < d.dur) return 1 - (t - (d.dur - d.rel)) / d.rel;
+// ── 점진 졸림 + 꾸벅 [WO-01b-8] — [CON-02] mode:progress 의 연속 소비 ───────
+//  졸림이 이진이면 5분이 보이지 않는다([ANL-01b] 근인 4). SLEEP 후보의 경과율 k(0~1)로 DROWSY 의
+//  눈꺼풀·깜빡임·표류를 **연속 변조**한다 — 상태 전이는 없다([CON-01] 규칙 2). 꾸벅(nod)은 DROWSY 에서
+//  천천히 더 감겼다 홱 뜨는 봉투 — 10m 에서 가장 강한 졸림 신호. ASLEEP·NIGHT 에서는 전부 무효.
+export const DROWSE = { k:0, nodAt:Infinity, nodT:-1, prev:null };
+palBus.addEventListener('mode:progress', function (e) {
+  const d = e.detail || {};
+  DROWSE.k = d.to === 'SLEEP' && d.need > 0 ? clamp(d.elapsed / d.need, 0, 1) : 0;
+});
+palBus.addEventListener('mode:change', function () { DROWSE.k = 0; });
+// 꾸벅 봉투 — 천천히 감김(1.1s, 부드럽게) · 머묾(0.15) · 홱 뜸(0.25). 음수 = 끝.
+export function nodAmt(t) {
+  if (t < 1.1) { const u = t / 1.1; return u * u * (3 - 2 * u); }
+  if (t < 1.25) return 1;
+  if (t < 1.5) return 1 - (t - 1.25) / 0.25;
   return -1;
+}
+function tickNod(t, dt) {
+  if (F.state !== DROWSE.prev) {           // 상태 진입 — DROWSY 면 첫 꾸벅 예약, 아니면 무효
+    DROWSE.prev = F.state; DROWSE.nodT = -1;
+    DROWSE.nodAt = F.state === 'DROWSY' ? t + rand(8, 16) : Infinity;
+  }
+  if (F.state !== 'DROWSY') return 0;
+  if (DROWSE.nodT < 0 && t >= DROWSE.nodAt) DROWSE.nodT = 0;
+  if (DROWSE.nodT < 0) return 0;
+  DROWSE.nodT += dt;
+  const a = nodAmt(DROWSE.nodT);
+  if (a < 0) { DROWSE.nodT = -1; DROWSE.nodAt = t + rand(12, 20) * (1 - 0.5 * DROWSE.k); return 0; }
+  return a;
 }
 
 // ── 시선 — 소리 나는 쪽을 본다 [WO-01b-6] ──────────────────────
@@ -120,8 +145,9 @@ export function gazeTo(dir) {             // dir -1(왼) ~ +1(오른), 0 = 정�
 export function expression(t, dt) {
   if (F.state === 'NIGHT') {          // 밤에는 아무것도 하지 않는다 (R4)
     GL.now = 0; GL.flinch = -1; GL.relief = -1; GL.settle = 0; GL.release = 0;
-    EMO.kind = null; EMO.t = -1; EMO.source = null; // 진행 중이던 이산 표정도 버린다
+    EMO.kind = null; EMO.t = -1; EMO.source = null; EMO.slots = []; // 진행 중이던 이산 표정도 버린다
     GZ.x = 0; GZ.y = 0; GZ.tx = 0; GZ.ty = 0; GZ.hold = 0;   // 시선도
+    DROWSE.nodT = -1; DROWSE.prev = 'NIGHT';                  // 꾸벅도
     return null;                      // 계산 자체를 돌리지 않는다
   }
   // 시선 — 머무는 동안은 홱, 풀리면 느긋하게 중앙으로
@@ -129,23 +155,15 @@ export function expression(t, dt) {
   else { GZ.tx = 0; GZ.ty = 0; }
   GZ.x = smooth(GZ.x, GZ.tx, GZ.hold > 0 ? 0.05 : 0.45, dt);
   GZ.y = smooth(GZ.y, GZ.ty, GZ.hold > 0 ? 0.05 : 0.45, dt);
-  // 이산 표정 봉투 — 채널로만 산다. 끝나면 전부 0 으로 돌아온다.
-  let eLow = 0, eHL = 1, eHR = 1, eTilt = 0, eCurve = 0, eOpen = 0, eAmt = 0;
-  if (EMO.t >= 0) {
-    EMO.t += dt;
-    const d = EMO_DEF[EMO.kind];
-    const a0 = emoAmt(d, EMO.t);
-    if (a0 < 0) { EMO.kind = null; EMO.t = -1; EMO.source = null; }
-    else {
-      const a = a0 * EMO_GATE[F.state] * (0.55 + 0.45 * EMO.tone);
-      eAmt = a;
-      if (EMO.kind === 'happy') { eLow = 0.62 * a; eCurve = 1.8 * a; }
-      else if (EMO.kind === 'curious') { eHL = 1 + 0.06 * a; eHR = 1 - 0.08 * a; eOpen = 0.22 * a; }
-      else if (EMO.kind === 'sad') { eTilt = -5 * a; eLow = 0.12 * a; eCurve = -2.6 * a; }
-      else if (EMO.kind === 'startled') { eHL = 1 - 0.14 * a; eHR = 1 - 0.14 * a; eTilt = 2.5 * a; eOpen = 0.72 * a; }
-      else if (EMO.kind === 'relieved') { eHL = 1 + 0.02 * a; eHR = 1 + 0.02 * a; eLow = 0.34 * a; eCurve = 1.35 * a; }
-    }
-  }
+  // 이산 표정 — 다중 슬롯 합성(emotion-core). 채널로만 살고, 전부 끝나면 0 으로 돌아온다.
+  EMO.slots = emoAdvance(EMO.slots, dt);
+  const M = emoMix(EMO.slots, EMO_GATE[F.state]);
+  EMO.kind = M.kind; EMO.source = M.source; EMO.t = M.kind ? EMO.t + dt : -1;
+  const eLow = M.ch.low, eHL = 1 + M.ch.hL, eHR = 1 + M.ch.hR, eTilt = M.ch.tilt, eCurve = M.ch.curve,
+        eOpen = M.ch.open, eAmt = M.amt, eLid = M.ch.lid, eHead = M.ch.head;
+  // 점진 졸림·꾸벅 [WO-01b-8] — DROWSY 에서만 값이 있다
+  const nod = tickNod(t, dt);
+  const k = F.state === 'DROWSY' ? DROWSE.k : 0;
   // 눈부심 — 비대칭 평활. 올라갈 때는 즉각, 내려올 때는 천천히.
   // 단, 안도가 연 창 안에서는 *놓아주는* 짧은 시상수를 쓴다 — 빛이 진 것에
   // 대한 반응으로 눈이 다시 떠져야 하기 때문이다. 창 밖의 이완은 예전 그대로다.
@@ -167,18 +185,25 @@ export function expression(t, dt) {
 
   const g = clamp((GL.now + over) * gate, 0, 1.25);
   const breathT = BREATH[F.state] ? Math.sin(2 * Math.PI * (t - F.stateAt) / BREATH[F.state]) : 0;
+  const amp = BREATH_AMP[F.state] || 0;
 
   // 미세 표류 — 완전히 정지한 눈은 죽은 눈이다. 두 눈이 함께 움직인다.
-  const drift = (F.state === 'AWAKE' ? 1 : F.state === 'MORNING' ? 0.6 : 0);
+  // DROWSY 도 표류한다(0.3, 졸릴수록 줄어든다) — 반쯤 감긴 채 정지하면 그게 죽은 눈이다([ANL-01b] 근인 2).
+  const drift = (F.state === 'AWAKE' ? 1 : F.state === 'MORNING' ? 0.6 : F.state === 'DROWSY' ? 0.3 * (1 - 0.5 * k) : 0);
   return {
     g: g,
-    h:  EYE.h * (1 - 0.62 * g) * (1 + 0.02 * breathT),
+    h:  EYE.h * (1 - 0.62 * g) * (1 + amp * breathT),
     cy: EYE.cy - 1.5 * g,
     tilt: 7 * g,                                   // 안쪽 끝을 내린다 = 찡그림
     dx: drift * 0.4 * (Math.sin(t * 0.41) * 0.6 + Math.sin(t * 0.27 + 1.3) * 0.4),
-    dy: drift * 0.4 * (Math.sin(t * 0.33 + 2.1) * 0.6 + Math.sin(t * 0.19 + 0.7) * 0.4),
+    dy: drift * 0.4 * (Math.sin(t * 0.33 + 2.1) * 0.6 + Math.sin(t * 0.19 + 0.7) * 0.4) + 1.5 * nod,
     settle: GL.settle,
     breath: breathT,
+    breathMm: EYE.h * amp * breathT,               // 감긴 눈 곡선도 같은 mm 로 오르내린다 [WO-01b-9]
+    // 졸림 연속 변조 [WO-01b-8] — 윗꺼풀 추가 처짐(점진 k + 꾸벅) · 감정 윗꺼풀(sad)도 여기에 합쳐진다
+    lidE: clamp(0.2 * k + 0.35 * nod + eLid, 0, 1),
+    nod: nod, k: k,
+    head: eHead,            // 두 눈 공통 기울기(°, 고개 갸웃 — curious) [WO-01b-10]
     // 잠듦에서는 눈을 다시 뜨지 않는다 — 미세한 떨림만 남긴다
     tremor: (F.state === 'ASLEEP' ? Math.sin(t * 17) * 0.25 * GL.now : 0),
     // ── 이산 표정 채널 [WO-01b-5] — 전부 0 이면 위와 픽셀 단위로 동일 ──
