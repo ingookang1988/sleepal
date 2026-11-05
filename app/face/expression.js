@@ -77,6 +77,8 @@ export function exprTrigger(kind, tone, source) {
   // startled 는 kind 기준으로 하드 블링크를 동반한다 — 원천(lux/play)에 따라 달라 보이지 않게([ANL-01b] 근인 8).
   // lux 경로는 발화 전에 이미 블링크를 걸어 두므로(F.blinkT ≥ 0) 여기서 중복되지 않는다.
   if (payload.kind === 'startled' && F.blinkT < 0) { F.blinkEnv = [0.045, 0, 0.045]; F.blinkT = 0; }
+  // thinking 은 시선이 위로 간다 — 소리 시선과 같은 채널(GZ)을 쓰되 머묾을 길게. 상태 게이트는 gazeTo 가 건다.
+  if (payload.kind === 'thinking') { const g = GAZE_GATE[F.state] || 0; GZ.tx = GAZE_MM * 0.35 * g; GZ.ty = -1.0 * g; GZ.hold = 1.6; }
   return true;
 }
 

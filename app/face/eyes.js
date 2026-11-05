@@ -16,9 +16,22 @@ export const STATES = {
              blink:null, env:null },
   NIGHT:   { bg:'#000000', eye:'#000000', lid:1.00, dim:0.60, shut:false,
              blink:null, env:null },
-  MORNING: { bg:'#3B4664', eye:'#FFF6E6', lid:0.00, dim:0.00, shut:false,
+  // 아침 — 새벽빛. 각성(남색)과 갈라져야 "앱의 시간"이 보인다([WO-01b-10] §디자인 제안 3). 잠정 — 확산지 뒤 튜닝.
+  MORNING: { bg:'#5A4A52', eye:'#FFF1DC', lid:0.00, dim:0.00, shut:false,
              blink:[4.0, 7.0], env:[0.30, 0.10, 0.55] },
 };
+// ── 눈 형태 어휘 [WO-01b-10] §디자인 제안 1 — 눈꺼풀 없이도 상태가 갈린다 ────
+//  dip: 윗꺼풀 가장자리의 가운데 처짐(mm) — 졸림은 처진 눈, 아침은 동그랗게 뜬 눈.
+//  ry: 모서리 세로 반지름 비율(rx 기준) — 1 이면 원, 작을수록 넓적(졸림). rx 는 그대로 h/2(시트 게이트).
+//  hmul: 상태 높이 배율 — 아침은 살짝 세로로 긴 둥근 눈. 전이는 main 루프가 τ 1.5s 로 잇는다.
+export const SHAPE = {
+  AWAKE:   { dip:4, ry:1.00, hmul:1.00 },
+  DROWSY:  { dip:7, ry:0.80, hmul:1.00 },
+  ASLEEP:  { dip:4, ry:1.00, hmul:1.00 },
+  NIGHT:   { dip:4, ry:1.00, hmul:1.00 },
+  MORNING: { dip:2, ry:1.00, hmul:1.04 },
+};
+export const SHP = { dip:4, ry:1, hmul:1, dipT:4, ryT:1, hmulT:1 };   // 현재값·목표값(루프가 평활)
 export const ORDER = ['AWAKE', 'DROWSY', 'ASLEEP', 'NIGHT', 'MORNING'];
 
 // ── 얼굴 기하 (mm) — [DOM-01] §2 / [PLAN-01b] v0.2 ─────────────
@@ -84,6 +97,7 @@ export function setEyeState(name) {
   F.blinkEnv = null;
   F.stateAt = now();                    // [CON-01] 호흡 위상 0
   F.blinkAt = s.blink ? now() + rand(s.blink[0], s.blink[1]) : Infinity;
+  const sh = SHAPE[name]; SHP.dipT = sh.dip; SHP.ryT = sh.ry; SHP.hmulT = sh.hmul;
 
   document.body.style.backgroundColor = s.bg;
   document.body.classList.toggle('night', name === 'NIGHT');   // ⛔ R4 — CSS 애니메이션(고개 갸웃)도 밤에는 멈춘다
@@ -122,11 +136,11 @@ export function blinkAmount(t, env) {
   return -1;                                  // 끝났다는 신호
 }
 
-// 눈꺼풀 도형 — 아랫변이 곡선이다(가운데가 3mm 더 내려온다).
-export function lidPath(cx, bottom) {
+// 눈꺼풀 도형 — 아랫변이 곡선이다. dip(기본 4) 이 클수록 가운데가 더 처진다(졸린 눈, [WO-01b-10]).
+export function lidPath(cx, bottom, dip) {
   const l = (cx - 30).toFixed(2), r = (cx + 30).toFixed(2), c = cx.toFixed(2);
   const top = (bottom - LID_H).toFixed(2);
-  const side = (bottom - 2).toFixed(2), ctrl = (bottom + 4).toFixed(2);
+  const side = (bottom - 2).toFixed(2), ctrl = (bottom + (dip === undefined ? 4 : dip)).toFixed(2);
   return 'M ' + l + ' ' + top + ' H ' + r + ' V ' + side +
          ' Q ' + c + ' ' + ctrl + ' ' + l + ' ' + side + ' Z';
 }

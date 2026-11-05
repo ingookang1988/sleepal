@@ -20,6 +20,9 @@ test('CON-01b expression payload allowlist and legacy tone normalization', async
     { kind:'happy', tone:0.6, source:'play' }
   );
   assert.equal(normalizeExpressionTrigger({ kind:'angry', tone:1, source:'lux' }), null);
+  // v0.2 어휘([WO-01b-10]) — thinking · yawn
+  assert.deepEqual(normalizeExpressionTrigger({ kind:'thinking', tone:1, source:'play' }), { kind:'thinking', tone:1, source:'play' });
+  assert.deepEqual(normalizeExpressionTrigger({ kind:'yawn', tone:0.5, source:'system' }), { kind:'yawn', tone:0.5, source:'system' });
   assert.equal(normalizeExpressionTrigger({ kind:'happy', tone:1.1, source:'play' }), null);
   assert.equal(normalizeExpressionTrigger({ kind:'happy', tone:1, source:'play', userId:'x' }), null);
 });

@@ -7,7 +7,7 @@
 'use strict';
 import { $, clamp, rand, smooth } from '../core.js';
 import { F, STATES, VB } from './eyes.js';
-import { GL } from './expression.js';
+import { emitExpression, GL } from './expression.js';
 
 // 기하(mm) — 눈 최저점 59.9 + 여유. 곡선 끝점 y 63.5 · 하품 타원 중심 65.
 // 화면 하단(73)까지: 하품 최대 ry 4 → 바닥 69. dev HUD 띠(EYE_SAFE 61 이하)와
@@ -58,7 +58,8 @@ export function tickMouth(t, dt, X) {
 
   // 하품 진행
   let open = 0;
-  if (MM.yawnT < 0 && t >= MM.yawnAt) MM.yawnT = 0;
+  // 하품 시작 — 눈도 함께 찡그린다(kind yawn, [WO-01b-10] §디자인 제안 5). 입은 자체 봉투가 계속 소유한다.
+  if (MM.yawnT < 0 && t >= MM.yawnAt) { MM.yawnT = 0; emitExpression('yawn', 1, 'system'); }
   if (MM.yawnT >= 0) {
     MM.yawnT += dt;
     const a = yawnAmt(MM.yawnT);
