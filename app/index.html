@@ -101,12 +101,12 @@
      오디오 잠금 해제도 같은 탭 하나로 겸한다. -->
 <section id="entryScreen" class="screen on">
   <h2>팰이 눈을 뜰 준비가 되었습니다</h2>
-  <p>먼저 팰과 연결한 뒤 시작하세요.<br>시작하면 가로로 고정되고 화면이 꺼지지 않습니다.</p>
+  <p>시작하면 가로로 고정되고 화면이 꺼지지 않습니다.<br>팰은 방의 밝기와 소리를 느끼며 먼저 졸려 합니다 — 카메라(조도계)와 마이크 권한을 묻습니다.</p>
   <div class="rowbtn">
     <button id="bConnect"><span class="dot" id="dot"></span>팰과 연결</button>
     <button class="primary" id="bStart">시작</button>
   </div>
-  <p id="entryNote">연결하지 않아도 얼굴은 동작합니다 — 후광만 없습니다.</p>
+  <p id="entryNote">팰과 연결하지 않아도 동작합니다 — 후광만 없습니다. 연결하면 팰의 몸이 밝기를 대신 잽니다.</p>
   <div class="rowbtn">
     <button id="bCal">화면 보정</button>
     <button id="bDev">dev</button>
@@ -239,6 +239,14 @@
        즉시 폐기(오디오는 기기를 떠나지 않는다). 상태 전이는 유발하지 않는다.
        🎙 [ADR-121] 마이크 생애 = 수면 준비 세션 — SLEEP 모드·잠듦·밤에서는
        어떤 경로로 켜졌든 강제 OFF. 이 버튼은 dev 수동 토글(첫 권한 부여 겸). -->
+  <!-- 모드 대역 [WO-02d-1] — [CON-02] command 전이. 센서 전이(5분)는 HUD 의 mode 줄로 본다.
+       보드 미연결이면 face/mode-eyes.js 가 눈 상태를 유도한다([CON-02] 규칙 4). -->
+  <div class="rowbtn">
+    <button id="dbgModePlay">놀이</button>
+    <button id="dbgModeWind">수면 환경</button>
+    <button id="dbgModeSleep">수면</button>
+    <button id="dbgModeWake">기상</button>
+  </div>
   <div class="rowbtn">
     <button id="dbgSndL">◀ 소리</button>
     <button id="dbgSndC">● 정면</button>
@@ -282,7 +290,7 @@ import { boot } from './main.js';
 // 빌드 표시. 손으로 올린다(빌드 단계가 없는 게 이 앱의 전제다).
 // ⚠ 이 문자열은 반드시 index.html 에 남는다 — deploy.js 와 배포본 신선도
 //   검사가 *이 파일에서* grep 한다([ADR-116]). 모듈로 옮기지 말 것.
-const BUILD = '2026-08-22k';
+const BUILD = '2026-11-05a';
 
 // PWA 서비스워커 — ?v=BUILD 로 등록해 배포마다 SW URL 이 바뀌고, 새 SW 가
 // 이전 버전 캐시를 지운다([WO-02a-1]). 등록 실패는 조용히 무시한다 —

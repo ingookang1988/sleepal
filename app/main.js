@@ -15,13 +15,14 @@ import { _feedRaw, _reset, bleStatus, connect, DEVICE_PREFIX, handleLine, NUS,
          onDisconnect, onNotify, reconnect, RX, send, TX } from './ble.js';
 import { closeDev, EYE_SAFE, getDev, openDev, paintDebug, paintHud, setBuild,
          setDev, toggleDebug } from './hud.js';
-
 // ── T 파트 등록 지점 ([PLAN-02] §경계 1 · [CON-02]) ─────────────
 //  mode.js / tracker.js / sound.js 는 여기서 import 되어 palBus 로 만난다 —
 //  index.html 은 건드리지 않는다. 모드 발행은 mode.js 만([CON-02] 규칙 1).
-//    import { initMode } from './mode.js';       initMode(palBus);
+import { _machine, _modeFeed, initMode, MODE, modeCommand, modeParams, modeStart } from './mode.js';
 //    import { initTracker } from './tracker.js'; initTracker(palBus);
 //    import { initSound } from './sound.js';     initSound(palBus);
+// H 소비자 — 보드 미연결 시 모드 → 눈 상태 유도([CON-02] 규칙 4). 구독만 하므로 import 로 충분하다.
+import { _nightNow, EYE_FOR_MODE, eyeForMode, NIGHT_AFTER_S } from './face/mode-eyes.js';
 
 // ── 단일 루프 — 라이브러리 0 ([PLAN-01b] 제약) ────────────────
 let last = 0, rafOff = false;   // rafOff: 검사에서 루프를 손으로 밟을 때만 true
@@ -115,6 +116,9 @@ async function enter() {
   show('faceScreen');
   applyViewBox();
   setEyeState('AWAKE');
+  // 세션 시작 [WO-02d-1] — 사용자 제스처 안에서 조도계·마이크 권한을 묻고 PLAY 로.
+  // 보드가 연결돼 있으면 카메라는 켜지 않는다(보드 LUX: 가 조도다).
+  modeStart().catch(function (e) { log('모드 시작 실패: ' + e.message); });
   if (qs.get('demo') === '1') runDemo();
 }
 async function requestWakeLock() {
@@ -145,6 +149,11 @@ addEventListener('keydown', function (e) {
   else if (e.key === '.') feedSnd(0.6, 1);
   else if (e.key === '/') feedSnd(0.6, 0);
   else if (e.key === 'm') { earOn() ? earStop() : earStart(); }
+  // 모드 명령 [WO-02d-1] — q 놀이 · w 수면 환경 · e 수면 · r 기상. 전부 [CON-02] command 경로다.
+  else if (e.key === 'q') modeCommand('play');
+  else if (e.key === 'w') modeCommand('windDown');
+  else if (e.key === 'e') modeCommand('sleep');
+  else if (e.key === 'r') modeCommand('wake');
 });
 function emitTrigger(kind, tone) {
   emitExpression(kind, tone === undefined ? 1 : tone, 'system');
@@ -184,6 +193,13 @@ function soundAndShow(bal) {
   closeDev();
   setTimeout(function () { feedSnd(0.6, bal); }, 250);
 }
+// 모드 대역 [WO-02d-1] — 명령 전이(cause command). 센서 전이는 5분이 걸리므로
+// 데모·검사에서는 이 버튼이 유일한 즉시 경로다. 얼굴로 돌아가 결과를 보여준다.
+function modeAndShow(cmd) { closeDev(); setTimeout(function () { modeCommand(cmd); }, 250); }
+$('dbgModePlay').onclick  = function () { modeAndShow('play'); };
+$('dbgModeWind').onclick  = function () { modeAndShow('windDown'); };
+$('dbgModeSleep').onclick = function () { modeAndShow('sleep'); };
+$('dbgModeWake').onclick  = function () { modeAndShow('wake'); };
 $('dbgSndL').onclick = function () { soundAndShow(-1); };
 $('dbgSndC').onclick = function () { soundAndShow(0); };
 $('dbgSndR').onclick = function () { soundAndShow(1); };
@@ -281,6 +297,7 @@ export function boot(build) {
   applyViewBox();
   paintRuler();
   setDev(getDev());       // 버튼 라벨 동기화. 기본 OFF — ?dev=1 이나 이전 토글이 있을 때만 ON
+  initMode(palBus);       // [WO-02d-1] 모드 머신 — 200ms 타이머, rAF 와 독립(밤에도 센다)
   requestAnimationFrame(frame);
 
   // 검증 훅 — 콘솔/헤드리스에서 호출한다 (R3 게이트 등)
@@ -306,8 +323,12 @@ export function boot(build) {
     get connected() { return bleStatus().connected; },
     get normalEnd() { return bleStatus().normalEnd; },
     get retries() { return bleStatus().retries; },
-    // [CON-02] 버스 — T 파트 연결점(아직 발행자 없음)
+    // [CON-02] 버스 — 발행자 mode.js([WO-02d-1]) · 소비자 face/mode-eyes.js·ear.js·expression.js
     palBus: palBus,
+    MODE: MODE, modeParams: modeParams, modeCommand: modeCommand, modeStart: modeStart,
+    EYE_FOR_MODE: EYE_FOR_MODE, eyeForMode: eyeForMode, NIGHT_AFTER_S: NIGHT_AFTER_S,
+    // 검사용 — 가상 시계로 핵에 먹인다 · 밤 타이머를 지금 적용한다
+    _modeFeed: _modeFeed, _machine: _machine, _nightNow: _nightNow,
     // 검사용 — 배관을 태우지 않고 라인 스트림만 흉내낸다
     _feedRaw: _feedRaw,
     // 검사용 — rAF 없이 루프를 결정적으로 밟는다(반응 곡선 측정)

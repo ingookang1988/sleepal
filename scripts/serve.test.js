@@ -95,6 +95,10 @@ async function main() {
   check('정적 200', r.status === 200);
   r = await fetch(`${base}/no-such-file`);
   check('정적 404', r.status === 404);
+  // .mjs 는 ES 모듈 — text/javascript 가 아니면 브라우저가 모듈 로드를 거부해 얼굴이 통째로 안 뜬다
+  // (face/expression-protocol.mjs 도입 뒤 실측: 헤드리스에서 SP 미정의 · [WO-02d-1] 게이트가 잡았다)
+  r = await fetch(`${base}/app/face/expression-protocol.mjs`);
+  check('.mjs 는 text/javascript', r.status === 200 && /^text\/javascript/.test(r.headers.get('content-type') || ''), r.headers.get('content-type'));
 
   if (mock.closeAllConnections) mock.closeAllConnections();
   if (srv.closeAllConnections) srv.closeAllConnections();

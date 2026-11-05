@@ -24,7 +24,7 @@
 | [WO-02b-1 · play_loop] | 놀이 왕복 v1 — 녹음→STT→LLM→반응 JSON | PLAN-02 | Draft | 해당없음 |
 | [WO-02b-2 · babble_voice] | 옹알이 절차 합성 + 표정 매핑 — 팰의 고유 발화 | PLAN-02 | Draft | 해당없음 |
 | [WO-02c-1 · sound_library] | 내장 수면 사운드 — 라이브러리·믹서·페이드 | PLAN-02 | Draft | 해당없음 |
-| [WO-02d-1 · mode_state] | 모드 상태 머신 — PLAY→WIND_DOWN→SLEEP→WAKE | PLAN-02 | Draft | 해당없음 |
+| [WO-02d-1 · mode_state] | 모드 상태 머신 — PLAY→WIND_DOWN→SLEEP→WAKE | PLAN-02 | Active | 있음 |
 | [WO-02d-2 · tracker_engine] | 트래커 엔진 v1 — 마이크 분석 → 수면 이벤트 기록 | PLAN-02 | Draft | 해당없음 |
 | [WO-02d-3 · alarm] | 알람 — 등록·울림·반복 카운트·기상 판정 연동 | PLAN-02 | Draft | 해당없음 |
 | [WO-02e-1 · tracker_view] | 트래커 기록 화면 — Vite+React 스캐폴드 + 일기 뷰 | PLAN-02 | Draft | 해당없음 |

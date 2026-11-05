@@ -8,6 +8,7 @@ import { GATE, GL, GZ, TAU_DOWN, TAU_RELEASE } from './face/expression.js';
 import { earOn, snd } from './face/ear.js';
 import { camOn, lux } from './lux.js';
 import { bleStatus, DEVICE_PREFIX } from './ble.js';
+import { listening, MODE } from './mode.js';
 
 // BUILD 문자열은 index.html 에 산다([ADR-116] — deploy.js 가 거기서 grep 한다).
 // 계기판·HUD 는 부팅 때 주입받는다.
@@ -71,6 +72,12 @@ export function paintDebug() {
         '  breath ' + (F.X ? F.X.breath : 0).toFixed(2) +
         '  tremor ' + (F.X ? F.X.tremor : 0).toFixed(2) +
         '  blink ' + F.blinkNow.toFixed(2)) + '\n' +
+    // 모드 머신 [WO-02d-1] — 후보·경과/필요가 보여야 "왜 아직 안 자나"가 설명된다
+    'mode     ' + MODE.mode + ' (' + MODE.cause + ')' +
+      '   후보 ' + (MODE.progress ? MODE.progress.to + ' ' + MODE.progress.elapsed.toFixed(0) + '/' + MODE.progress.need + 's' : '-') +
+      '   lux ' + (MODE.lux === null ? '-' : MODE.lux) +
+      '   snd ' + (MODE.snd === null ? '-' : MODE.snd.toFixed(3)) + '(' + MODE.sndSrc + (listening() ? '·on' : '') + ')' +
+      '   n=' + MODE.ticks + '\n' +
     'hud      ' + (devMode ? 'ON — 얼굴 하단 띠' : 'OFF') + '   fps ' + F.fps.toFixed(0) + '\n' +
     'screen   ' + getScreenWmm().toFixed(1) + ' mm\n' +
     'build    ' + BUILD + '\n\n' +

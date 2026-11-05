@@ -14,7 +14,9 @@ const SHELL = ['./', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'
   // [WO-02a-2] ES 모듈 셸 — 오프라인에서도 전부 있어야 얼굴이 뜬다
   'core.js', 'main.js', 'ble.js', 'lux.js', 'hud.js',
   'face/eyes.js', 'face/expression.js', 'face/expression-protocol.mjs',
-  'face/mouth.js', 'face/fx.js', 'face/ear.js'];
+  'face/mouth.js', 'face/fx.js', 'face/ear.js',
+  // [WO-02d-1] 모드 머신 — 오프라인에서도 팰이 먼저 잠들어야 한다(R8)
+  'mode.js', 'mode-core.mjs', 'face/mode-eyes.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
