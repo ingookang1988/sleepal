@@ -5,7 +5,7 @@
 # Handoff → next session
 
 ## 1. Summary
-방향 전환(HISTORY 2026-11-05, 인간 승인): **보드 없이 폰 앱(PWA, 폰 Chrome 단독)만으로 "팰이 먼저 잠든다" 루프**가 돌도록 [WO-02d-1] 모드 상태 머신을 착수·구현했다 — `mode-core.mjs`(순수 핵)·`mode.js`(T 배선)·`face/mode-eyes.js`(모드→눈 유도, [CON-02] v0.2 규칙 4). 이어 UX 브리핑의 1·3·4·5번으로 [WO-01c-1] **케어 문장 띠 + 시작 화면 2단계**를 착수했다([ADR-123]) — `care-core.mjs`(사전 문장 16 + R2·R6 린트)·`care.js`. node 66/66 + 헤드리스 게이트 42/42. 잔여 2·7번(세로 갸웃 신호 · 밤 두 손가락 길게)도 [ADR-124]로 닫았다. 게이트가 부수 결함을 잡았다: `serve.js` 가 `.mjs` 를 octet-stream 으로 서빙해 PR #6 이후 얼굴이 안 떴음([ADR-307], 수정). 앞선 작업: 하네스 상류 동기화 PR #9([ADR-305]·[ADR-306]) CI 그린, 머지 대기.
+방향 전환(HISTORY 2026-11-05, 인간 승인): **보드 없이 폰 앱(PWA, 폰 Chrome 단독)만으로 "팰이 먼저 잠든다" 루프**가 돌도록 [WO-02d-1] 모드 상태 머신을 착수·구현했다 — `mode-core.mjs`(순수 핵)·`mode.js`(T 배선)·`face/mode-eyes.js`(모드→눈 유도, [CON-02] v0.2 규칙 4). 이어 UX 브리핑의 1·3·4·5번으로 [WO-01c-1] **케어 문장 띠 + 시작 화면 2단계**를 착수했다([ADR-123]) — `care-core.mjs`(사전 문장 16 + R2·R6 린트)·`care.js`. node 66/66 + 헤드리스 게이트 42/42. 잔여 2·7번(세로 갸웃 신호 · 밤 두 손가락 길게)도 [ADR-124]로 닫았다. 게이트가 부수 결함을 잡았다: `serve.js` 가 `.mjs` 를 octet-stream 으로 서빙해 PR #6 이후 얼굴이 안 떴음([ADR-307], 수정). PR #9(하네스 동기화 + 위 전부)는 **main 에 머지됨**(`fc3aebb`, 2026-11-05). 머지 후 표정 동작을 헤드리스로 계측해 [ANL-01b]에 남겼다(개선 후보 7건 — 표정 겹침 튐·졸림 이진·DROWSY 표류 0·호흡 진폭 고정 등).
 
 ## 2. Changed locations (ID list)
 - HISTORY 2026-11-05 행 · [CON-01] v0.5 · [CON-02] v0.2 · [WO-02d-1] Draft→Active · [WO-01c-1] Draft→Active · [ADR-401][ADR-307][ADR-123][ADR-124] 원장 append · `sprint/next.md` 재생성
@@ -14,13 +14,14 @@
 - (PR #9) 하네스 sync 67파일 · `adapter.json` · [WO-02f-2] 신설
 
 ## 3. Next task (single entry point)
-**[WO-02d-1] 실기 검증(Closed 조건)** — 폰 Chrome 에서 `app/` 열고 "팰에게 방 보여주기" → 허용 → "시작" → 불 끄고 조용히 5분 → 팰이 먼저 잠드는지 1회 실측. 케어 띠가 "팰이 어둠에 눈이 익어가요 → 잠들려고 해요 → 잠들었어요"로 이유를 말하는지 함께 본다. HUD(`?dev=1`) 의 `mode` 줄로 후보/경과를 보며 상수(`?dark=&bright=&quiet=&noise=&sleepS=`)를 튜닝하고 실값을 [ADR-401] 후속 항목으로 남긴다. 통과하면 Closed + `feature/live.md` 행. 같은 실기에서 [WO-01c-1] 인간 R2 검수(LINES 16종 어감)도 끝낸다.
+**[WO-02d-1] 실기 검증(Closed 조건)** — 선행: Railway 재배포(위 §4 첫 항목). — 폰 Chrome 에서 `app/` 열고 "팰에게 방 보여주기" → 허용 → "시작" → 불 끄고 조용히 5분 → 팰이 먼저 잠드는지 1회 실측. 케어 띠가 "팰이 어둠에 눈이 익어가요 → 잠들려고 해요 → 잠들었어요"로 이유를 말하는지 함께 본다. HUD(`?dev=1`) 의 `mode` 줄로 후보/경과를 보며 상수(`?dark=&bright=&quiet=&noise=&sleepS=`)를 튜닝하고 실값을 [ADR-401] 후속 항목으로 남긴다. 통과하면 Closed + `feature/live.md` 행. 같은 실기에서 [WO-01c-1] 인간 R2 검수(LINES 16종 어감)도 끝낸다.
 
 ## 4. Open / cautions
-- **배포 필요**: Railway PWA(`face-production-7605`)는 PR #6 이후 `.mjs` MIME 결함으로 얼굴이 안 뜨는 상태였다([ADR-307]). 이 브랜치 머지 후 `npm run deploy`(Railway 토큰 필요 — 인간)로 BUILD `2026-11-05a` 배포 + `deploy.js --check-only` 확인.
+- **배포 대기(인간)**: Railway PWA(`face-production-7605`)는 PR #6 이후 `.mjs` MIME 결함으로 얼굴이 안 뜨는 상태였다([ADR-307]). main 머지는 됐으나 **재배포는 아직** — 클라우드 세션에는 railway CLI·토큰이 없고 배포 호스트가 프록시에서 막힌다. 로컬에서 `node scripts/deploy.js -p <projectId>`(BUILD `2026-11-05c`) 후 `--check-only`.
 - 상수 기본값(dark 40 · bright 200 · quiet 0.05 · noise 0.12)은 **실측 전**이다. 카메라 조도계는 AE 때문에 절대값이 불안정 — 어두운 방에서 `lux.last` 가 실제로 `darkLux` 아래로 내려가는지가 첫 확인점. 폰이 몸통 안이면 후면 카메라가 안쪽을 본다(`lux.js` 주석) — 손에 들거나 협탁 거치로 먼저 검증.
 - 귀(WIND_DOWN)와 T 수음(SLEEP)은 동시에 getUserMedia 를 열지 않도록 설계했으나 전환 순간의 실기 동작은 미검증. 마이크 거부 시 조도 단독 루프.
 - 거치 자동 감지(충전 이벤트·devicemotion)는 후속 WO 로 분리 — 시작 버튼이 세션 시작. `feature/live.md` 는 실기 전이라 갱신하지 않았다.
+- 표정 개선 후보는 [ANL-01b] §개선 후보(우선순위 7건) — 소유 [WO-01b-5][WO-01b-6] 세션이 판단. 1·2번(크로스페이드 · `mode:progress` 점진 졸림)이 가장 값이 크다.
 - UX 브리핑(2026-11-05) 8항목 중 1·2·3·4·5·7 해소([ADR-123][ADR-124]), 6번은 아침 회고 문장 1줄로 최소 해소, 8번은 시작 화면 재구성으로 자연 해소. 케어 문장 17종 어감은 인간 검수 대기([WO-01c-1] Closed 조건).
 - [CON-01]·[CON-02] 편집 시 Verifying 자손 [WO-01b-5][WO-01b-6] 잠금 노출 — 인간 승인 하에 진행([ADR-401]). 그 WO 의 소유 세션은 계약 v0.5/v0.2 를 재확인할 것.
 - 하네스: `weakening-guard.js` 로컬 포크([ADR-306]) 상류 제안 대기 · 상류 전용 스크립트 18개 동결(인간 결정) · review `_GUIDE` 5건 `--ack-review` 대기 · [WO-02f-2](밤샘, 보드 경로)는 보류.
