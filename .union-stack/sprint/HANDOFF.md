@@ -5,31 +5,24 @@
 # Handoff → next session
 
 ## 1. Summary
-방향 전환(HISTORY 2026-11-05, 인간 승인): **보드 없이 폰 앱(PWA, 폰 Chrome 단독)만으로 "팰이 먼저 잠든다" 루프**가 돌도록 [WO-02d-1] 모드 상태 머신을 착수·구현했다 — `mode-core.mjs`(순수 핵)·`mode.js`(T 배선)·`face/mode-eyes.js`(모드→눈 유도, [CON-02] v0.2 규칙 4). 이어 UX 브리핑의 1·3·4·5번으로 [WO-01c-1] **케어 문장 띠 + 시작 화면 2단계**를 착수했다([ADR-123]) — `care-core.mjs`(사전 문장 16 + R2·R6 린트)·`care.js`. node 66/66 + 헤드리스 게이트 42/42. 잔여 2·7번(세로 갸웃 신호 · 밤 두 손가락 길게)도 [ADR-124]로 닫았다. 게이트가 부수 결함을 잡았다: `serve.js` 가 `.mjs` 를 octet-stream 으로 서빙해 PR #6 이후 얼굴이 안 떴음([ADR-307], 수정). PR #9(하네스 동기화 + 위 전부)는 **main 에 머지됨**(`fc3aebb`, 2026-11-05). 머지 후 표정 동작을 헤드리스로 계측해 [ANL-01b]에 남겼고(PR #10 머지), 개선 후보 1~7을 **[WO-01b-7]~[WO-01b-10] 4건으로 발행·구현**했다([ADR-125]) — 다중 슬롯 크로스페이드·점진 졸림+꾸벅·호흡 진폭·sad/curious 가독성·fx 페이드·startled 통일. emotion-core 6/6 · face-gate 15/15 · mode-gate 42/42. 4건 모두 Verifying(인간 미적 확인이 Closed 조건). 이어 표정 **디자인** 제안 6건도 구현했다([ADR-126] — 눈 형태 어휘·입 굵기·아침 팔레트·zzz 옵션·`thinking`/`yawn` 어휘, [CON-01b] v0.2).
+2026-11-05 세션(PR #9~#12, 전부 main 머지 · **Railway 배포 완료** BUILD `2026-11-05e`, 인간 보고): ① 하네스 상류 동기화([ADR-305][ADR-306][ADR-307]) ② 보드 선택화 — 폰 앱 단독 수면 루프 [WO-02d-1]([ADR-401], HISTORY 2026-11-05) ③ 케어 문장 띠 + 시작 화면 2단계 [WO-01c-1]([ADR-123]) ④ 세로 갸웃·밤 제스처 안전장치([ADR-124]) ⑤ 표정 동작 개선 1~7 [WO-01b-7]~[WO-01b-10]([ADR-125], 계측 [ANL-01b]) ⑥ 표정 디자인 제안 6건 구현([ADR-126], [CON-01b] v0.2 `thinking`·`yawn`).
 
 ## 2. Changed locations (ID list)
-- HISTORY 2026-11-05 행 · [CON-01] v0.5 · [CON-02] v0.2 · [WO-02d-1] Draft→Active · [WO-01c-1] Draft→Active · [ADR-401][ADR-307][ADR-123][ADR-124] 원장 append · `sprint/next.md` 재생성
-- [CON-01b] v0.2 · `app/face/eyes.js`(SHAPE·아침 팔레트) · `expression-protocol.mjs`(thinking·yawn) · `mouth.js`·`fx.js` · [ADR-126] · BUILD 2026-11-05e
-- `app/face/emotion-core.mjs`(신규) · `app/face/expression.js`·`fx.js`·`app/main.js`(표정 WO 4건) · `scripts/emotion-core.test.js`·`scripts/face-gate.js`(신규) · [WO-01b-7][WO-01b-8][WO-01b-9][WO-01b-10] 신설(Verifying) · [ADR-125] · BUILD 2026-11-05d
-- `app/care-core.mjs`·`app/care.js`(신규) · `scripts/care-core.test.js`(신규) · `app/index.html`(시작 화면 2단계·`#care`·BUILD 2026-11-05b) · `app/mode.js`(밤 에피소드·senseStart/senseQuery) · `scripts/mode-gate.js`(34 검사)
-- `app/mode-core.mjs`·`app/mode.js`·`app/face/mode-eyes.js`(신규) · `app/main.js`·`app/hud.js`·`app/index.html`(BUILD 2026-11-05a)·`app/sw.js` · `scripts/serve.js`(.mjs MIME)·`scripts/serve.test.js` · `scripts/mode-core.test.js`(신규)
-- (PR #9) 하네스 sync 67파일 · `adapter.json` · [WO-02f-2] 신설
+- HISTORY 2026-11-05 · [CON-01] v0.5 · [CON-02] v0.2 · [CON-01b] v0.2 · [ANL-01b] 신설 · 원장 [ADR-123]~[ADR-126] [ADR-305]~[ADR-307] [ADR-401]
+- WO: [WO-02d-1] Active · [WO-01c-1] Active · [WO-01b-7]~[WO-01b-10] Verifying · [WO-02f-2] Draft
+- `app/`: `mode-core.mjs`·`mode.js`·`care-core.mjs`·`care.js`·`face/mode-eyes.js`·`face/emotion-core.mjs`(신규), `main.js`·`hud.js`·`index.html`·`sw.js`·`face/*` · `scripts/`: 하네스 sync 67 + `serve.js`(.mjs MIME) + `mode-gate.js`·`face-gate.js`·`expr-probe.js` · `.union-stack/adapter.json`
 
 ## 3. Next task (single entry point)
-**[WO-02d-1] 실기 검증(Closed 조건)** — 선행: Railway 재배포(위 §4 첫 항목). — 폰 Chrome 에서 `app/` 열고 "팰에게 방 보여주기" → 허용 → "시작" → 불 끄고 조용히 5분 → 팰이 먼저 잠드는지 1회 실측. 케어 띠가 "팰이 어둠에 눈이 익어가요 → 잠들려고 해요 → 잠들었어요"로 이유를 말하는지 함께 본다. HUD(`?dev=1`) 의 `mode` 줄로 후보/경과를 보며 상수(`?dark=&bright=&quiet=&noise=&sleepS=`)를 튜닝하고 실값을 [ADR-401] 후속 항목으로 남긴다. 통과하면 Closed + `feature/live.md` 행. 같은 실기에서 [WO-01c-1] 인간 R2 검수(LINES 16종 어감)도 끝낸다.
+**[WO-02b-1] 놀이 왕복 v1 — 팰이 사용자의 목소리를 인식하고 반응한다**(인간 지시 2026-11-05). 착수 순서: ① `scripts/serve.js` `/api/stt`·`/api/chat`([CON-04], [WO-02a-3] 구현 완료)에 Railway 환경변수(`PROXY_API_KEY` 또는 `OPENAI_API_KEY` · `PROXY_CHAT_URL`·`PROXY_CHAT_MODEL` · `PROXY_STT_URL`·`PROXY_STT_MODEL` · `PROXY_TIMEOUT_MS`)를 넣고 curl 1왕복 확인 ② `app/play.js`(T) — 길게 터치/발화 감지 → 녹음(webm) → STT → chat → 반응 JSON ③ 반응은 [CON-01b] `expr:trigger`(happy·curious·sad·thinking·yawn)로 얼굴에, `sleepIntent` 는 [CON-02] `mode.js` `command('sleep')` 으로 ④ 실패 폴백 3종(R8) · NIGHT 차단(R4) · 팰 주어(R2, `care-core.mjs` `lintLine` 재사용). 마이크는 귀([ADR-121], WIND_DOWN)·T 수음(SLEEP)과 **동시에 열지 않는다** — 녹음은 PLAY/WIND_DOWN 에서 귀 스트림을 빌리거나 귀를 잠시 끄고 연다. 착수 시 status Active, scaffold 는 쓰지 말 것(문서 이미 있음).
 
 ## 4. Open / cautions
-- **배포 대기(인간)**: Railway PWA(`face-production-7605`)는 PR #6 이후 `.mjs` MIME 결함으로 얼굴이 안 뜨는 상태였다([ADR-307]). main 머지는 됐으나 **재배포는 아직** — 클라우드 세션에는 railway CLI·토큰이 없고 배포 호스트가 프록시에서 막힌다. 로컬에서 `node scripts/deploy.js -p <projectId>`(BUILD `2026-11-05c`) 후 `--check-only`.
-- 모드 상수는 **실측 전**([ADR-401] ⑤). 카메라 AE 때문에 어두운 방에서 `lux.last` 가 `darkLux` 아래로 내려가는지가 첫 확인점. 몸통 안이면 후면 카메라가 안쪽을 본다 — 손에 들고 먼저.
-- 귀↔T 수음 전환 순간은 실기 미검증([ADR-401] ④).
-- 거치 자동 감지는 후속 WO(시작 버튼이 세션 시작). `feature/live.md` 는 실기 전이라 미갱신.
-- 표정 WO 4건([WO-01b-7]~[WO-01b-10]) Verifying — 키 6·7·8(표정)·q/w/e(모드)로 즉석 확인 뒤 PO 가 Closed/Active 판정. 디자인 6건은 구현됐고 값은 잠정([ADR-126]) — 확산지([WO-01d-3]) 뒤 튜닝. 키 t(생각)·y(하품)·1~5(상태) 로 즉석 확인.
-- [PLAN-01b] Verifying 잠금 6건 — 회고 PO 판정 배치에서 정리.
-- UX 브리핑(2026-11-05) 8항목 중 1·2·3·4·5·7 해소([ADR-123][ADR-124]), 6번은 아침 회고 문장 1줄로 최소 해소, 8번은 시작 화면 재구성으로 자연 해소. 케어 문장 17종 어감은 인간 검수 대기([WO-01c-1] Closed 조건).
-- [CON-01] v0.5·[CON-02] v0.2 는 인간 승인 하에 잠금 위로 편집([ADR-401]).
-- 하네스: `weakening-guard.js` 로컬 포크([ADR-306]) 상류 제안 대기 · 상류 전용 스크립트 18개 동결(인간 결정) · review `_GUIDE` 5건 `--ack-review` 대기 · [WO-02f-2](밤샘, 보드 경로)는 보류.
-- 회고 트리거 due(정체 WO 24·GC 가능 PLAN 1) — 회고 제안 — 정체 WO 24 ≥ 5.
+- **실기 미검증**: 앱 단독 루프 자동 전이([WO-02d-1] Closed 조건), 케어 문장 어감 17종([WO-01c-1]), 표정 WO 4건 미적 판정 — 폰에서 시작 2단계 → 불 끄고 5분이면 한 번에 본다. 키: 1~5 상태 · 6~9 표정 · t 생각 · y 하품 · q/w/e/r 모드.
+- 모드 상수(dark 40·bright 200·quiet 0.05·noise 0.12)는 실측 전([ADR-401] ⑤) — URL `?dark=&bright=&quiet=&noise=` 로 튜닝. 카메라 AE 때문에 어두운 방에서 `lux.last` 가 문턱 아래로 가는지가 첫 확인점.
+- [PLAN-01b] Verifying 잠금 6건([WO-01b-5]~[WO-01b-10]) — 회고 PO 판정 배치에서 정리. 회고 트리거 due(정체 WO ≥ 5).
+- 하네스: `weakening-guard.js` 로컬 포크([ADR-306]) 상류 제안 대기 · 상류 전용 스크립트 18개 동결(인간 결정) · review `_GUIDE` 5건 `--ack-review` 대기. 거치 자동 감지는 후속 WO. [WO-02f-2](보드 밤샘)는 보류.
+- RN 앱([PLAN-02f]) 브리지 allowlist 는 [CON-01b] v0.1 부분집합 — `thinking`·`yawn` 은 RN 경로에서 무시된다(의도).
 
 ## 5. Verification status
-- root: `npm test` 72/72(mode-core 8 · care-core 6 · emotion-core 6 · serve 15 포함) · `npm run lint` · `health` 전 게이트 · `weakening-guard` PASS · `permission-guard --strict`(HISTORY 편집은 Approved-by 트레일러).
-- 헤드리스 게이트: `scripts/mode-gate.js` 42/42 · `scripts/face-gate.js` 22/22 · `app/face-sheet.html` NG 0(Playwright 필요). 미검증: **폰 실기 자동 전환** · 상수 실값 · 마이크 전환 · 권한 대화상자 실흐름(Permissions API 상태 매핑) · 케어 띠와 입의 실기 간격 · Railway 배포본.
+- root: `npm test` 72/72 · `npm run lint` · `health` 전 게이트 · `permission-guard --strict` · CI 그린(main `130b44c`).
+- 헤드리스(Playwright): `mode-gate.js` 42/42 · `face-gate.js` 22/22 · `face-sheet.html` OK 45/NG 0.
+- 배포: BUILD `2026-11-05e` Railway 서빙 중(인간 `deploy.js --check-only` 보고). 미검증: 폰 실기 전부(§4 첫 항목).
